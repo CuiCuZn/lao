@@ -32,6 +32,24 @@ const assistantRoutes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/assistant/records',
+    name: 'AssistantRecords',
+    component: () => import('@/views/records/index.vue'),
+    meta: {
+      title: 'route.records',
+      descriptionKey: 'assistant.records.description'
+    }
+  },
+  {
+    path: '/assistant/pending-records',
+    name: 'AssistantPendingRecords',
+    component: () => import('@/views/pending-records/index.vue'),
+    meta: {
+      title: 'route.pendingRecords',
+      descriptionKey: 'assistant.pendingRecords.description'
+    }
+  },
+  {
     path: '/assistant/video-guide',
     name: 'AssistantVideoGuide',
     component: () => import('@/views/video-guide/index.vue'),

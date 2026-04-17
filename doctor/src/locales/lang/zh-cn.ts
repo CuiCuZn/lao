@@ -1,4 +1,8 @@
 export default {
+  language: {
+    zhCn: '中文',
+    lo: '老挝语'
+  },
   common: {
     login: '登录',
     logout: '退出登录',
@@ -8,14 +12,23 @@ export default {
     backHome: '返回首页'
   },
   login: {
-    title: '老挝在线诊疗医生工作台',
-    subtitle: '先完成医生端鉴权、动态路由与基础框架，业务模块内容后续逐步接入。',
+    title: '医助账号登录',
+    subtitle: '请输入账号信息完成登录。',
+    accountLoginTitle: '医生账号登录',
+    visualTitle: '医生端诊疗系统',
+    visualBadge: '全流程数字化远程诊疗',
+    visualCaption: '安全合规 · 高效执业 · 专业便捷',
+    tenantLabel: '租户',
+    usernameLabel: '用户名',
+    passwordLabel: '密码',
     selectTenant: '请选择租户',
     inputUsername: '请输入用户名',
     inputPassword: '请输入密码',
     rememberMe: '记住密码',
     loginBtn: '登 录',
-    loggingIn: '登 录 中...'
+    loggingIn: '登 录 中...',
+    footerNotice: '仅限医疗机构授权医助人员使用',
+    footerSupport: '如有账号问题，请联系系统管理员'
   },
   logout: {
     confirmText: '确定注销并退出医生端吗？'

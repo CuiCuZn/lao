@@ -54,7 +54,7 @@ const cards = computed(() => [
     shadow: '0 24px 44px rgba(75, 121, 238, 0.24)'
   },
   {
-    path: '/assistant/intake',
+    path: '/assistant/records',
     title: t('assistant.workbench.recordTitle'),
     description: t('assistant.workbench.recordDescription'),
     icon: Document,
@@ -63,7 +63,7 @@ const cards = computed(() => [
     shadow: '0 24px 44px rgba(47, 188, 124, 0.24)'
   },
   {
-    path: '/assistant/video-guide',
+    path: '/assistant/pending-records',
     title: t('assistant.workbench.pendingTitle'),
     description: t('assistant.workbench.pendingDescription'),
     icon: FirstAidKit,

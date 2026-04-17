@@ -526,9 +526,9 @@ onMounted(() => {
   gap: 22px;
   padding: 16px 0 28px;
   background:
-    radial-gradient(circle at top left, rgba(207, 230, 255, 0.52), transparent 34%),
-    radial-gradient(circle at top right, rgba(218, 244, 235, 0.52), transparent 34%),
-    linear-gradient(180deg, #edf7ff 0%, #f5fbff 100%);
+    radial-gradient(circle at 24% 12%, rgba(182, 221, 255, 0.78), transparent 28%),
+    radial-gradient(circle at 88% 14%, rgba(208, 239, 249, 0.68), transparent 20%),
+    linear-gradient(180deg, #d5eafb 0%, #cfe4f8 44%, #c6dcf2 100%);
 }
 
 .doctor-select-header {
@@ -539,22 +539,38 @@ onMounted(() => {
 }
 
 .back-btn {
-  min-height: 34px;
+  min-height: 38px;
   width: fit-content;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
-  color: #66768a;
+  color: #607183;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  box-shadow: 0 12px 30px rgba(66, 98, 141, 0.08);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.back-btn :deep(.el-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.back-btn span {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
 }
 
 .back-btn:hover {
-  background: rgba(255, 255, 255, 0.94);
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .header-copy {
