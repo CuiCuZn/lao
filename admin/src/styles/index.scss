@@ -1,0 +1,27 @@
+/* 全局 CSS 重置与基础变量配置 */
+
+:root {
+  --sidebar-bg: #304156;
+  --sidebar-text: #bfcbd9;
+  --sidebar-active-text: #409EFF;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100vh;
+}
+
+/* Element Plus 样式全局覆盖（可选） */
+.el-menu {
+  border-right: none !important;
+}
+
+/* 多语言排版微调，例如老挝语可能需要更大的行高 */
+[lang='lo'] {
+  line-height: 1.6;
+}

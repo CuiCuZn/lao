@@ -1,0 +1,41 @@
+{
+  "name": "lao-assistant",
+  "version": "1.0.0",
+  "description": "助理端",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "await-to-js": "^3.0.0",
+    "axios": "^1.14.0",
+    "crypto-js": "^4.2.0",
+    "dingrtc": "^3.8.17-beta.8",
+    "dingrtc-asr": "^1.0.3",
+    "element-plus": "^2.13.6",
+    "js-cookie": "^3.0.5",
+    "jsencrypt": "^3.5.4",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.31",
+    "vue-i18n": "^11.3.0",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/js-cookie": "^3.0.6",
+    "@types/node": "^25.5.0",
+    "@types/nprogress": "^0.2.3",
+    "@vitejs/plugin-vue": "^6.0.5",
+    "nprogress": "^0.2.0",
+    "sass": "^1.99.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.3",
+    "vue-tsc": "^3.2.6"
+  }
+}

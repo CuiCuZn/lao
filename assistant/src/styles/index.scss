@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light;
+  --assistant-bg:
+    radial-gradient(circle at top left, rgba(60, 132, 255, 0.18), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.14), transparent 26%),
+    linear-gradient(135deg, #f4f8ff 0%, #f8fbff 46%, #eef5fb 100%);
+  --assistant-surface: rgba(255, 255, 255, 0.88);
+  --assistant-surface-strong: #ffffff;
+  --assistant-border: rgba(212, 225, 239, 0.94);
+  --assistant-text: #1b2b3b;
+  --assistant-text-soft: #6b7b8f;
+  --assistant-text-faint: #8d9db0;
+  --assistant-primary: #1f78ff;
+  --assistant-primary-soft: rgba(31, 120, 255, 0.1);
+  --assistant-secondary: #12bfa0;
+  --assistant-shadow: 0 20px 60px rgba(27, 43, 59, 0.08);
+  --assistant-radius-xl: 28px;
+  --assistant-radius-lg: 22px;
+  --assistant-radius-md: 16px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--assistant-bg);
+  color: var(--assistant-text);
+  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans Lao", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.el-menu {
+  border-right: none !important;
+}
+
+[lang='lo'] {
+  line-height: 1.6;
+}
