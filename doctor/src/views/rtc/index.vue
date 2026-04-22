@@ -124,8 +124,13 @@
           </el-tabs>
 
           <div v-if="activeTab === 'outpatient'" class="record-content">
-            <button type="button" class="ai-button">
-              {{ t('doctorVideo.consultation.aiGenerate') }}
+            <button
+              type="button"
+              class="ai-button"
+              :disabled="generatingMedicalRecord"
+              @click="handleGenerateMedicalRecord"
+            >
+              {{ generatingMedicalRecord ? t('doctorVideo.consultation.aiGenerating') : t('doctorVideo.consultation.aiGenerate') }}
             </button>
 
             <section class="record-section">
@@ -139,47 +144,130 @@
               </div>
             </section>
 
-            <section class="record-section compact-history">
-              <div class="compact-text-row">
-                <span class="compact-label">{{ t('doctorVideo.consultation.chiefComplaint') }}：</span>
-                <span class="compact-value">{{ chiefComplaintText }}</span>
-              </div>
-              <div class="compact-text-row">
-                <span class="compact-label">{{ t('doctorVideo.consultation.currentHistory') }}：</span>
-                <span class="compact-value">{{ currentHistoryText }}</span>
-              </div>
-              <div class="compact-text-row">
-                <span class="compact-label">{{ t('doctorVideo.consultation.pastHistory') }}：</span>
-                <span class="compact-value">{{ pastHistoryText }}</span>
-              </div>
-              <div class="compact-text-row">
-                <span class="compact-label">{{ t('doctorVideo.consultation.menstrualHistory') }}：</span>
-                <span class="compact-value">{{ menstrualHistoryText }}</span>
-              </div>
+            <section class="record-section">
+              <el-form :model="outpatientRecordForm" label-position="top" class="compact-history-form">
+                <el-form-item :label="t('doctorVideo.consultation.chiefComplaint')" class="compact-form-item">
+                  <el-input
+                    v-model="outpatientRecordForm.chiefComplaint"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.chiefComplaint'))"
+                  />
+                </el-form-item>
+                <el-form-item :label="t('doctorVideo.consultation.currentHistory')" class="compact-form-item">
+                  <el-input
+                    v-model="outpatientRecordForm.currentHistory"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.currentHistory'))"
+                  />
+                </el-form-item>
+                <el-form-item :label="t('doctorVideo.consultation.pastHistory')" class="compact-form-item">
+                  <el-input
+                    v-model="outpatientRecordForm.pastHistory"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.pastHistory'))"
+                  />
+                </el-form-item>
+                <el-form-item :label="t('doctorVideo.consultation.allergyHistory')" class="compact-form-item">
+                  <el-input
+                    v-model="outpatientRecordForm.allergyHistory"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.allergyHistory'))"
+                  />
+                </el-form-item>
+                <el-form-item :label="t('doctorVideo.consultation.familyHistory')" class="compact-form-item">
+                  <el-input
+                    v-model="outpatientRecordForm.familyHistory"
+                    type="textarea"
+                    :rows="3"
+                    resize="none"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.familyHistory'))"
+                  />
+                </el-form-item>
+              </el-form>
             </section>
 
             <section class="record-section">
-              <h3>填写诊疗单</h3>
-              <el-form :model="diagnosisForm" :rules="diagnosisRules" ref="diagnosisFormRef" label-position="left" label-width="50px" class="compact-diagnosis-form">
-                <el-form-item label="病名" prop="diseaseNameCn" class="compact-form-item">
-                  <el-input v-model="diagnosisForm.diseaseNameCn" placeholder="请输入病名"></el-input>
+              <h3>{{ t('doctorVideo.consultation.diagnosisFormTitle') }}</h3>
+              <el-form :model="diagnosisForm" :rules="diagnosisRules" ref="diagnosisFormRef" label-position="top" class="compact-diagnosis-form">
+                <el-form-item :label="t('doctorVideo.consultation.diagnosis')" prop="diseaseNameCn" class="compact-form-item">
+                  <el-input
+                    v-model="diagnosisForm.diseaseNameCn"
+                    :placeholder="resolveInputPlaceholder(t('doctorVideo.consultation.diagnosis'))"
+                  />
                 </el-form-item>
-                <el-form-item label="病症" prop="syndromeTypeCn" class="compact-form-item">
-                  <el-input v-model="diagnosisForm.syndromeTypeCn" placeholder="请输入病症"></el-input>
+                <el-form-item :label="t('doctorVideo.consultation.check')" prop="syndromeTypeCn" class="compact-form-item">
+                  <el-input
+                    v-model="diagnosisForm.syndromeTypeCn"
+                    :placeholder="resolveInputPlaceholder(t('doctorVideo.consultation.check'))"
+                  />
                 </el-form-item>
-                <el-form-item label="治疗" prop="therapyCn" class="compact-form-item">
-                  <el-input type="textarea" :rows="2" v-model="diagnosisForm.therapyCn" placeholder="请输入治疗方案"></el-input>
+                <el-form-item :label="t('doctorVideo.consultation.therapy')" prop="therapyCn" class="compact-form-item">
+                  <el-input
+                    type="textarea"
+                    :rows="2"
+                    resize="none"
+                    v-model="diagnosisForm.therapyCn"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.therapy'))"
+                  />
                 </el-form-item>
-                <el-form-item label="医嘱" prop="adviceCn" class="compact-form-item">
-                  <el-input type="textarea" :rows="2" v-model="diagnosisForm.adviceCn" placeholder="请输入医嘱"></el-input>
+                <el-form-item :label="t('doctorVideo.consultation.advice')" prop="adviceCn" class="compact-form-item">
+                  <el-input
+                    type="textarea"
+                    :rows="2"
+                    resize="none"
+                    v-model="diagnosisForm.adviceCn"
+                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.advice'))"
+                  />
                 </el-form-item>
                 <div class="submit-btn-wrapper">
                   <el-button type="primary" :loading="submittingDiagnosis" @click="onSubmitDiagnosis" style="width: 100%;">
-                    提交诊疗单
+                    {{ t('doctorVideo.consultation.submitDiagnosis') }}
                   </el-button>
                 </div>
               </el-form>
             </section>
+          </div>
+
+          <div v-else-if="activeTab === 'history'" class="record-content">
+            <div v-if="historyCaseLoading" class="empty-record-state">
+              <h3>{{ t('doctorVideo.consultation.historyCaseLoadingTitle') }}</h3>
+              <p>{{ t('doctorVideo.consultation.historyCaseLoadingDescription') }}</p>
+            </div>
+
+            <div v-else-if="historyCaseError" class="empty-record-state">
+              <h3>{{ t('doctorVideo.consultation.historyCaseErrorTitle') }}</h3>
+              <p>{{ historyCaseError }}</p>
+            </div>
+
+            <div v-else-if="historyCaseList.length" class="history-case-list">
+              <article v-for="item in historyCaseList" :key="`${item.caseId}-${item.date}`" class="history-case-card">
+                <div class="history-case-head">
+                  <strong>{{ item.departmentName || t('workbench.notAvailable') }}</strong>
+                  <span>{{ formatHistoryCaseDate(item.date) }}</span>
+                </div>
+
+                <div class="history-case-meta">
+                  <span>{{ t('doctorVideo.consultation.historyCaseId') }}: {{ item.caseId || '--' }}</span>
+                </div>
+
+                <p class="history-case-diagnosis">
+                  {{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}
+                </p>
+              </article>
+            </div>
+
+            <div v-else class="empty-record-state">
+              <h3>{{ t('doctorVideo.consultation.historyCaseEmptyTitle') }}</h3>
+              <p>{{ t('doctorVideo.consultation.historyCaseEmptyDescription') }}</p>
+            </div>
           </div>
 
           <div v-else class="empty-record-state">
@@ -195,12 +283,12 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { addWrittenRecord, translateConsultationText } from '@/api/patient'
-import type { ConsultationMode } from '@/api/types'
-import { getVideoConversation, getVideoId, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
+import type { ConsultationMode, GenerateMedicalRecordData } from '@/api/types'
+import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
 import { useUserStore } from '@/stores/user'
 import ConsultParticipantCard from './components/ConsultParticipantCard.vue'
 import ConsultRoomControls from './components/ConsultRoomControls.vue'
@@ -228,10 +316,17 @@ interface ConsultationHistoryItem {
   sequence: number
 }
 
+interface HistoryCaseRecord {
+  caseId: string
+  departmentName: string
+  diagnosis: string
+  date: string
+}
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const { t } = useI18n()
+const { locale, t } = useI18n()
 const session = useDoctorConsultationSession()
 const activeTab = ref('outpatient')
 const pageError = ref('')
@@ -240,6 +335,10 @@ const consultationContext = ref<DoctorRtcContext>({})
 const savedSubtitleKeys = new Set<string>()
 const chatDraft = ref('')
 const chatSending = ref(false)
+const historyCaseList = ref<HistoryCaseRecord[]>([])
+const historyCaseLoading = ref(false)
+const historyCaseError = ref('')
+const generatingMedicalRecord = ref(false)
 let dateTimer = 0
 
 const normalizeConsultationMode = (value: unknown): ConsultationMode => {
@@ -269,7 +368,7 @@ const loadConsultationContext = () => {
 }
 
 const syncCurrentDate = () => {
-  currentDate.value = new Intl.DateTimeFormat('zh-CN', {
+  currentDate.value = new Intl.DateTimeFormat(resolveUiLocale(), {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -282,7 +381,7 @@ const doctorId = computed(() => {
 })
 
 const doctorName = computed(() => {
-  return userStore.profile?.nickName || userStore.nickname || userStore.name || '医生'
+  return userStore.profile?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
 
 const doctorTitleText = computed(() => {
@@ -290,7 +389,7 @@ const doctorTitleText = computed(() => {
   return title ? `${doctorName.value} · ${title}` : doctorName.value
 })
 
-const doctorAvatarText = computed(() => doctorName.value.slice(0, 1) || '医')
+const doctorAvatarText = computed(() => doctorName.value.slice(0, 1) || t('workbench.defaultRole').slice(0, 1))
 
 const roomId = computed(() => {
   const storedRoomId = consultationContext.value.roomId
@@ -318,6 +417,12 @@ const patientId = computed(() => {
     ? String(storedPatientId)
     : queryValue('patientId')
 })
+const doctorAideId = computed(() => {
+  const storedDoctorAideId = consultationContext.value.doctorAideId
+  return storedDoctorAideId !== null && storedDoctorAideId !== undefined && String(storedDoctorAideId).trim() !== ''
+    ? String(storedDoctorAideId)
+    : queryValue('doctorAideId')
+})
 const consultationMode = computed<ConsultationMode>(() => {
   const queryMode = queryValue('consultationMode')
   if (queryMode) {
@@ -335,6 +440,63 @@ const patientName = computed(() => {
 const doctorPreviewBadge = computed(() => t('doctorVideo.consultation.selfBadge'))
 const waitingPatientBadge = computed(() => t('doctorVideo.consultation.waitingPatient'))
 
+const resolveInputPlaceholder = (label: string) => {
+  return t('doctorVideo.consultation.inputPlaceholder', { label })
+}
+
+const resolveTextareaPlaceholder = (label: string) => {
+  return t('doctorVideo.consultation.textareaPlaceholder', { label })
+}
+
+const resolveContextText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  return String(value).trim()
+}
+
+const normalizeHistoryCaseList = (value: unknown): HistoryCaseRecord[] => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+
+      const record = item as Record<string, unknown>
+      return {
+        caseId: resolveContextText(record.caseId),
+        departmentName: resolveContextText(record.departmentName),
+        diagnosis: resolveContextText(record.diagnosis),
+        date: resolveContextText(record.date)
+      }
+    })
+    .filter((item): item is HistoryCaseRecord => Boolean(item))
+}
+
+const formatHistoryCaseDate = (value: string) => {
+  if (!value) {
+    return t('workbench.notAvailable')
+  }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat(resolveUiLocale(), {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
 const basicInfoFields = computed(() => [
   {
     label: t('doctorVideo.consultation.name'),
@@ -342,39 +504,33 @@ const basicInfoFields = computed(() => [
   },
   {
     label: t('doctorVideo.consultation.gender'),
-    value: consultationContext.value.sexText || '男'
+    value: consultationContext.value.sexText || t('workbench.notAvailable')
   },
   {
     label: t('doctorVideo.consultation.age'),
-    value: consultationContext.value.age ? `${consultationContext.value.age}` : '34岁'
+    value:
+      consultationContext.value.age !== null &&
+      consultationContext.value.age !== undefined &&
+      String(consultationContext.value.age).trim() !== ''
+        ? String(consultationContext.value.age).trim()
+        : t('workbench.notAvailable')
   },
   {
     label: t('doctorVideo.consultation.marriage'),
-    value: consultationContext.value.marriage || '未婚'
+    value: resolveContextText(consultationContext.value.marriage) || t('doctorVideo.consultation.notFilled')
   },
   {
     label: t('doctorVideo.consultation.occupation'),
-    value: consultationContext.value.occupation || '自由职业'
+    value: resolveContextText(consultationContext.value.occupation) || t('doctorVideo.consultation.notFilled')
   }
 ])
 
-const chiefComplaintText = computed(() => {
-  return consultationContext.value.complaint || '晨起头晕、伴有站立不稳感一周。'
-})
-
-const currentHistoryText = computed(() => {
-  return (
-    consultationContext.value.historyIllness ||
-    '近一周头晕反复发作，晨起更明显，无明显胸痛、心悸及黑蒙。'
-  )
-})
-
-const pastHistoryText = computed(() => {
-  return consultationContext.value.previousHistory || '既往体健，无明确慢性病史。'
-})
-
-const menstrualHistoryText = computed(() => {
-  return consultationContext.value.familyhistory || consultationContext.value.allergichistory || '暂未补充。'
+const outpatientRecordForm = reactive({
+  chiefComplaint: '',
+  currentHistory: '',
+  pastHistory: '',
+  allergyHistory: '',
+  familyHistory: ''
 })
 
 const diagnosisFormRef = ref<FormInstance>()
@@ -385,34 +541,155 @@ const diagnosisForm = ref({
   adviceCn: ''
 })
 
-const diagnosisRules = reactive<FormRules>({
-  diseaseNameCn: [{ required: true, message: '请输入病名', trigger: 'blur' }],
-  syndromeTypeCn: [{ required: true, message: '请输入病症', trigger: 'blur' }]
-})
+const diagnosisRules = computed<FormRules>(() => ({
+  diseaseNameCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.diagnosis')), trigger: 'blur' }],
+  syndromeTypeCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.check')), trigger: 'blur' }]
+}))
 
 const submittingDiagnosis = ref(false)
+
+const syncOutpatientRecordForm = () => {
+  outpatientRecordForm.chiefComplaint = resolveContextText(consultationContext.value.complaint)
+  outpatientRecordForm.currentHistory = resolveContextText(consultationContext.value.historyIllness)
+  outpatientRecordForm.pastHistory = resolveContextText(consultationContext.value.previousHistory)
+  outpatientRecordForm.allergyHistory = resolveContextText(consultationContext.value.allergichistory)
+  outpatientRecordForm.familyHistory = resolveContextText(consultationContext.value.familyhistory)
+}
+
+const persistConsultationContext = (payload: Partial<DoctorRtcContext>) => {
+  consultationContext.value = {
+    ...consultationContext.value,
+    ...payload
+  }
+
+  try {
+    sessionStorage.setItem(DOCTOR_RTC_CONTEXT_KEY, JSON.stringify(consultationContext.value))
+  } catch {
+    undefined
+  }
+}
+
+const resolveGeneratedRecordText = (
+  record: GenerateMedicalRecordData,
+  fieldName: 'mainSuit' | 'historyIllness' | 'previousHistory' | 'allergichistory' | 'familyhistory'
+) => {
+  const preferLao = locale.value === 'lo'
+  const localizedKey = `${fieldName}${preferLao ? 'Lo' : 'Cn'}` as keyof GenerateMedicalRecordData
+  const fallbackKey = `${fieldName}${preferLao ? 'Cn' : 'Lo'}` as keyof GenerateMedicalRecordData
+
+  return takeOptionalText(record[localizedKey]) || takeOptionalText(record[fallbackKey])
+}
+
+const resolveUiLocale = () => {
+  if (locale.value === 'zh-cn') return 'zh-CN'
+  if (locale.value === 'lo') return 'lo-LA'
+  if (locale.value === 'en') return 'en-US'
+  return 'zh-CN'
+}
+
+const applyGeneratedMedicalRecord = (record: GenerateMedicalRecordData) => {
+  const chiefComplaint = resolveGeneratedRecordText(record, 'mainSuit')
+  const currentHistory = resolveGeneratedRecordText(record, 'historyIllness')
+  const pastHistory = resolveGeneratedRecordText(record, 'previousHistory')
+  const allergyHistory = resolveGeneratedRecordText(record, 'allergichistory')
+  const familyHistory = resolveGeneratedRecordText(record, 'familyhistory')
+
+  outpatientRecordForm.chiefComplaint = chiefComplaint
+  outpatientRecordForm.currentHistory = currentHistory
+  outpatientRecordForm.pastHistory = pastHistory
+  outpatientRecordForm.allergyHistory = allergyHistory
+  outpatientRecordForm.familyHistory = familyHistory
+
+  persistConsultationContext({
+    complaint: chiefComplaint,
+    historyIllness: currentHistory,
+    previousHistory: pastHistory,
+    allergichistory: allergyHistory,
+    familyhistory: familyHistory
+  })
+}
+
+const handleGenerateMedicalRecord = async () => {
+  if (!caseId.value) {
+    ElMessage.warning(t('doctorVideo.consultation.aiGenerateCaseUnavailable'))
+    return
+  }
+
+  generatingMedicalRecord.value = true
+
+  try {
+    const response = await generateMedicalRecord(caseId.value)
+    const record = response?.data
+
+    if (!record) {
+      throw new Error('Missing generated medical record data.')
+    }
+
+    applyGeneratedMedicalRecord(record)
+    ElMessage.success(t('doctorVideo.consultation.aiGenerateSuccess'))
+  } catch (error) {
+    console.warn('Failed to generate doctor medical record.', error)
+    ElMessage.error(error instanceof Error && error.message ? error.message : t('doctorVideo.consultation.aiGenerateFailed'))
+  } finally {
+    generatingMedicalRecord.value = false
+  }
+}
+
+const fetchHistoryCaseList = async () => {
+  if (!patientId.value || !caseId.value) {
+    historyCaseList.value = []
+    historyCaseError.value = ''
+    historyCaseLoading.value = false
+    return
+  }
+
+  historyCaseLoading.value = true
+  historyCaseError.value = ''
+
+  try {
+    const response = await getCaseList(patientId.value, caseId.value)
+    historyCaseList.value = normalizeHistoryCaseList(response?.data)
+  } catch (error) {
+    historyCaseList.value = []
+    historyCaseError.value = t('doctorVideo.consultation.historyCaseLoadFailed')
+    console.warn('Failed to load history case list.', error)
+  } finally {
+    historyCaseLoading.value = false
+  }
+}
 
 const onSubmitDiagnosis = () => {
   if (!diagnosisFormRef.value) return
   diagnosisFormRef.value.validate(async (valid) => {
     if (valid) {
       if (!caseId.value) {
-        ElMessage.warning(t('doctorVideo.consultation.chatCaseUnavailable') || '病例ID不存在')
+        ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
+        return
+      }
+      const submitCaseId = Number(caseId.value)
+      if (!Number.isFinite(submitCaseId)) {
+        ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
         return
       }
       submittingDiagnosis.value = true
       try {
         await submitDiagnosis({
-          caseId: caseId.value,
+          caseId: submitCaseId,
+          ...(doctorAideId.value ? { doctorAideId: doctorAideId.value } : {}),
           diseaseNameCn: diagnosisForm.value.diseaseNameCn,
           syndromeTypeCn: diagnosisForm.value.syndromeTypeCn,
           therapyCn: diagnosisForm.value.therapyCn,
-          adviceCn: diagnosisForm.value.adviceCn
+          adviceCn: diagnosisForm.value.adviceCn,
+          mainSuitCn: outpatientRecordForm.chiefComplaint,
+          historyIllnessCn: outpatientRecordForm.currentHistory,
+          previousHistoryCn: outpatientRecordForm.pastHistory,
+          allergichistoryCn: outpatientRecordForm.allergyHistory,
+          familyhistoryCn: outpatientRecordForm.familyHistory
         })
-        ElMessage.success('诊断完成')
+        ElMessage.success(t('doctorVideo.consultation.submitDiagnosisSuccess'))
         await handleLeave()
       } catch (error) {
-        ElMessage.error('提交失败')
+        ElMessage.error(t('doctorVideo.consultation.submitDiagnosisFailed'))
       } finally {
         submittingDiagnosis.value = false
       }
@@ -838,16 +1115,9 @@ const persistConsultationVideoId = (nextVideoId: string) => {
     return
   }
 
-  consultationContext.value = {
-    ...consultationContext.value,
+  persistConsultationContext({
     videoId: nextVideoId
-  }
-
-  try {
-    sessionStorage.setItem(DOCTOR_RTC_CONTEXT_KEY, JSON.stringify(consultationContext.value))
-  } catch {
-    undefined
-  }
+  })
 }
 
 const handleSubtitleFinalized = (item: SubtitleTimelineItem) => {
@@ -1127,9 +1397,15 @@ const handleLeave = async () => {
 
 onMounted(async () => {
   loadConsultationContext()
+  syncOutpatientRecordForm()
+  void fetchHistoryCaseList()
   syncCurrentDate()
   dateTimer = window.setInterval(syncCurrentDate, 60_000)
   await bootstrapConsultation()
+})
+
+watch([patientId, caseId], () => {
+  void fetchHistoryCaseList()
 })
 
 onBeforeUnmount(async () => {
@@ -1383,6 +1659,11 @@ onBeforeUnmount(async () => {
   cursor: pointer;
 }
 
+.ai-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
 .record-section {
   margin-top: 18px;
 }
@@ -1422,29 +1703,7 @@ onBeforeUnmount(async () => {
   font-weight: 500;
 }
 
-.compact-history {
-  background: #f8fbff;
-  border: 1px solid #e2edff;
-  border-radius: 12px;
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.compact-text-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.5;
-}
-
-.compact-text-row .compact-label {
-  color: #f25c35;
-  font-size: 14px;
-  font-weight: 700;
-}
-
+.compact-history-form,
 .compact-diagnosis-form {
   background: #f8fbff;
   border: 1px solid #e2edff;
@@ -1452,12 +1711,85 @@ onBeforeUnmount(async () => {
   padding: 16px 14px;
 }
 
+.compact-history-form :deep(.el-form-item__label),
+.compact-diagnosis-form :deep(.el-form-item__label) {
+  padding-bottom: 6px;
+  color: #f25c35;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.compact-history-form :deep(.el-textarea__inner),
+.compact-diagnosis-form :deep(.el-textarea__inner) {
+  min-height: 88px;
+  line-height: 1.6;
+}
+
+.compact-diagnosis-form :deep(.el-input__wrapper),
+.compact-history-form :deep(.el-textarea__inner),
+.compact-diagnosis-form :deep(.el-textarea__inner) {
+  border-radius: 10px;
+}
+
 .compact-form-item {
   margin-bottom: 12px;
 }
 
+.compact-history-form .compact-form-item:last-child,
+.compact-diagnosis-form .compact-form-item:last-child {
+  margin-bottom: 0;
+}
+
 .submit-btn-wrapper {
   margin-top: 16px;
+}
+
+.history-case-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-case-card {
+  border: 1px solid #e2edff;
+  border-radius: 14px;
+  background: #f8fbff;
+  padding: 14px;
+  box-shadow: 0 8px 18px rgba(78, 114, 168, 0.06);
+}
+
+.history-case-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-case-head strong {
+  color: #203351;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.history-case-head span,
+.history-case-meta {
+  color: #6c7e97;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.history-case-meta {
+  margin-top: 8px;
+}
+
+.history-case-diagnosis {
+  margin: 10px 0 0;
+  color: #203351;
+  font-size: 14px;
+  line-height: 1.7;
 }
 
 .empty-record-state {
@@ -1526,6 +1858,10 @@ onBeforeUnmount(async () => {
 
   .record-shell {
     height: auto;
+  }
+
+  .history-case-head {
+    flex-direction: column;
   }
 }
 

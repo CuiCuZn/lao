@@ -2,25 +2,12 @@
   <header class="app-topbar" :class="{ 'is-plain': plain }">
     <div class="brand-block">
       <div class="brand-icon">
-        <el-icon><plus /></el-icon>
+        <img :src="brandLogo" alt="logo" class="brand-logo" />
       </div>
       <strong class="brand-title">{{ systemTitle }}</strong>
     </div>
 
     <div class="topbar-actions">
-      <el-dropdown @command="handleSetLanguage">
-        <button type="button" class="action-pill">
-          <span>{{ currentLangName }}</span>
-          <el-icon class="el-icon--right"><arrow-down /></el-icon>
-        </button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
-            <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-
       <div class="user-brief">
         <div class="user-badge">
           <el-icon><user /></el-icon>
@@ -43,10 +30,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
-import { ArrowDown, Plus, SwitchButton, User } from '@element-plus/icons-vue'
+import { SwitchButton, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import brandLogo from '@/assets/logo.png'
 
 withDefaults(
   defineProps<{
@@ -58,29 +47,16 @@ withDefaults(
 )
 
 const userStore = useUserStore()
-const { locale, t } = useI18n()
-
-const currentLangName = computed(() => {
-  const map: Record<string, string> = {
-    'zh-cn': t('language.zhCn'),
-    lo: t('language.lo')
-  }
-  return map[locale.value] || t('language.zhCn')
-})
+const router = useRouter()
+const { t } = useI18n()
 
 const systemTitle = computed(() => {
-  return import.meta.env.VITE_APP_TITLE || t('assistant.systemBrand')
+  return t('assistant.systemBrand')
 })
 
 const displayName = computed(() => {
   return userStore.nickname || userStore.name || t('menu.assistantPortal')
 })
-
-const handleSetLanguage = (lang: string) => {
-  locale.value = lang
-  localStorage.setItem('lang', lang)
-  location.reload()
-}
 
 const handleLogout = () => {
   ElMessageBox.confirm(t('logout.confirmText'), t('common.tip'), {
@@ -89,7 +65,7 @@ const handleLogout = () => {
     type: 'warning'
   }).then(async () => {
     await userStore.logout()
-    location.href = '/login'
+    window.location.replace(router.resolve({ path: '/login' }).href)
   })
 }
 </script>
@@ -131,10 +107,13 @@ const handleLogout = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: linear-gradient(180deg, #1f6fff 0%, #1557d7 100%);
-  color: #ffffff;
-  font-size: 16px;
+  overflow: hidden;
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brand-title {
@@ -151,7 +130,6 @@ const handleLogout = () => {
   gap: 8px;
 }
 
-.action-pill,
 .user-brief,
 .logout-btn {
   display: inline-flex;
@@ -166,22 +144,15 @@ const handleLogout = () => {
   transition: all 0.2s ease;
 }
 
-.action-pill,
 .logout-btn {
   cursor: pointer;
   outline: none;
 }
 
-.action-pill:hover,
 .user-brief:hover,
 .logout-btn:hover {
   border-color: #d6e3ee;
   background: #f8fbfd;
-}
-
-.action-pill {
-  gap: 5px;
-  padding: 0 10px;
 }
 
 .user-brief {
@@ -219,7 +190,6 @@ const handleLogout = () => {
   gap: 8px;
 }
 
-.app-topbar.is-plain .action-pill,
 .app-topbar.is-plain .user-brief,
 .app-topbar.is-plain .logout-btn {
   min-height: 32px;

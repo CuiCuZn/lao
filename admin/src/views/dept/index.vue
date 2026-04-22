@@ -39,7 +39,7 @@
     <el-card class="table-card" shadow="never" style="margin-top: 20px">
       <div class="toolbar">
         <el-button type="primary" plain @click="handleAdd">{{ t('dept.addDept') }}</el-button>
-        <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button>
+        <!-- <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button> -->
       </div>
 
       <!-- 3. 数据表格 -->
@@ -63,6 +63,7 @@
           <template #default="scope">
             <el-button link type="primary" @click="handleDetail(scope.row)">{{ t('common.view') }}</el-button>
             <el-button link type="primary" @click="handleUpdate(scope.row)">{{ t('common.edit') }}</el-button>
+            <el-button link type="danger" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
             <el-button
               link
               :type="scope.row.status === '0' ? 'danger' : 'success'"
@@ -139,7 +140,7 @@
         <el-divider content-position="left">{{ t('dept.phrases') }}</el-divider>
         <div class="phrases-section">
           <div v-for="(phrase, index) in form.phrases" :key="index" class="phrase-item">
-            <el-input v-model="form.phrases[index]" placeholder="请输入诊疗常用语 (如: 饮食清淡)" style="width: 80%" />
+            <el-input v-if="form.phrases" v-model="form.phrases[index]" placeholder="请输入诊疗常用语 (如: 饮食清淡)" style="width: 80%" />
             <el-button v-if="!isView" type="danger" link :icon="Minus" @click="removePhrase(index)" />
           </div>
           <el-button v-if="!isView" type="primary" link :icon="Plus" @click="addPhrase">{{ t('dept.addPhrase') }}</el-button>
@@ -170,7 +171,7 @@ import {
   CircleCheck
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
-import { listDept, addDept, updateDept, changeDeptStatus } from '@/api/dept'
+import { listDept, addDept, updateDept, changeDeptStatus, removeDept } from '@/api/dept'
 import { DeptQuery, DeptVO, DeptForm } from '@/api/types'
 import { useDictStore } from '@/stores/dict'
 import { to } from 'await-to-js'
@@ -184,7 +185,7 @@ const sysDeptOptions = computed(() => dictStore.getDict('sys_dept'))
 const sysStatusOptions = computed(() => [
   { dictLabel: t('common.statusNormal'), dictValue: '0', listClass: 'primary' },
   { dictLabel: t('common.statusStop'), dictValue: '1', listClass: 'danger' }
-])
+] as any[])
 
 // 1. 数据状态定义
 const loading = ref(false)
@@ -315,6 +316,29 @@ const handleDetail = (row: DeptVO) => {
   form.value = { ...row, phrases: phrasesArr }
   dialogTitle.value = t('dept.deptDetail')
   dialogVisible.value = true
+}
+
+/**
+ * 删除操作
+ */
+const handleDelete = async (row: DeptVO) => {
+  if (!row.departmentId) return
+  try {
+    await ElMessageBox.confirm(
+      t('dept.confirmStatus', { operate: t('common.delete') }),
+      t('common.tip'),
+      {
+        confirmButtonText: t('common.confirm'),
+        cancelButtonText: t('common.cancel'),
+        type: 'warning'
+      }
+    )
+    const [err] = await to(removeDept(row.departmentId))
+    if (!err) {
+      ElMessage.success(t('common.operateSuccess'))
+      getList()
+    }
+  } catch {}
 }
 
 /**

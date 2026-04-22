@@ -9,6 +9,7 @@
 import { computed, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import en from 'element-plus/es/locale/lang/en'
 
 const { locale } = useI18n()
 
@@ -21,6 +22,10 @@ watchEffect(() => {
  * @property elLocale
  */
 const elLocale = computed(() => {
+  if (locale.value === 'en') {
+    return en
+  }
+
   if (locale.value === 'lo') {
     return zhCn
   }

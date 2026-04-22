@@ -63,7 +63,10 @@ router.beforeEach(async (to, from) => {
           dictStore.clearDict() // 清理字典缓存
           ElMessage.error(err instanceof Error ? err.message : '身份校验失败')
           NProgress.done()
-          return `/login?redirect=${to.fullPath}`
+          return {
+            path: '/login',
+            query: { ...to.query, redirect: to.fullPath }
+          }
         }
       } else {
         return true
@@ -75,7 +78,12 @@ router.beforeEach(async (to, from) => {
       return true
     } else {
       NProgress.done()
-      return `/login?redirect=${to.fullPath}`
+      return {
+        path: '/login',
+        query: {
+          redirect: to.fullPath
+        }
+      }
     }
   }
 })

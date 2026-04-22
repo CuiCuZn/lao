@@ -1,7 +1,5 @@
 <template>
   <div class="header">
-    <div class="breadcrumb">{{ t('menu.adminSystem') }}</div>
-
     <div class="right-menu">
       <!-- 语言选择器 -->
       <el-dropdown @command="handleSetLanguage">
@@ -11,8 +9,9 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="zh-cn">中文</el-dropdown-item>
-            <el-dropdown-item command="lo">ພາສາລາວ (Lao)</el-dropdown-item>
+            <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
+            <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
+            <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -65,7 +64,7 @@ const handleCommand = (command: string) => {
       type: 'warning'
     }).then(async () => {
       await userStore.logout()
-      location.href = '/login' // 强制刷新清除所有状态
+      window.location.replace(router.resolve({ path: '/login' }).href) // 强制刷新清除所有状态
     })
   } else if (command === 'profile') {
     // 预留跳转个人中心
@@ -78,10 +77,11 @@ const handleCommand = (command: string) => {
  */
 const currentLangName = computed(() => {
   const map: Record<string, string> = {
-    'zh-cn': '中文',
-    lo: 'ພາສາລາວ'
+    'zh-cn': t('language.zhCn'),
+    lo: t('language.lo'),
+    en: t('language.en')
   }
-  return map[locale.value] || '中文'
+  return map[locale.value] || t('language.zhCn')
 })
 
 /**
@@ -103,12 +103,8 @@ const handleSetLanguage = (lang: string) => {
   border-bottom: 1px solid #dcdfe6;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0 20px;
-}
-.breadcrumb {
-  font-weight: bold;
-  font-size: 16px;
 }
 .right-menu {
   display: flex;

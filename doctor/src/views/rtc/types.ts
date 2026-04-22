@@ -121,6 +121,7 @@ export interface DoctorRtcContext {
   caseId?: string | number
   videoId?: string | number
   patientId?: string | number
+  doctorAideId?: string
   roomId?: string | number
   consultationMode?: ConsultationMode
 }

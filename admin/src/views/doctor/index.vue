@@ -43,7 +43,7 @@
     <el-card class="table-card" shadow="never" style="margin-top: 20px">
       <div class="toolbar">
         <el-button type="primary" plain @click="handleAdd">{{ t('doctor.addDoctor') }}</el-button>
-        <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button>
+        <!-- <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button> -->
       </div>
 
       <!-- 3. 数据表格 -->
@@ -69,6 +69,7 @@
           <template #default="scope">
             <el-button link type="primary" @click="handleDetail(scope.row)">{{ t('common.view') }}</el-button>
             <el-button link type="primary" @click="handleUpdate(scope.row)">{{ t('common.edit') }}</el-button>
+            <el-button link type="danger" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
             <el-button
               link
               :type="scope.row.status === '0' ? 'danger' : 'success'"
@@ -198,7 +199,7 @@ import {
   CircleCheck
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
-import { listUser, getUser, addUser, updateUser, changeUserStatus, resetUserPwd } from '@/api/user'
+import { listUser, getUser, addUser, updateUser, changeUserStatus, resetUserPwd, delUser } from '@/api/user'
 import { listDept } from '@/api/dept'
 import { UserQuery, UserVO, UserForm, DeptVO } from '@/api/types'
 import { useDictStore } from '@/stores/dict'
@@ -378,6 +379,25 @@ const handleUpdate = async (row: UserVO) => {
     dialogTitle.value = t('doctor.editDoctor')
     dialogVisible.value = true
   }
+}
+
+/**
+ * 删除按钮操作
+ */
+const handleDelete = async (row: UserVO) => {
+  if (!row.userId) return
+  try {
+    await ElMessageBox.confirm(t('doctor.confirmStatus', { operate: t('common.delete') }), t('common.tip'), {
+      confirmButtonText: t('common.confirm'),
+      cancelButtonText: t('common.cancel'),
+      type: 'warning'
+    })
+    const [err] = await to(delUser(row.userId))
+    if (!err) {
+      ElMessage.success(t('common.operateSuccess'))
+      getList()
+    }
+  } catch {}
 }
 
 /**

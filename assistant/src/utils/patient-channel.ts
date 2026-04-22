@@ -17,7 +17,28 @@ export type VideoRoomCreatedMessage = {
   }
 }
 
-export type PatientChannelMessage = PatientContextSyncMessage | VideoRoomCreatedMessage
+export type ReconnectFailedMessage = {
+  type: typeof PATIENT_CHANNEL_MESSAGE_TYPES.reconnectFailed
+  payload: {
+    patientId: string
+    caseId: string
+    message?: string
+  }
+}
+
+export type ConsultationEndedMessage = {
+  type: typeof PATIENT_CHANNEL_MESSAGE_TYPES.consultationEnded
+  payload: {
+    patientId: string
+    caseId: string
+  }
+}
+
+export type PatientChannelMessage =
+  | PatientContextSyncMessage
+  | VideoRoomCreatedMessage
+  | ReconnectFailedMessage
+  | ConsultationEndedMessage
 
 const isBroadcastChannelSupported = () => {
   return typeof window !== 'undefined' && typeof window.BroadcastChannel !== 'undefined'
@@ -48,6 +69,18 @@ const isPatientChannelMessage = (value: unknown): value is PatientChannelMessage
     return typeof value.payload.patientId === 'string' && typeof value.payload.doctorId === 'string' && typeof value.payload.roomId === 'string'
   }
 
+  if (value.type === PATIENT_CHANNEL_MESSAGE_TYPES.reconnectFailed) {
+    return (
+      typeof value.payload.patientId === 'string' &&
+      typeof value.payload.caseId === 'string' &&
+      (value.payload.message === undefined || typeof value.payload.message === 'string')
+    )
+  }
+
+  if (value.type === PATIENT_CHANNEL_MESSAGE_TYPES.consultationEnded) {
+    return typeof value.payload.patientId === 'string' && typeof value.payload.caseId === 'string'
+  }
+
   return false
 }
 
@@ -71,6 +104,20 @@ export const broadcastPatientContextSync = (payload: PatientContextSyncMessage['
 export const broadcastVideoRoomCreated = (payload: VideoRoomCreatedMessage['payload']) => {
   postPatientChannelMessage({
     type: PATIENT_CHANNEL_MESSAGE_TYPES.videoRoomCreated,
+    payload
+  })
+}
+
+export const broadcastReconnectFailed = (payload: ReconnectFailedMessage['payload']) => {
+  postPatientChannelMessage({
+    type: PATIENT_CHANNEL_MESSAGE_TYPES.reconnectFailed,
+    payload
+  })
+}
+
+export const broadcastConsultationEnded = (payload: ConsultationEndedMessage['payload']) => {
+  postPatientChannelMessage({
+    type: PATIENT_CHANNEL_MESSAGE_TYPES.consultationEnded,
     payload
   })
 }

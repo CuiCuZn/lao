@@ -33,6 +33,7 @@
                 <el-dropdown-menu>
                   <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
                   <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
+                  <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -132,7 +133,8 @@ const visualBackground = computed(() => `url(${loginMedicalVisual})`)
 const currentLangName = computed(() => {
   const map: Record<string, string> = {
     'zh-cn': t('language.zhCn'),
-    lo: t('language.lo')
+    lo: t('language.lo'),
+    en: t('language.en')
   }
   return map[locale.value] || t('language.zhCn')
 })
@@ -156,8 +158,8 @@ watch(
 
 const loginForm = ref<LoginData>({
   tenantId: '000000',
-  username: '',
-  password: '',
+  username: import.meta.env.DEV ? 'liyisheng' : '',
+  password: import.meta.env.DEV ? '000000' : '',
   rememberMe: false,
   clientId: import.meta.env.VITE_APP_CLIENT_ID,
   grantType: 'password'

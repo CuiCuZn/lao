@@ -8,9 +8,22 @@
         </div>
 
         <div class="control-actions">
-          <el-button class="online-action-btn" :class="{ 'is-online': isOnlineRequested }"
-            :type="isOnlineRequested ? 'danger' : 'primary'" :loading="isSwitchingOnlineStatus" round
-            @click="toggleOnlineStatus">
+          <span
+            class="panel-status control-status"
+            :class="[`is-${sseStatus}`, { 'is-highlighted': sseStatus !== 'offline' }]"
+          >
+            <span class="status-dot"></span>
+            {{ connectionStatusText }}
+          </span>
+
+          <el-button
+            class="online-action-btn"
+            :class="{ 'is-online': isOnlineRequested }"
+            :type="isOnlineRequested ? 'danger' : 'primary'"
+            :loading="isSwitchingOnlineStatus"
+            round
+            @click="toggleOnlineStatus"
+          >
             {{ onlineActionButtonText }}
           </el-button>
         </div>
@@ -39,14 +52,6 @@
               <span class="panel-kicker">{{ t('workbench.pendingTitle') }}</span>
               <p class="panel-description">{{ t('workbench.pendingPanelHint', { count: pendingCount }) }}</p>
             </div>
-
-            <div class="panel-side">
-              <span class="panel-counter">{{ pendingCount }}</span>
-              <span class="panel-status" :class="`is-${sseStatus}`">
-                <span class="status-dot"></span>
-                {{ connectionStatusText }}
-              </span>
-            </div>
           </div>
 
           <div v-if="pendingPatients.length > 0" class="queue-list">
@@ -61,23 +66,16 @@
                     <h4>
                       {{ item.patientName }}
                       <span v-if="item.sexText || item.age" class="patient-tag">
-                        {{ item.sexText }} {{ item.age ? `${item.age}岁` : '' }}
+                        {{ item.sexText }} {{ formatAgeLabel(item.age) }}
                       </span>
                     </h4>
-                    <p class="info-row" v-if="item.complaint"><span>主诉：</span>{{ item.complaint }}</p>
-                    <p class="info-row" v-if="item.historyIllness"><span>现病史：</span>{{ item.historyIllness }}</p>
-                    <p class="info-row" v-if="item.previousHistory"><span>既往史：</span>{{ item.previousHistory }}</p>
-                    <p class="info-row" v-if="item.allergichistory"><span>过敏史：</span>{{ item.allergichistory }}</p>
-                    <p class="info-row" v-if="item.familyhistory"><span>家族史：</span>{{ item.familyhistory }}</p>
                   </div>
 
                   <!-- <div class="queue-no">{{ item.queueNo }}</div> -->
                 </div>
 
                 <div class="queue-meta">
-                  <span>{{ t('workbench.waitLabel') }} {{ formatWaitMinutes(item.waitMinutes) }}</span>
-                  <span>{{ item.departmentName }}</span>
-                  <span>{{ item.updatedAt }}</span>
+                  <span>{{ formatPendingDisplayTime(item) }}</span>
                 </div>
               </div>
 
@@ -99,7 +97,7 @@
         <article class="panel unfinished-panel">
           <div class="panel-header">
             <div class="panel-heading">
-              <span class="panel-kicker">诊疗记录</span>
+              <span class="panel-kicker">{{ t('workbench.recordPanelTitle') }}</span>
             </div>
           </div>
 
@@ -127,7 +125,7 @@
               </div>
 
               <el-button
-                v-if="item.progressText !== '已完成'"
+                v-if="item.progressText !== t('workbench.completedStatus')"
                 type="primary"
                 class="queue-action"
                 size="small"
@@ -136,6 +134,17 @@
                 @click="handleContinueConsultation(item)"
               >
                 {{ t('workbench.continueAction') }}
+              </el-button>
+              <el-button
+                v-else
+                type="info"
+                plain
+                class="queue-action"
+                size="small"
+                round
+                @click="openCaseDetail(item)"
+              >
+                {{ t('workbench.viewDetail', '查看详情') }}
               </el-button>
             </article>
           </div>
@@ -156,46 +165,19 @@
 
           <h3 class="doctor-name">{{ doctorDisplayName }}</h3>
           <p class="doctor-tagline">{{ doctorTagline }}</p>
-          <span class="doctor-role-pill">{{ doctorRoleText }}</span>
-        </div>
-
-        <div class="doctor-stats">
-          <div class="doctor-stat">
-            <strong>156</strong>
-            <span>{{ t('workbench.doctorVisitsLabel') }}</span>
-          </div>
-          <div class="doctor-stat">
-            <strong>98%</strong>
-            <span>{{ t('workbench.doctorSatisfactionLabel') }}</span>
-          </div>
-          <div class="doctor-stat">
-            <strong>5</strong>
-            <span>{{ t('workbench.doctorExperienceLabel') }}</span>
-          </div>
+          <span class="doctor-role-pill">{{ doctorInstitution }}</span>
         </div>
 
         <div class="doctor-details">
           <div class="detail-item">
             <span class="detail-icon">
               <el-icon>
-                <UserFilled />
+                <PhoneFilled />
               </el-icon>
             </span>
             <div>
-              <label>{{ t('workbench.accountLabel') }}</label>
-              <strong>{{ doctorAccount }}</strong>
-            </div>
-          </div>
-
-          <div class="detail-item">
-            <span class="detail-icon">
-              <el-icon>
-                <OfficeBuilding />
-              </el-icon>
-            </span>
-            <div>
-              <label>{{ t('workbench.departmentLabel') }}</label>
-              <strong>{{ doctorDepartment }}</strong>
+              <label>{{ t('workbench.phoneLabel') }}</label>
+              <strong>{{ doctorPhone }}</strong>
             </div>
           </div>
 
@@ -206,20 +188,8 @@
               </el-icon>
             </span>
             <div>
-              <label>{{ t('workbench.titleLabel') }}</label>
-              <strong>{{ doctorTitle }}</strong>
-            </div>
-          </div>
-
-          <div class="detail-item">
-            <span class="detail-icon">
-              <el-icon>
-                <PhoneFilled />
-              </el-icon>
-            </span>
-            <div>
-              <label>{{ t('workbench.phoneLabel') }}</label>
-              <strong>{{ doctorPhone }}</strong>
+              <label>{{ t('workbench.specialtyLabel') }}</label>
+              <strong>{{ doctorSpecialty }}</strong>
             </div>
           </div>
         </div>
@@ -238,17 +208,11 @@
         <div class="accept-avatar">
           {{ activePatient.patientName.slice(0, 1) }}
         </div>
-        <h2 class="accept-title">视频问诊请求</h2>
-        <p class="accept-subtitle">
-          患者 <strong>{{ activePatient.patientName }}</strong> 发起了视频问诊
-        </p>
-        <p class="accept-meta">
-          {{ activePatient.age ? `${activePatient.age}岁` : '--' }} | {{ activePatient.complaint || '复诊' }}
-        </p>
+        <h2 class="accept-title">{{ t('workbench.acceptRequestTitle') }}</h2>
         
         <div class="accept-actions">
           <el-button class="action-btn reject-btn" :disabled="acceptingConsultation" @click="handleReject">
-            <el-icon><Delete /></el-icon> 拒绝
+            <el-icon><Delete /></el-icon> {{ t('workbench.rejectAction') }}
           </el-button>
           <el-button
             class="action-btn resolve-btn"
@@ -256,11 +220,21 @@
             :loading="acceptingConsultation"
             @click="handleConfirmAccept"
           >
-            <el-icon><VideoCamera /></el-icon> 接受
+            <el-icon><VideoCamera /></el-icon> {{ t('workbench.acceptRequestAction') }}
           </el-button>
         </div>
       </div>
     </el-dialog>
+
+    <el-drawer
+      v-model="drawerVisible"
+      :title="t('workbench.viewDetail', '查看详情')"
+      size="60%"
+      destroy-on-close
+      append-to-body
+    >
+      <case-detail v-if="drawerVisible" :case-id="currentCaseId" />
+    </el-drawer>
   </div>
 </template>
 
@@ -273,7 +247,6 @@ import {
   Clock,
   DataAnalysis,
   Document,
-  OfficeBuilding,
   PhoneFilled,
   UserFilled,
   Delete,
@@ -292,7 +265,13 @@ import type {
 } from '@/api/types'
 import { useUserStore } from '@/stores/user'
 import { getToken } from '@/utils/auth'
+import {
+  getDesktopNotificationPermission,
+  requestDesktopNotificationPermission,
+  showDesktopNotification
+} from '@/utils/desktop-notification'
 import { connectSse, type SseMessage } from '@/utils/sse'
+import CaseDetail from './components/CaseDetail.vue'
 
 type SseStatus = 'offline' | 'connecting' | 'connected' | 'reconnecting' | 'error'
 type MetricTone = 'sky' | 'amber' | 'violet'
@@ -332,6 +311,18 @@ const acceptDialogVisible = ref(false)
 const activePatient = ref<PendingConsultation | null>(null)
 const acceptingConsultation = ref(false)
 const continuingConsultationId = ref('')
+
+const drawerVisible = ref(false)
+const currentCaseId = ref('')
+
+const openCaseDetail = (item: IncompleteConsultation) => {
+  if (!item.caseId) {
+    ElMessage.warning(t('workbench.missingCaseId'))
+    return
+  }
+  currentCaseId.value = String(item.caseId)
+  drawerVisible.value = true
+}
 
 const openAcceptDialog = (item: PendingConsultation) => {
   activePatient.value = item
@@ -378,6 +369,9 @@ function buildConsultationNavigationContext(
   const videoId =
     pickString(mergedRecord, ['videoId', 'videoID']) ||
     (seedData.videoId !== null && seedData.videoId !== undefined ? String(seedData.videoId).trim() : '')
+  const doctorAideId =
+    pickString(mergedRecord, ['doctorAideId', 'doctorAidId']) ||
+    (seedData.doctorAideId !== null && seedData.doctorAideId !== undefined ? String(seedData.doctorAideId).trim() : '')
 
   return {
     patientName,
@@ -393,6 +387,7 @@ function buildConsultationNavigationContext(
     caseId,
     videoId,
     patientId,
+    doctorAideId,
     roomId,
     consultationMode,
     raw: mergedRecord
@@ -412,7 +407,7 @@ async function prepareConsultationNavigation(
     pickString(rawRecord, ['patientId', 'patId', 'id'])
 
   if (!resolvedCaseId) {
-    throw new Error('病例ID缺失，暂时无法获取房间号')
+    throw new Error(t('workbench.missingCaseId'))
   }
 
   const shouldFetchBasicInfo =
@@ -432,7 +427,7 @@ async function prepareConsultationNavigation(
   const roomId = resolveChannelId(channelResponse?.data)
 
   if (!roomId) {
-    throw new Error('房间号获取失败，请稍后重试')
+    throw new Error(t('workbench.roomIdLoadFailed'))
   }
 
   const basicInfo = isObjectRecord((basicResponse as any)?.data) ? (basicResponse as any).data : {}
@@ -477,6 +472,13 @@ async function prepareConsultationNavigation(
     }
   }
 
+  if (navigationContext.doctorAideId !== null && navigationContext.doctorAideId !== undefined) {
+    const normalizedDoctorAideId = String(navigationContext.doctorAideId).trim()
+    if (normalizedDoctorAideId) {
+      nextQuery.doctorAideId = normalizedDoctorAideId
+    }
+  }
+
   await router.push({
     path: '/doctor-rtc',
     query: nextQuery
@@ -497,7 +499,7 @@ const handleConfirmAccept = async () => {
     acceptDialogVisible.value = false
     activePatient.value = null
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '接诊失败，请稍后重试')
+    ElMessage.error(error instanceof Error ? error.message : t('workbench.acceptFailed'))
   } finally {
     acceptingConsultation.value = false
   }
@@ -516,6 +518,7 @@ const unfinishedConsultations = computed<IncompleteConsultation[]>(() =>
     patientSex: item.patientSex,
     patientAge: item.patientAge,
     videoId: pickString(item as Record<string, unknown>, ['videoId', 'videoID']),
+    doctorAideId: pickString(item as Record<string, unknown>, ['doctorAideId', 'doctorAidId']),
     roomId: pickString(item as Record<string, unknown>, ['roomId', 'channelId']),
     raw: item
   }))
@@ -531,7 +534,7 @@ const handleContinueConsultation = async (item: IncompleteConsultation) => {
   try {
     await prepareConsultationNavigation(item, 'continue')
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '继续诊疗失败，请稍后重试')
+    ElMessage.error(error instanceof Error ? error.message : t('workbench.continueFailed'))
   } finally {
     continuingConsultationId.value = ''
   }
@@ -547,12 +550,18 @@ const doctorProfile = computed(() => userStore.profile)
 const doctorDisplayName = computed(() => {
   return doctorProfile.value?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
-const doctorAccount = computed(() => {
-  return doctorProfile.value?.userName || userStore.name || '--'
-})
 const doctorInitial = computed(() => doctorDisplayName.value.slice(0, 1).toUpperCase())
-const doctorRoleText = computed(() => {
-  return userStore.roles.length > 0 ? userStore.roles.join(' / ') : t('workbench.defaultRole')
+const doctorInstitution = computed(() => {
+  return (
+    doctorProfile.value?.deptName ||
+    doctorProfile.value?.departmentName ||
+    doctorProfile.value?.companyName ||
+    doctorProfile.value?.orgName ||
+    doctorProfile.value?.organizationName ||
+    doctorProfile.value?.hospitalName ||
+    doctorProfile.value?.clinicName ||
+    t('workbench.notAvailable')
+  ) as string
 })
 const doctorDepartment = computed(() => {
   if (doctorProfile.value?.departmentId) {
@@ -571,11 +580,21 @@ const doctorTitle = computed(() => {
 const doctorPhone = computed(() => {
   return doctorProfile.value?.phonenumber || doctorProfile.value?.phoneNumber || t('workbench.notAvailable')
 })
+const doctorSpecialty = computed(() => {
+  return (
+    doctorProfile.value?.goodAt ||
+    doctorProfile.value?.specialty ||
+    doctorProfile.value?.speciality ||
+    doctorProfile.value?.expertise ||
+    doctorProfile.value?.description ||
+    t('workbench.notAvailable')
+  ) as string
+})
 const doctorTagline = computed(() => {
   const segments = [doctorTitle.value, doctorDepartment.value].filter(
     (segment) => segment && segment !== t('workbench.notAvailable')
   )
-  return segments.length > 0 ? segments.join(' · ') : doctorRoleText.value
+  return segments.length > 0 ? segments.join(' · ') : doctorInstitution.value
 })
 const pendingCount = computed(() => pendingPatients.value.length)
 const isOnlineRequested = computed(() => isOnline.value || isPreparingOnline.value)
@@ -758,6 +777,7 @@ async function finalizeOnlineActivation() {
     await switchWorkbenchOnlineStatus()
     persistOnlineState(true)
     isPreparingOnline.value = false
+    void prepareDesktopNotificationPermission()
   } catch {
     persistOnlineState(false)
     isPreparingOnline.value = false
@@ -786,7 +806,8 @@ function startSse() {
   const token = getToken()
   const langMap: Record<string, string> = {
     'zh-cn': 'zh_CN',
-    lo: 'lo_LA'
+    lo: 'lo_LA',
+    en: 'en_US'
   }
   const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
   const streamUrl = `${baseUrl}/resource/sse`
@@ -841,6 +862,38 @@ function scheduleReconnect() {
   }, Math.min(3000 + reconnectAttempts.value * 1000, 10000))
 }
 
+async function prepareDesktopNotificationPermission() {
+  if (getDesktopNotificationPermission() !== 'default') {
+    return
+  }
+
+  await requestDesktopNotificationPermission()
+}
+
+function notifyIncomingConsultation(item: PendingConsultation) {
+  const title = t('common.tip') || 'Notice'
+  const message = t('workbench.incomingConsultationNotification', {
+    patientName: item.patientName || t('workbench.unknownPatient')
+  })
+
+  ElNotification({
+    title,
+    message,
+    type: 'success',
+    duration: 5000
+  })
+
+  showDesktopNotification({
+    title,
+    body: message,
+    tag: `pending-consultation-${item.id}`,
+    onClick: (_event, notification) => {
+      window.focus()
+      notification.close()
+    }
+  })
+}
+
 async function handleSseMessage(message: SseMessage) {
   const payload = parsePayload(message.data)
 
@@ -869,12 +922,7 @@ async function handleSseMessage(message: SseMessage) {
     pendingPatients.value = mergePendingItems(pendingPatients.value, [incomingItem]).slice(0, 8)
     
     if (isNew) {
-      ElNotification({
-        title: t('common.tip') || '提示',
-        message: `收到来自 ${incomingItem.patientName} 的接诊请求`,
-        type: 'success',
-        duration: 5000
-      })
+      notifyIncomingConsultation(incomingItem)
     }
   } catch (error) {
     console.error('Failed to fetch patient or basic details:', error)
@@ -883,7 +931,11 @@ async function handleSseMessage(message: SseMessage) {
 
 function parsePayload(raw: string): unknown {
   try {
-    return JSON.parse(raw)
+    const normalizedRaw = raw.replace(
+      /("(doctorAideId|doctorAidId|patientId|caseId|videoId)"\s*:\s*)(-?\d{16,})/g,
+      '$1"$3"'
+    )
+    return JSON.parse(normalizedRaw)
   } catch {
     return raw
   }
@@ -945,6 +997,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
     pickString(item, ['patientName', 'name', 'nickName', 'userName']) || t('workbench.unknownPatient')
   const patientId = pickString(item, ['patientId', 'patId'])
   const caseId = pickString(item, ['caseId', 'caseID', 'medicalCaseId'])
+  const doctorAideId = pickString(item, ['doctorAideId', 'doctorAidId'])
   const queueNo = pickString(item, ['queueNo', 'queueNumber', 'serialNo', 'number', 'code']) || '--'
   const complaint =
     pickString(item, ['mainSuit', 'chiefComplaint', 'complaint', 'summary', 'reason', 'purpose']) ||
@@ -957,7 +1010,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
 
   const ageData = pickNumber(item, ['age', 'patientAge']) || pickString(item, ['age', 'patientAge'])
   const sexData = pickString(item, ['patientSex', 'sex', 'gender'])
-  const sexText = sexData === '0' ? '男' : sexData === '1' ? '女' : ''
+  const sexText = formatPatientSex(sexData)
   const historyIllness = pickString(item, ['historyIllness'])
   const previousHistory = pickString(item, ['previousHistory'])
   const allergichistory = pickString(item, ['allergichistory'])
@@ -978,6 +1031,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
     sexText,
     patientId,
     caseId,
+    doctorAideId,
     historyIllness,
     previousHistory,
     allergichistory,
@@ -1007,20 +1061,30 @@ function pickNumber(item: Record<string, unknown>, keys: string[]): number {
 function formatReceptionPatientName(item: CurrentReceptionItem): string {
   const name = item.patientName?.trim() || t('workbench.unknownPatient')
   const sexText = formatPatientSex(item.patientSex)
-  const extras = [sexText, item.patientAge ? `${item.patientAge}岁` : ''].filter(Boolean)
+  const extras = [sexText, formatAgeLabel(item.patientAge)].filter(Boolean)
   return extras.length ? `${name} (${extras.join(' ')})` : name
 }
 
 function formatPatientSex(value?: string): string {
-  if (value === '0') return '男'
-  if (value === '1') return '女'
+  const normalizedValue = value?.trim().toLowerCase()
+  if (normalizedValue === '0' || normalizedValue === 'male' || normalizedValue === '男') return t('workbench.male')
+  if (normalizedValue === '1' || normalizedValue === 'female' || normalizedValue === '女') return t('workbench.female')
   return value?.trim() || ''
 }
 
 function formatDiagnosisStatus(value?: string): string {
-  if (value === '0') return '未完成'
-  if (value === '1') return '已完成'
+  const normalizedValue = value?.trim()
+  if (normalizedValue === '0' || normalizedValue === '未完成') return t('workbench.incompleteStatus')
+  if (normalizedValue === '1' || normalizedValue === '已完成') return t('workbench.completedStatus')
   return value?.trim() || t('workbench.notAvailable')
+}
+
+function formatAgeLabel(value?: string | number): string {
+  if (value === null || value === undefined || value === '') {
+    return ''
+  }
+
+  return `${String(value).trim()}${t('workbench.ageSuffix')}`
 }
 
 function formatReceptionVisitDate(value?: string): string {
@@ -1070,6 +1134,33 @@ function formatWaitMinutes(minutes: number): string {
   return t('workbench.waitMinutes', { count: minutes })
 }
 
+function formatPendingDisplayTime(item: PendingConsultation): string {
+  const parsedDate = parseDateValue(item.updatedAt)
+  if (parsedDate) {
+    return formatShortTime(parsedDate.getTime())
+  }
+
+  return item.updatedAt || t('workbench.justNow')
+}
+
+function parseDateValue(value?: string): Date | null {
+  if (!value) {
+    return null
+  }
+
+  const normalizedValue = value.trim()
+  if (!normalizedValue) {
+    return null
+  }
+
+  const parsed = new Date(normalizedValue)
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed
+  }
+
+  return null
+}
+
 function formatShortTime(timestamp: number): string {
   return new Intl.DateTimeFormat(resolveLocale(), {
     hour: '2-digit',
@@ -1080,6 +1171,7 @@ function formatShortTime(timestamp: number): string {
 function resolveLocale(): string {
   if (locale.value === 'zh-cn') return 'zh-CN'
   if (locale.value === 'lo') return 'lo-LA'
+  if (locale.value === 'en') return 'en-US'
   return 'zh-CN'
 }
 
@@ -1192,6 +1284,13 @@ function getAvatarGradient(name: string): string {
 
 .online-action-btn.is-online {
   box-shadow: 0 8px 18px rgba(16, 185, 129, 0.12);
+}
+
+.control-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .metrics-row {
@@ -1330,27 +1429,6 @@ function getAvatarGradient(name: string): string {
   line-height: 1.6;
 }
 
-.panel-side {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.panel-counter {
-  min-width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 22px;
-  font-weight: 700;
-}
-
 .queue-list,
 .unfinished-list,
 .doctor-details {
@@ -1375,11 +1453,26 @@ function getAvatarGradient(name: string): string {
   font-weight: 700;
 }
 
+.control-status {
+  position: relative;
+  min-height: 36px;
+  padding: 0 14px;
+  box-shadow: 0 8px 20px rgba(31, 120, 255, 0.08);
+}
+
+.control-status.is-highlighted {
+  animation: status-pulse 1.8s ease-in-out infinite;
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: var(--text-soft);
+}
+
+.control-status .status-dot {
+  animation: status-dot-pulse 1.4s ease-in-out infinite;
 }
 
 .panel-status.is-connected {
@@ -1414,6 +1507,15 @@ function getAvatarGradient(name: string): string {
 .panel-status.is-offline {
   border-color: rgba(148, 163, 184, 0.2);
   color: var(--text-sub);
+}
+
+.panel-status.is-offline.control-status {
+  box-shadow: none;
+  animation: none;
+}
+
+.panel-status.is-offline.control-status .status-dot {
+  animation: none;
 }
 
 .unfinished-list {
@@ -1655,34 +1757,6 @@ function getAvatarGradient(name: string): string {
   line-height: 1.06;
 }
 
-.doctor-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0;
-  margin: 14px 0 16px;
-}
-
-.doctor-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 0 8px;
-  border-right: 1px solid var(--border);
-  text-align: center;
-}
-
-.doctor-stat:last-child {
-  border-right: none;
-}
-
-.doctor-stat strong {
-  color: var(--text-main);
-  font-size: 30px;
-  line-height: 1;
-}
-
-.doctor-stat span,
 .detail-item label {
   color: var(--text-soft);
 }
@@ -1739,6 +1813,32 @@ function getAvatarGradient(name: string): string {
   }
 }
 
+@keyframes status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 8px 20px rgba(31, 120, 255, 0.08);
+    opacity: 1;
+  }
+
+  50% {
+    box-shadow: 0 12px 24px rgba(31, 120, 255, 0.18);
+    opacity: 0.94;
+  }
+}
+
+@keyframes status-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  50% {
+    transform: scale(1.35);
+    opacity: 0.72;
+  }
+}
+
 @media (max-width: 1280px) {
   .workbench-shell {
     grid-template-columns: 1fr;
@@ -1767,8 +1867,7 @@ function getAvatarGradient(name: string): string {
     gap: 6px;
   }
 
-  .metrics-row,
-  .doctor-stats {
+  .metrics-row {
     grid-template-columns: 1fr;
   }
 }
@@ -1842,27 +1941,10 @@ function getAvatarGradient(name: string): string {
 }
 
 .accept-title {
-  margin: 0 0 12px;
+  margin: 0 0 32px;
   color: #1a2533;
   font-size: 20px;
   font-weight: bold;
-}
-
-.accept-subtitle {
-  margin: 0 0 8px;
-  color: #4a5b70;
-  font-size: 15px;
-}
-
-.accept-subtitle strong {
-  margin: 0 2px;
-  color: #1a2533;
-}
-
-.accept-meta {
-  margin: 0 0 32px;
-  color: #8b9caf;
-  font-size: 13px;
 }
 
 .accept-actions {

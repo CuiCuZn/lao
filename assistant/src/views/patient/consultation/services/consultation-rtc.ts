@@ -47,7 +47,7 @@ const resolveMergedMutedState = (
   return validFlags.every(Boolean)
 }
 
-const mergeRemoteUser = (primaryUser: RemoteUser, secondaryUser: RemoteUser): RemoteUser => {
+const mergeRemoteUser = (primaryUser: any, secondaryUser: any): any => {
   const audioTrack = primaryUser.audioTrack || secondaryUser.audioTrack
   const videoTrack = primaryUser.videoTrack || secondaryUser.videoTrack
   const auxiliaryTrack = primaryUser.auxiliaryTrack || secondaryUser.auxiliaryTrack
@@ -81,8 +81,8 @@ const mergeRemoteUser = (primaryUser: RemoteUser, secondaryUser: RemoteUser): Re
   } as RemoteUser
 }
 
-export const mergeRemoteUsers = (primaryUsers: RemoteUser[], secondaryUsers: RemoteUser[]) => {
-  const mergedUsers = new Map<string, RemoteUser>()
+export const mergeRemoteUsers = (primaryUsers: any[], secondaryUsers: any[]) => {
+  const mergedUsers = new Map<string, any>()
   const orderedUserIds: string[] = []
 
   const upsertUser = (user: RemoteUser) => {
@@ -100,7 +100,7 @@ export const mergeRemoteUsers = (primaryUsers: RemoteUser[], secondaryUsers: Rem
 
   return orderedUserIds
     .map((userId) => mergedUsers.get(userId))
-    .filter((user): user is RemoteUser => Boolean(user))
+    .filter((user): user is any => Boolean(user))
 }
 
 export const createConsultationClients = (): ConsultationRtcClients => {
@@ -228,7 +228,7 @@ export const subscribeConsultationStreams = async (
           return
         }
 
-        if (track.trackMediaType === 'audio') {
+        if (track && track.trackMediaType === 'audio') {
           const audioTrack = track as RemoteAudioTrack
           options.onPrimaryAudioTrack(audioTrack)
           audioTrack.play()
@@ -245,7 +245,7 @@ export const subscribeConsultationStreams = async (
           return
         }
 
-        if (track.trackMediaType === 'audio') {
+        if (track && track.trackMediaType === 'audio') {
           const audioTrack = track as RemoteAudioTrack
           options.onSecondaryAudioTrack(audioTrack)
           audioTrack.play()
@@ -348,7 +348,7 @@ export const closeLocalTrack = (track: ConsultationTrack | null | undefined) => 
   }
 }
 
-export const stopRemoteTracks = (users: RemoteUser[]) => {
+export const stopRemoteTracks = (users: any[]) => {
   users.forEach((user) => {
     // @ts-ignore
     if (typeof user.videoTrack?.stopPlay === 'function') {

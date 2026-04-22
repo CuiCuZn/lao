@@ -50,6 +50,15 @@ const assistantRoutes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/assistant/case-result',
+    name: 'AssistantCaseResult',
+    component: () => import('@/views/case-result/index.vue'),
+    meta: {
+      title: 'route.caseResult',
+      descriptionKey: 'assistant.caseResult.description'
+    }
+  },
+  {
     path: '/assistant/video-guide',
     name: 'AssistantVideoGuide',
     component: () => import('@/views/video-guide/index.vue'),
@@ -116,7 +125,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.VITE_BASIC_URL),
   routes: constantRoutes,
   scrollBehavior: (to, from, savedPosition) => {
     if (savedPosition) {

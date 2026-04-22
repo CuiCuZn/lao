@@ -36,7 +36,7 @@ export const constantRoutes: Array<RouteRecordRaw> = [
 export const dynamicRoutes: Array<RouteRecordRaw> = []
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.VITE_BASIC_URL),
   routes: constantRoutes,
   scrollBehavior: (to, from, savedPosition) => {
     if (savedPosition) {

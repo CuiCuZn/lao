@@ -7,6 +7,8 @@ import { generateAesKey, encryptBase64, encryptWithAes } from '@/utils/crypto'
 import { encrypt as rsaEncrypt } from '@/utils/jsencrypt'
 
 let isReloginShow = false
+const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+type SupportedLocale = typeof supportedLocales[number]
 
 const encryptHeader = 'encrypt-key'
 
@@ -20,17 +22,43 @@ class Request {
       (config: InternalAxiosRequestConfig) => {
         const headers = config.headers as any
         const silentError = headers.silentError === true || headers.silentError === 'true'
+        const successCodes = (() => {
+          const rawSuccessCodes = headers.successCodes
+
+          if (Array.isArray(rawSuccessCodes)) {
+            return rawSuccessCodes
+              .map((item) => Number(item))
+              .filter((item) => Number.isFinite(item))
+          }
+
+          if (typeof rawSuccessCodes === 'string') {
+            return rawSuccessCodes
+              .split(',')
+              .map((item) => Number(item.trim()))
+              .filter((item) => Number.isFinite(item))
+          }
+
+          if (typeof rawSuccessCodes === 'number' && Number.isFinite(rawSuccessCodes)) {
+            return [rawSuccessCodes]
+          }
+
+          return [200]
+        })()
         const storedLang = localStorage.getItem('lang')
-        const currentLang = storedLang === 'lo' ? 'lo' : 'zh-cn'
+        const currentLang = supportedLocales.includes(storedLang as SupportedLocale)
+          ? (storedLang as SupportedLocale)
+          : 'zh-cn'
         if (storedLang !== currentLang) {
           localStorage.setItem('lang', currentLang)
         }
         const langMap: Record<string, string> = {
           'zh-cn': 'zh_CN',
-          'lo': 'lo_LA'
+          lo: 'lo_LA',
+          en: 'en_US'
         }
         config.headers['content-language'] = langMap[currentLang] || 'zh_CN'
         ;(config as InternalAxiosRequestConfig & { __silentError?: boolean }).__silentError = silentError
+        ;(config as InternalAxiosRequestConfig & { __successCodes?: number[] }).__successCodes = successCodes
 
         const needsToken = headers.isToken !== false && headers.isToken !== 'false'
         const token = getToken()
@@ -60,6 +88,7 @@ class Request {
         delete headers.isEncrypt
         delete headers.isToken
         delete headers.silentError
+        delete headers.successCodes
 
         return config
       },
@@ -71,11 +100,15 @@ class Request {
     this.instance.interceptors.response.use(
       (response: AxiosResponse) => {
         const { data } = response
-        const silentError = Boolean(
-          (response.config as InternalAxiosRequestConfig & { __silentError?: boolean }).__silentError
-        )
+        const requestConfig = response.config as InternalAxiosRequestConfig & {
+          __silentError?: boolean
+          __successCodes?: number[]
+        }
+        const silentError = Boolean(requestConfig.__silentError)
+        const successCodes = requestConfig.__successCodes?.length ? requestConfig.__successCodes : [200]
+        const responseCode = typeof data?.code === 'number' ? data.code : 200
 
-        if ((data.code || 200) === 401) {
+        if (responseCode === 401) {
           if (!isReloginShow) {
             isReloginShow = true
             removeToken()
@@ -84,7 +117,7 @@ class Request {
           return Promise.reject(new Error(i18n.global.t('message.sessionExpired')))
         }
 
-        if ((data.code || 200) !== 200) {
+        if (!successCodes.includes(responseCode)) {
           if (!silentError) {
             ElMessage.error(data.msg || i18n.global.t('message.systemError'))
           }

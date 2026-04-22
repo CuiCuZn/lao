@@ -143,6 +143,63 @@ export interface DepartmentListResponse {
   [key: string]: unknown;
 }
 
+export interface CaseRecordListParams {
+  searchInfo: string;
+  checkInfo: number;
+  pageSize: number;
+  pageNum: number;
+}
+
+export interface CaseRecordItem {
+  searchInfo?: string;
+  checkInfo?: number;
+  contentLanguage?: string;
+  caseId?: string | number;
+  caseID?: string | number;
+  medicalCaseId?: string | number;
+  patientId?: string | number;
+  patId?: string | number;
+  patientNumber?: string;
+  patientName?: string;
+  patientAge?: string | number;
+  patientBirthday?: string;
+  patientSex?: string;
+  doctorId?: string | number;
+  userId?: string | number;
+  doctorUserId?: string | number;
+  receiveDoctorId?: string | number;
+  receptionDoctorId?: string | number;
+  attendingDoctorId?: string | number;
+  nickName?: string;
+  title?: string;
+  departmentId?: string | number;
+  departmentName?: string;
+  roomId?: string | number;
+  channelId?: string | number;
+  mainSuit?: string;
+  status?: string;
+  visitDate?: string;
+  createTime?: string;
+  updateTime?: string;
+  registerTime?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseRecordListResponse {
+  total?: number;
+  rows?: CaseRecordItem[] | null;
+  code?: number;
+  msg?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseDetailResponse {
+  code?: number;
+  msg?: string;
+  data?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 export interface DoctorListResponse {
   code?: number;
   msg?: string;

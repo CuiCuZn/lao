@@ -1,27 +1,13 @@
 <template>
   <header class="header">
     <div class="brand-block">
-      <div class="brand-badge">D</div>
-      <div class="brand-copy">
-        <div class="brand-title">{{ t('menu.doctorSystem') }}</div>
-        <div class="brand-subtitle">{{ t('menu.doctorPortal') }}</div>
+      <div class="brand-badge">
+        <img :src="brandLogo" alt="logo" class="brand-logo" />
       </div>
+      <div class="brand-title">{{ t('menu.doctorSystem') }}</div>
     </div>
 
     <div class="right-menu">
-      <el-dropdown @command="handleSetLanguage">
-        <button type="button" class="header-pill">
-          <span class="header-pill-label">{{ currentLangName }}</span>
-          <el-icon class="el-icon--right"><arrow-down /></el-icon>
-        </button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="zh-cn">中文</el-dropdown-item>
-            <el-dropdown-item command="lo">ພາສາລາວ (Lao)</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-
       <el-dropdown trigger="click" @command="handleCommand">
         <button type="button" class="user-card">
           <el-avatar
@@ -36,8 +22,7 @@
         </button>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="profile">{{ t('menu.profile') }}</el-dropdown-item>
-            <el-dropdown-item divided command="logout">
+            <el-dropdown-item command="logout">
               <span>{{ t('common.logout') }}</span>
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -49,21 +34,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import brandLogo from '@/assets/logo.png'
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 const userStore = useUserStore()
-
-const currentLangName = computed(() => {
-  const map: Record<string, string> = {
-    'zh-cn': '中文',
-    lo: 'ພາສາລາວ'
-  }
-  return map[locale.value] || '中文'
-})
+const router = useRouter()
 
 const userMetaLine = computed(() => {
   const profile = userStore.profile
@@ -87,16 +67,11 @@ const handleCommand = (command: string) => {
       type: 'warning'
     }).then(async () => {
       await userStore.logout()
-      location.href = '/login'
+      window.location.replace(router.resolve({ path: '/login' }).href)
     })
   }
 }
 
-const handleSetLanguage = (lang: string) => {
-  locale.value = lang
-  localStorage.setItem('lang', lang)
-  location.reload()
-}
 </script>
 
 <style scoped lang="scss">
@@ -125,15 +100,13 @@ const handleSetLanguage = (lang: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1d74ff 0%, #63c7ff 100%);
-  color: #ffffff;
-  font-size: 19px;
-  font-weight: 800;
-  box-shadow: 0 14px 28px rgba(29, 116, 255, 0.2);
+  overflow: hidden;
 }
 
-.brand-copy {
-  min-width: 0;
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brand-title {
@@ -143,12 +116,6 @@ const handleSetLanguage = (lang: string) => {
   line-height: 1.2;
 }
 
-.brand-subtitle {
-  margin-top: 3px;
-  color: #7b8da0;
-  font-size: 11px;
-}
-
 .right-menu {
   display: flex;
   align-items: center;
@@ -156,7 +123,6 @@ const handleSetLanguage = (lang: string) => {
   flex-shrink: 0;
 }
 
-.header-pill,
 .user-card {
   border: none;
   outline: none;
@@ -166,23 +132,8 @@ const handleSetLanguage = (lang: string) => {
   background: transparent;
 }
 
-.header-pill {
-  min-height: 38px;
-  padding: 0 12px;
-  gap: 8px;
-  border-radius: 12px;
-  background: #f6f9fd;
-  color: #516274;
-  font-weight: 600;
-}
-
-.header-pill:hover,
 .user-card:hover {
   background: #f0f6ff;
-}
-
-.header-pill-label {
-  font-size: 12px;
 }
 
 .user-card {

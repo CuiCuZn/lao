@@ -48,8 +48,8 @@ export const useDoctorConsultationSession = () => {
   const micTrack = shallowRef<MicrophoneAudioTrack | null>(null)
   const primaryMcuAudioTrack = shallowRef<RemoteAudioTrack | null>(null)
   const secondaryMcuAudioTrack = shallowRef<RemoteAudioTrack | null>(null)
-  const primaryRemoteUsers = ref<RemoteUser[]>([])
-  const secondaryRemoteUsers = ref<RemoteUser[]>([])
+  const primaryRemoteUsers = ref<any[]>([])
+  const secondaryRemoteUsers = ref<any[]>([])
   const speakers = ref<string[]>([])
   const trackStatsMap = ref(new Map<string, ConsultationTrackStats>())
   const publishedTrackIds = ref(new Set<string>())
@@ -67,7 +67,7 @@ export const useDoctorConsultationSession = () => {
 
     autoplayFailedHandlerBound = true
 
-    DingRTC.on('autoplay-failed', (track: { play: () => void }) => {
+    DingRTC.on('autoplay-failed', (track: any) => {
       ElMessageBox.confirm('由于浏览器自动播放限制，请点击确认后开始播放音频。', '提示', {
         confirmButtonText: '确认',
         cancelButtonText: '取消',

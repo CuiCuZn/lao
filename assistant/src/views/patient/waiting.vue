@@ -3,7 +3,14 @@
     <section class="patient-waiting-page">
       <div class="waiting-panel">
         <section class="waiting-stage">
-          <p class="waiting-stage__tip">{{ t('assistant.patientVideo.waiting.tip') }}</p>
+          <div class="waiting-stage__copy" :class="{ 'is-error': Boolean(reconnectFailedMessage) }">
+            <p class="waiting-stage__tip">
+              {{ reconnectFailedMessage || t('assistant.patientVideo.waiting.tip') }}
+            </p>
+            <p v-if="reconnectFailedMessage" class="waiting-stage__description">
+              {{ t('assistant.patientVideo.waiting.reconnectFailedDescription') }}
+            </p>
+          </div>
 
           <div class="waiting-stage__visual" aria-hidden="true">
             <span class="pulse-ring pulse-ring--lg" />
@@ -21,7 +28,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { VideoCameraFilled } from '@element-plus/icons-vue'
@@ -34,6 +41,7 @@ import { getVideoId, getVideoToken } from '@/api/video'
 const { t } = useI18n()
 const router = useRouter()
 const sessionStore = usePatientSessionStore()
+const reconnectFailedMessage = ref('')
 
 let stopListening: (() => void) | null = null
 
@@ -49,6 +57,7 @@ const toOptionalText = (value: string | number | undefined) => {
 onMounted(() => {
   stopListening = listenPatientChannelMessages(async (message) => {
     if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.contextSync) {
+      reconnectFailedMessage.value = ''
       await sessionStore.syncPatientById(message.payload.patientId)
       return
     }
@@ -58,6 +67,7 @@ onMounted(() => {
         return
       }
 
+      reconnectFailedMessage.value = ''
       const caseId = toOptionalText(message.payload.caseId)
       sessionStore.setVideoRoomContext({
         patientId: message.payload.patientId,
@@ -127,6 +137,15 @@ onMounted(() => {
         return
       }
     }
+
+    if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.reconnectFailed) {
+      if (message.payload.patientId && sessionStore.patientId !== message.payload.patientId) {
+        await sessionStore.syncPatientById(message.payload.patientId)
+      }
+
+      reconnectFailedMessage.value =
+        toOptionalText(message.payload.message) || t('assistant.patientVideo.waiting.reconnectFailedTitle')
+    }
   })
 })
 
@@ -148,6 +167,16 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, rgba(236, 242, 250, 0.78) 0%, rgba(248, 250, 253, 0.58) 100%);
 }
 
+.waiting-stage__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.waiting-stage__copy.is-error .waiting-stage__tip {
+  color: #d14343;
+}
+
 .waiting-stage__tip {
   margin: 0;
 }
@@ -166,6 +195,14 @@ onBeforeUnmount(() => {
   font-size: 30px;
   font-weight: 500;
   line-height: 1.5;
+  text-align: center;
+}
+
+.waiting-stage__description {
+  margin: 0;
+  color: #7f8ea5;
+  font-size: 18px;
+  line-height: 1.6;
   text-align: center;
 }
 
@@ -252,6 +289,10 @@ onBeforeUnmount(() => {
   .waiting-stage__tip {
     font-size: 24px;
   }
+
+  .waiting-stage__description {
+    font-size: 16px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -272,6 +313,10 @@ onBeforeUnmount(() => {
 
   .waiting-stage__tip {
     font-size: 18px;
+  }
+
+  .waiting-stage__description {
+    font-size: 14px;
   }
 
   .waiting-stage__visual {

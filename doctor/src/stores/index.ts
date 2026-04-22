@@ -1,12 +1,19 @@
 import { defineStore } from 'pinia'
 
+const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+type SupportedLocale = typeof supportedLocales[number]
+const resolveStoredLanguage = (): SupportedLocale => {
+  const storedLang = localStorage.getItem('lang')
+  return supportedLocales.includes(storedLang as SupportedLocale) ? (storedLang as SupportedLocale) : 'zh-cn'
+}
+
 /**
  * 核心全局状态管理
  * @module useAppStore
  */
 export const useAppStore = defineStore('app', {
   state: () => ({
-    language: localStorage.getItem('lang') === 'lo' ? 'lo' : 'zh-cn',
+    language: resolveStoredLanguage(),
     sidebarOpened: true,
     user: {
       name: 'Doctor',
@@ -17,9 +24,9 @@ export const useAppStore = defineStore('app', {
     /**
      * 切换语言并存储到本地
      * @method setLanguage
-     * @param {string} lang
+     * @param {SupportedLocale} lang
      */
-    setLanguage(lang: string) {
+    setLanguage(lang: SupportedLocale) {
       this.language = lang
       localStorage.setItem('lang', lang)
     },

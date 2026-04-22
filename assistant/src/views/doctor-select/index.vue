@@ -29,10 +29,10 @@
           </div>
         </div>
 
-        <div class="complaint-summary">
+        <!-- <div class="complaint-summary">
           <span>{{ t('assistant.doctorSelect.currentComplaint') }}</span>
           <strong>{{ patientSummary.complaint }}</strong>
-        </div>
+        </div> -->
       </section>
 
       <div class="department-toolbar">
@@ -72,29 +72,45 @@
           v-for="doctor in doctorCards"
           :key="doctor.id"
           class="doctor-card"
-          :class="{ selected: selectedDoctorId === doctor.id }"
+          :class="{ selected: selectedDoctorId === doctor.id, disabled: !doctor.online }"
+          :tabindex="doctor.online ? 0 : -1"
+          @click="selectDoctor(doctor.id)"
+          @keyup.enter="selectDoctor(doctor.id)"
+          @keyup.space.prevent="selectDoctor(doctor.id)"
         >
           <div class="doctor-card-head">
-            <div class="doctor-avatar">{{ doctor.avatarLabel }}</div>
+            <div class="doctor-card-main">
+              <div class="doctor-avatar">{{ doctor.avatarLabel }}</div>
 
-            <div class="doctor-copy">
-              <div class="doctor-title-row">
-                <strong>{{ doctor.name }}</strong>
-                <span>{{ doctor.title }}</span>
-              </div>
+              <div class="doctor-copy">
+                <div class="doctor-title-row">
+                  <strong>{{ doctor.name }}</strong>
+                  <span>{{ doctor.title }}</span>
+                </div>
 
-              <p class="doctor-department">{{ doctor.departmentName }}</p>
+                <p class="doctor-department">{{ doctor.departmentName }}</p>
 
-              <div class="doctor-status" :class="{ offline: !doctor.online }">
-                <i />
-                <span>{{ doctor.online ? t('assistant.doctorSelect.online') : t('assistant.doctorSelect.offline') }}</span>
+                <div class="doctor-status" :class="{ offline: !doctor.online }">
+                  <i />
+                  <span>{{ doctor.online ? t('assistant.doctorSelect.online') : t('assistant.doctorSelect.offline') }}</span>
+                </div>
               </div>
             </div>
+
+            <button
+              type="button"
+              class="doctor-radio"
+              :class="{ checked: selectedDoctorId === doctor.id }"
+              :disabled="!doctor.online"
+              @click.stop="selectDoctor(doctor.id)"
+            >
+              <el-icon v-if="selectedDoctorId === doctor.id"><check /></el-icon>
+            </button>
           </div>
 
           <div class="doctor-metrics">
             <span>{{ t('assistant.doctorSelect.metrics.consultations') }}: {{ doctor.consultationText }}</span>
-            <span>{{ t('assistant.doctorSelect.metrics.approval') }}: {{ doctor.approvalText }}</span>
+            <!-- <span>{{ t('assistant.doctorSelect.metrics.approval') }}: {{ doctor.approvalText }}</span> -->
           </div>
 
           <div class="doctor-specialty">
@@ -102,14 +118,6 @@
             <p>{{ doctor.specialty }}</p>
           </div>
 
-          <button
-            type="button"
-            class="doctor-select-btn"
-            :disabled="!doctor.online"
-            @click="selectDoctor(doctor.id)"
-          >
-            {{ selectedDoctorId === doctor.id ? t('assistant.doctorSelect.selectedDoctor') : t('assistant.doctorSelect.selectDoctor') }}
-          </button>
         </article>
       </div>
 
@@ -125,16 +133,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, RefreshRight } from '@element-plus/icons-vue'
+import { ArrowLeft, Check, RefreshRight } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { listDepartment, listDepartmentDoctors } from '@/api/department'
 import { getPatientDetail } from '@/api/patient'
 import { createVideoRoom } from '@/api/video'
-import { broadcastPatientContextSync, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import { getToken } from '@/utils/auth'
+import { broadcastConsultationEnded, broadcastPatientContextSync, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import { connectSse, type SseMessage } from '@/utils/sse'
 
 interface DepartmentOption {
   id: string
@@ -174,6 +184,13 @@ const patientSummary = reactive({
   complaint: t('common.notAvailable'),
   caseId: '' as string | number
 })
+
+let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+let sseConnection: ReturnType<typeof connectSse> | undefined
+let manualClose = false
+let activeStreamId = 0
+let reconnectAttempts = 0
+let activeConsultationContext: { patientId: string; caseId: string } | null = null
 
 const pickText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!source) {
@@ -476,12 +493,20 @@ const handleCreateRoom = async () => {
       userId: selectedDoctorId.value,
       ...(patientSummary.caseId ? { caseId: patientSummary.caseId } : {})
     })
+    const caseId = normalizeCaseId(patientSummary.caseId)
     broadcastVideoRoomCreated({
       patientId,
       doctorId: selectedDoctorId.value,
-      ...(patientSummary.caseId ? { caseId: patientSummary.caseId } : {}),
+      ...(caseId ? { caseId } : {}),
       roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : ''
     })
+    if (caseId) {
+      reconnectAttempts = 0
+      startSse({
+        patientId,
+        caseId
+      })
+    }
     ElMessage.success(t('assistant.doctorSelect.createRoomSuccess'))
   } finally {
     creatingRoom.value = false
@@ -493,6 +518,141 @@ const goBack = () => {
   router.push({
     path: '/assistant/intake',
     ...(patientId ? { query: { patientId } } : {})
+  })
+}
+
+const normalizeCaseId = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  const normalizedValue = String(value).trim()
+  return normalizedValue || ''
+}
+
+const parseSsePayload = (raw: string): unknown => {
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return raw
+  }
+}
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null
+}
+
+const isConsultationFinishedPayload = (payload: unknown, expectedCaseId: string) => {
+  if (!isObjectRecord(payload)) {
+    return false
+  }
+
+  const payloadCaseId = normalizeCaseId(payload.caseId)
+  const status = Number(payload.status)
+  return Boolean(expectedCaseId) && payloadCaseId === expectedCaseId && status === 0
+}
+
+const handleConsultationCompleted = async (context: { patientId: string; caseId: string }) => {
+  if (!activeConsultationContext || activeConsultationContext.caseId !== context.caseId) {
+    return
+  }
+
+  closeSse(false)
+  activeConsultationContext = null
+  broadcastConsultationEnded({
+    patientId: context.patientId,
+    caseId: context.caseId
+  })
+  await router.push({
+    path: '/assistant/case-result',
+    query: {
+      caseId: context.caseId
+    }
+  })
+}
+
+const handleSseMessage = (message: SseMessage) => {
+  if (!activeConsultationContext) {
+    return
+  }
+
+  const payload = parseSsePayload(message.data)
+  if (!isConsultationFinishedPayload(payload, activeConsultationContext.caseId)) {
+    return
+  }
+
+  void handleConsultationCompleted(activeConsultationContext)
+}
+
+const scheduleReconnect = () => {
+  if (manualClose || !activeConsultationContext) {
+    return
+  }
+
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+  }
+
+  reconnectAttempts += 1
+  reconnectTimer = setTimeout(() => {
+    if (activeConsultationContext) {
+      startSse(activeConsultationContext)
+    }
+  }, Math.min(3000 + reconnectAttempts * 1000, 10000))
+}
+
+function closeSse(isUnmount: boolean) {
+  manualClose = true
+  activeStreamId += 1
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = undefined
+  }
+  sseConnection?.close()
+  sseConnection = undefined
+  if (isUnmount) {
+    manualClose = true
+  }
+}
+
+function startSse(context: { patientId: string; caseId: string }) {
+  closeSse(false)
+  activeConsultationContext = context
+  manualClose = false
+  activeStreamId += 1
+  const streamId = activeStreamId
+
+  const token = getToken()
+  const langMap: Record<string, string> = {
+    'zh-cn': 'zh_CN',
+    lo: 'lo_LA',
+    en: 'en_US'
+  }
+  const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
+  const streamUrl = `${baseUrl}/resource/sse`
+
+  sseConnection = connectSse(streamUrl, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      clientid: import.meta.env.VITE_APP_CLIENT_ID || '',
+      'content-language': langMap[localStorage.getItem('lang') || 'zh-cn'] || 'zh_CN'
+    },
+    onOpen: () => {
+      if (streamId !== activeStreamId) return
+      reconnectAttempts = 0
+    },
+    onMessage: (message) => {
+      if (streamId !== activeStreamId) return
+      handleSseMessage(message)
+    },
+    onError: () => {
+      if (streamId !== activeStreamId) return
+    },
+    onClose: () => {
+      if (streamId === activeStreamId && !manualClose) {
+        scheduleReconnect()
+      }
+    }
   })
 }
 
@@ -511,6 +671,11 @@ onMounted(() => {
   }
 
   void loadDepartments()
+})
+
+onBeforeUnmount(() => {
+  activeConsultationContext = null
+  closeSse(true)
 })
 </script>
 
@@ -766,6 +931,7 @@ onMounted(() => {
 }
 
 .doctor-card {
+  position: relative;
   padding: 24px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.94);
@@ -774,6 +940,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
@@ -783,7 +950,19 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
+.doctor-card.disabled {
+  cursor: not-allowed;
+}
+
 .doctor-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.doctor-card-main {
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   gap: 16px;
@@ -802,6 +981,7 @@ onMounted(() => {
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  flex: 1;
 }
 
 .doctor-title-row {
@@ -895,7 +1075,37 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.doctor-select-btn,
+.doctor-radio {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #c8d3df;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.doctor-radio.checked {
+  border-color: #1f66e5;
+  background: #1f66e5;
+  box-shadow: 0 0 0 4px rgba(31, 102, 229, 0.12);
+}
+
+.doctor-radio:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.doctor-radio :deep(.el-icon) {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .doctor-action-btn {
   border: none;
   border-radius: 12px;
@@ -903,18 +1113,6 @@ onMounted(() => {
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
-}
-
-.doctor-select-btn {
-  width: 100%;
-  height: 54px;
-  cursor: pointer;
-}
-
-.doctor-select-btn:disabled {
-  background: linear-gradient(180deg, #d6e4ee 0%, #c7d8e6 100%);
-  color: #8fa1b4;
-  cursor: not-allowed;
 }
 
 .doctor-action-bar {

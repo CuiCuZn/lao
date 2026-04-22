@@ -46,13 +46,13 @@
             </span>
             <strong>{{ t('assistant.pendingRecords.listTitle') }}</strong>
             <span class="records-panel__count">
-              {{ filteredRecords.length }} {{ t('assistant.pendingRecords.totalSuffix') }}
+              {{ total }} {{ t('assistant.pendingRecords.totalSuffix') }}
             </span>
           </div>
         </header>
 
         <div class="records-table-wrap">
-          <el-table :data="pagedRecords" class="records-table">
+          <el-table :data="records" v-loading="loading" class="records-table">
             <el-table-column :label="t('assistant.pendingRecords.visitDate')" min-width="132">
               <template #default="{ row }">
                 <span>{{ row.visitDate }}</span>
@@ -84,9 +84,15 @@
             </el-table-column>
 
             <el-table-column :label="t('assistant.pendingRecords.action')" min-width="132" align="center">
-              <template #default>
-                <el-button link class="detail-link">
-                  {{ t('assistant.pendingRecords.reconnect') }}
+              <template #default="{ row }">
+                <el-button
+                  link
+                  class="detail-link"
+                  :loading="reconnectingRecordId === row.id"
+                  :disabled="reconnectingRecordId !== '' && reconnectingRecordId !== row.id"
+                  @click="handleReconnect(row)"
+                >
+                  {{ reconnectingRecordId === row.id ? t('assistant.pendingRecords.reconnecting') : t('assistant.pendingRecords.reconnect') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -98,7 +104,7 @@
             v-model:current-page="page"
             v-model:page-size="pageSize"
             :page-sizes="[20, 50, 100]"
-            :total="filteredRecords.length"
+            :total="total"
             background
             layout="sizes, prev, pager, next, jumper"
           />
@@ -109,22 +115,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Search, Tickets } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { getCaseDetail, getUndoneCaseList } from '@/api/record'
+import { createVideoRoom } from '@/api/video'
+import type { CaseRecordItem } from '@/api/types'
 import AppPage from '@/components/AppPage.vue'
+import { broadcastPatientContextSync, broadcastReconnectFailed, broadcastVideoRoomCreated } from '@/utils/patient-channel'
 
-type FilterKey = 'all' | 'recent7' | 'recent30' | 'completed' | 'cancelled'
+type FilterKey = 'all' | 'recent7' | 'recent30'
+type DetailRecord = Record<string, unknown>
 
 interface PendingRecordRow {
-  id: number
+  id: string
+  caseId: string
+  patientId: string
+  originalDoctorId: string
   visitDate: string
   visitId: string
   patientName: string
   patientMeta: string
-  patientIdCard: string
-  patientPhone: string
   doctorName: string
   doctorMeta: string
 }
@@ -136,98 +149,338 @@ const activeFilter = ref<FilterKey>('all')
 const keyword = ref('')
 const page = ref(1)
 const pageSize = ref(20)
+const loading = ref(false)
+const total = ref(0)
+const records = ref<PendingRecordRow[]>([])
+const reconnectingRecordId = ref('')
+let searchTimer = 0
 
-const baseDate = new Date('2026-01-12T09:00:00')
-const patientNames = ['李女士', '王先生', '赵女士', '周先生', '刘女士', '陈先生']
-const doctorNames = ['陈医生', '王医生', '刘医生', '赵医生']
-const departments = ['中医内科', '针灸科', '康复科', '全科门诊']
-const doctorTitles = ['主任医师', '副主任医师', '主治医师']
+const takeOptionalText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ''
+  }
 
-const formatDate = (date: Date) => {
+  const text = String(value).trim()
+  return text || ''
+}
+
+const isObjectRecord = (value: unknown): value is DetailRecord => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+const pickText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
+  if (!source) {
+    return ''
+  }
+
+  for (const key of keys) {
+    const value = source[key]
+    const text = takeOptionalText(value)
+    if (text) {
+      return text
+    }
+  }
+
+  return ''
+}
+
+const getDetailCandidateRecords = (value: DetailRecord | null | undefined) => {
+  if (!value) {
+    return []
+  }
+
+  const nestedKeys = [
+    'patient',
+    'patientInfo',
+    'consultation',
+    'consultationInfo',
+    'caseInfo',
+    'caseDetail',
+    'detail',
+    'record',
+    'summary',
+    'doctor',
+    'doctorInfo'
+  ]
+
+  return [
+    value,
+    ...nestedKeys
+      .map((key) => value[key])
+      .filter((item): item is DetailRecord => isObjectRecord(item))
+  ]
+}
+
+const pickTextFromRecords = (records: DetailRecord[], keys: string[]) => {
+  for (const item of records) {
+    const text = pickText(item, keys)
+    if (text) {
+      return text
+    }
+  }
+
+  return ''
+}
+
+const formatDate = (value: unknown) => {
+  const text = takeOptionalText(value)
+  if (!text) {
+    return '--'
+  }
+
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) {
+    return text
+  }
+
   const year = date.getFullYear()
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-const buildPendingRows = () => {
-  const rows: PendingRecordRow[] = []
+const normalizeGenderKey = (value: unknown) => {
+  const text = takeOptionalText(value).toLowerCase()
 
-  for (let index = 0; index < 18; index += 1) {
-    const patientName = patientNames[index % patientNames.length]
-    const genderKey = index % 2 === 0 ? 'female' : 'male'
-    const doctorName = doctorNames[index % doctorNames.length]
-    const department = departments[index % departments.length]
-    const doctorTitle = doctorTitles[index % doctorTitles.length]
-    const visitDate = new Date(baseDate)
-    visitDate.setDate(baseDate.getDate() - (index % 16))
-
-    rows.push({
-      id: index + 1,
-      visitDate: formatDate(visitDate),
-      visitId: `VS20260325${String(index + 1).padStart(4, '0')}`,
-      patientName,
-      patientMeta: t('assistant.pendingRecords.patientAgeGender', {
-        age: 26 + (index % 18),
-        gender: t(`assistant.pendingRecords.${genderKey}`)
-      }),
-      patientIdCard: `31010119920${String((index % 28) + 1).padStart(2, '0')}015${String(index % 10)}`,
-      patientPhone: `156568${String(60000 + index).padStart(5, '0')}`,
-      doctorName,
-      doctorMeta: t('assistant.pendingRecords.doctorMeta', {
-        title: doctorTitle,
-        department
-      })
-    })
+  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
+    return 'male'
   }
 
-  return rows
+  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
+    return 'female'
+  }
+
+  return ''
 }
 
-const rawRecords = computed(() => buildPendingRows())
+const buildDoctorMeta = (item: CaseRecordItem) => {
+  const parts = [takeOptionalText(item.title)]
+  const departmentName = takeOptionalText(item.departmentName)
+
+  if (departmentName) {
+    parts.push(departmentName)
+  }
+
+  return parts.filter(Boolean).join(' / ') || '--'
+}
+
+const resolveCaseId = (item: CaseRecordItem) => {
+  return pickText(item, ['caseId', 'caseID', 'medicalCaseId'])
+}
+
+const resolvePatientId = (item: CaseRecordItem) => {
+  return pickText(item, ['patientId', 'patId'])
+}
+
+const resolveOriginalDoctorId = (item: CaseRecordItem) => {
+  return pickText(item, ['doctorId', 'userId', 'doctorUserId', 'receiveDoctorId', 'receptionDoctorId', 'attendingDoctorId'])
+}
+
+const normalizePendingRecordRow = (item: CaseRecordItem, index: number): PendingRecordRow => {
+  const genderKey = normalizeGenderKey(item.patientSex)
+  const ageText = takeOptionalText(item.patientAge) || '--'
+  const patientMeta =
+    ageText === '--' && !genderKey
+      ? '--'
+      : t('assistant.pendingRecords.patientAgeGender', {
+          age: ageText,
+          gender: genderKey ? t(`assistant.pendingRecords.${genderKey}`) : '--'
+        })
+
+  return {
+    id: resolveCaseId(item) || takeOptionalText(item.patientNumber) || `row-${index + 1}`,
+    caseId: resolveCaseId(item),
+    patientId: resolvePatientId(item),
+    originalDoctorId: resolveOriginalDoctorId(item),
+    visitDate: formatDate(item.visitDate || item.createTime || item.updateTime || item.registerTime),
+    visitId: takeOptionalText(item.patientNumber) || resolveCaseId(item) || '--',
+    patientName: takeOptionalText(item.patientName) || '--',
+    patientMeta,
+    doctorName: takeOptionalText(item.nickName) || '--',
+    doctorMeta: buildDoctorMeta(item)
+  }
+}
+
+const resolveCheckInfo = (filter: FilterKey) => {
+  switch (filter) {
+    case 'recent7':
+      return 7
+    case 'recent30':
+      return 30
+    default:
+      return -1
+  }
+}
+
+const fetchPendingRecords = async () => {
+  loading.value = true
+
+  try {
+    const response = await getUndoneCaseList({
+      searchInfo: keyword.value.trim(),
+      checkInfo: resolveCheckInfo(activeFilter.value),
+      pageSize: pageSize.value,
+      pageNum: page.value
+    })
+
+    const parsedTotal = Number(response?.total)
+    total.value = Number.isFinite(parsedTotal) ? parsedTotal : 0
+    records.value = Array.isArray(response?.rows)
+      ? response.rows.map((item, index) => normalizePendingRecordRow(item, index))
+      : []
+  } catch (error) {
+    console.warn('Failed to load assistant undone case records.', error)
+    total.value = 0
+    records.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const resolveReconnectTargets = async (row: PendingRecordRow) => {
+  let patientId = row.patientId
+  let originalDoctorId = row.originalDoctorId
+
+  if (patientId && originalDoctorId) {
+    return {
+      caseId: row.caseId,
+      patientId,
+      originalDoctorId
+    }
+  }
+
+  if (!row.caseId) {
+    return null
+  }
+
+  const response = await getCaseDetail(row.caseId)
+  const detail = isObjectRecord(response?.data) ? response.data : null
+  const records = getDetailCandidateRecords(detail)
+
+  patientId = patientId || pickTextFromRecords(records, ['patientId', 'patId'])
+  originalDoctorId =
+    originalDoctorId ||
+    pickTextFromRecords(records, ['doctorId', 'userId', 'doctorUserId', 'receiveDoctorId', 'receptionDoctorId', 'attendingDoctorId'])
+
+  return patientId && originalDoctorId
+    ? {
+        caseId: row.caseId || pickTextFromRecords(records, ['caseId', 'caseID', 'medicalCaseId']),
+        patientId,
+        originalDoctorId
+      }
+    : null
+}
+
+const notifyReconnectFailure = (payload: { patientId?: string; caseId?: string; message: string }) => {
+  broadcastReconnectFailed({
+    patientId: payload.patientId || '',
+    caseId: payload.caseId || '',
+    message: payload.message
+  })
+}
+
+const handleReconnect = async (row: PendingRecordRow) => {
+  if (!row.id || reconnectingRecordId.value) {
+    return
+  }
+
+  reconnectingRecordId.value = row.id
+  let resolvedPatientId = row.patientId
+  let resolvedCaseId = row.caseId
+
+  try {
+    const reconnectTargets = await resolveReconnectTargets(row)
+
+    if (!reconnectTargets?.patientId || !reconnectTargets.originalDoctorId) {
+      const failureMessage = t('assistant.pendingRecords.reconnectMissingTargets')
+      notifyReconnectFailure({
+        patientId: reconnectTargets?.patientId || row.patientId,
+        caseId: reconnectTargets?.caseId || row.caseId,
+        message: failureMessage
+      })
+      ElMessage.error(failureMessage)
+      return
+    }
+
+    resolvedPatientId = reconnectTargets.patientId
+    resolvedCaseId = reconnectTargets.caseId
+
+    broadcastPatientContextSync({
+      patientId: resolvedPatientId
+    })
+
+    const response = await createVideoRoom({
+      patientId: resolvedPatientId,
+      userId: reconnectTargets.originalDoctorId,
+      ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
+    })
+
+    const roomId = takeOptionalText(response?.data)
+    if (!roomId) {
+      throw new Error(t('assistant.pendingRecords.reconnectFailed'))
+    }
+
+    broadcastVideoRoomCreated({
+      patientId: resolvedPatientId,
+      doctorId: reconnectTargets.originalDoctorId,
+      roomId,
+      ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
+    })
+
+    ElMessage.success(t('assistant.pendingRecords.reconnectSuccess'))
+  } catch (error) {
+    const failureMessage =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : t('assistant.pendingRecords.reconnectFailed')
+
+    notifyReconnectFailure({
+      patientId: resolvedPatientId,
+      caseId: resolvedCaseId,
+      message: failureMessage
+    })
+    ElMessage.error(failureMessage)
+  } finally {
+    reconnectingRecordId.value = ''
+  }
+}
+
+const scheduleFetchPendingRecords = () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => {
+    void fetchPendingRecords()
+  }, 300)
+}
 
 const filterOptions = computed(() => [
   { key: 'all' as const, label: t('assistant.pendingRecords.allFilter') },
   { key: 'recent7' as const, label: t('assistant.pendingRecords.recentSevenDays') },
-  { key: 'recent30' as const, label: t('assistant.pendingRecords.recentThirtyDays') },
-  { key: 'completed' as const, label: t('assistant.pendingRecords.completedFilter') },
-  { key: 'cancelled' as const, label: t('assistant.pendingRecords.cancelledFilter') }
+  { key: 'recent30' as const, label: t('assistant.pendingRecords.recentThirtyDays') }
 ])
 
-const filteredRecords = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
+watch([activeFilter, keyword], () => {
+  if (page.value !== 1) {
+    page.value = 1
+    return
+  }
 
-  return rawRecords.value.filter((row) => {
-    const diffDays = Math.floor(
-      (baseDate.getTime() - new Date(`${row.visitDate}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24)
-    )
-
-    const matchFilter =
-      activeFilter.value === 'all' ||
-      (activeFilter.value === 'recent7' && diffDays <= 7) ||
-      (activeFilter.value === 'recent30' && diffDays <= 30)
-
-    if (!matchFilter) {
-      return false
-    }
-
-    if (!normalizedKeyword) {
-      return true
-    }
-
-    return [row.patientName, row.visitId, row.patientIdCard, row.patientPhone].some((value) =>
-      value.toLowerCase().includes(normalizedKeyword)
-    )
-  })
+  scheduleFetchPendingRecords()
 })
 
-const pagedRecords = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredRecords.value.slice(start, start + pageSize.value)
+watch([page, pageSize], () => {
+  void fetchPendingRecords()
 })
 
-watch([activeFilter, keyword, pageSize, locale], () => {
-  page.value = 1
+watch(locale, () => {
+  void fetchPendingRecords()
+})
+
+onMounted(() => {
+  void fetchPendingRecords()
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(searchTimer)
 })
 
 const goBack = () => {

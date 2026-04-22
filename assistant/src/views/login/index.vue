@@ -34,6 +34,7 @@
               <el-dropdown-menu>
                 <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
                 <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
+                <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -137,7 +138,8 @@ const visualBackground = computed(
 const currentLangName = computed(() => {
   const map: Record<string, string> = {
     'zh-cn': t('language.zhCn'),
-    lo: t('language.lo')
+    lo: t('language.lo'),
+    en: t('language.en')
   }
   return map[locale.value] || t('language.zhCn')
 })
@@ -163,8 +165,8 @@ watch(
 
 const loginForm = ref<LoginData>({
   tenantId: '000000',
-  username: '',
-  password: '',
+  username: import.meta.env.DEV ? 'liuzhushou' : '',
+  password: import.meta.env.DEV ? '000000' : '',
   rememberMe: false,
   clientId: import.meta.env.VITE_APP_CLIENT_ID,
   grantType: 'password'
@@ -314,7 +316,7 @@ onMounted(() => {
 }
 
 .login-visual__content {
-  max-width: 356px;
+  max-width: 460px;
   padding-top: 54px;
 }
 
@@ -328,8 +330,10 @@ onMounted(() => {
 
 .login-visual__content p {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.9;
+  max-width: 440px;
+  font-size: 15px;
+  line-height: 1.85;
+  word-break: break-word;
   color: rgba(255, 255, 255, 0.9);
 }
 

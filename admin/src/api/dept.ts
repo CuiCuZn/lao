@@ -42,6 +42,17 @@ export function delDept(departmentId: string | number): Promise<ResponseData<any
 }
 
 /**
+ * 删除科室 (适配：DELETE /department/remove/{departmentId})
+ * @param departmentId 
+ */
+export function removeDept(departmentId: string | number): Promise<ResponseData<any>> {
+  return request.request({
+    url: `/department/remove/${departmentId}`,
+    method: 'post'
+  })
+}
+
+/**
  * 切换科室状态 (适配后端业务：通常通过 edit 或 delete 接口控制状态)
  * 如果后端没有显式的 changeStatus，则复用 updateDept (edit)
  * @param data 

@@ -1,0 +1,1 @@
+import{t as e}from"./ConsultRoomControls-Dsqk56_S.js";export{e as default};

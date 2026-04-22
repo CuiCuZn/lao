@@ -47,7 +47,16 @@
 
               <label class="field field-half">
                 <span class="field-label">{{ t('assistant.intake.fields.birthday') }}<i>*</i></span>
-                <input v-model="form.patientBirthday" :placeholder="t('assistant.intake.placeholders.birthday')" @blur="triggerImmediateSave" />
+                <el-date-picker
+                  v-model="form.patientBirthday"
+                  class="field-date-picker"
+                  type="date"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  :editable="false"
+                  :placeholder="t('assistant.intake.placeholders.birthday')"
+                  @change="triggerImmediateSave"
+                />
               </label>
 
               <label class="field field-half">
@@ -81,107 +90,18 @@
             </div>
           </section>
 
-          <section class="form-panel">
+          <section class="form-panel placeholder-panel">
             <div class="panel-title">
               <el-icon><document /></el-icon>
-              <h3>{{ t('assistant.intake.caseTitle') }}</h3>
+              <h3>{{ t('assistant.intake.fourDiagnosis.displayTitle') }}</h3>
             </div>
 
-            <div class="form-stack">
-              <label class="field field-full">
-                <span class="field-label">{{ t('assistant.intake.fields.chiefComplaint') }}<i>*</i></span>
-                <textarea
-                  v-model="form.chiefComplaint"
-                  :placeholder="t('assistant.intake.placeholders.chiefComplaint')"
-                  @blur="triggerImmediateSave"
-                />
-              </label>
-
-              <label class="field field-full">
-                <span class="field-label">{{ t('assistant.intake.fields.presentIllness') }}</span>
-                <textarea
-                  v-model="form.presentIllness"
-                  :placeholder="t('assistant.intake.placeholders.presentIllness')"
-                  @blur="triggerImmediateSave"
-                />
-              </label>
-
-              <label class="field field-full">
-                <span class="field-label">{{ t('assistant.intake.fields.pastHistory') }}</span>
-                <textarea
-                  v-model="form.pastHistory"
-                  :placeholder="t('assistant.intake.placeholders.pastHistory')"
-                  @blur="triggerImmediateSave"
-                />
-              </label>
-
-              <label class="field field-full">
-                <span class="field-label">{{ t('assistant.intake.fields.allergyHistory') }}</span>
-                <textarea
-                  v-model="form.allergyHistory"
-                  :placeholder="t('assistant.intake.placeholders.allergyHistory')"
-                  @blur="triggerImmediateSave"
-                />
-              </label>
-
-              <label class="field field-full">
-                <span class="field-label">{{ t('assistant.intake.fields.familyHistory') }}</span>
-                <textarea
-                  v-model="form.familyHistory"
-                  :placeholder="t('assistant.intake.placeholders.familyHistory')"
-                  @blur="triggerImmediateSave"
-                />
-              </label>
+            <div class="placeholder-body">
+              <span class="placeholder-badge">{{ t('assistant.intake.fourDiagnosis.placeholderLabel') }}</span>
+              <h4>{{ t('assistant.intake.fourDiagnosis.placeholderTitle') }}</h4>
+              <p>{{ t('assistant.intake.fourDiagnosis.placeholderDescription') }}</p>
             </div>
           </section>
-        </div>
-
-        <div class="four-diagnosis-section">
-          <div class="four-diagnosis-head">
-            <h3>{{ t('assistant.intake.fourDiagnosis.title') }}</h3>
-
-            <div class="device-connection">
-              <span class="device-connection-status">
-                <i />
-                {{ t('assistant.intake.fourDiagnosis.deviceStatusOffline') }}
-              </span>
-              <button type="button" class="connect-device-btn">
-                {{ t('assistant.intake.fourDiagnosis.connectDevice') }}
-              </button>
-            </div>
-          </div>
-
-          <div class="device-card-grid">
-            <article
-              v-for="card in fourDiagnosisCards"
-              :key="card.key"
-              class="device-card"
-              :class="[`is-${card.mode}`]"
-            >
-              <div class="device-card-head">
-                <div class="device-card-title">
-                  <span class="device-card-dot" :class="`is-${card.tone}`" />
-                  <span>{{ card.title }}</span>
-                  <small>{{ card.subtitle }}</small>
-                </div>
-                <span class="device-card-status">{{ t('assistant.intake.fourDiagnosis.pending') }}</span>
-              </div>
-
-              <div class="device-card-body">
-                <div class="device-card-preview">
-                  <p>{{ card.emptyText }}</p>
-                </div>
-
-                <button type="button" class="collect-btn">
-                  {{ card.actionText }}
-                </button>
-              </div>
-            </article>
-          </div>
-
-          <div class="diagnosis-result-panel">
-            <span>{{ t('assistant.intake.fourDiagnosis.diagnosisTitle') }}</span>
-          </div>
         </div>
 
         <div class="intake-submit-wrap">
@@ -202,35 +122,17 @@ import { ArrowLeft, Document, Tickets } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { getPatientDetail, savePatient } from '@/api/patient'
 import type { PatientSaveParams } from '@/api/types'
+import { usePatientSessionStore } from '@/stores/patient-session'
 
-const { locale, t } = useI18n()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const sessionStore = usePatientSessionStore()
 
 interface IntakePatientData {
   patientId?: string | number
   patientNumber?: string
   caseId?: string | number
-  mainSuit?: string
-  mainSuitLo?: string
-  mainSuitCn?: string
-  historyIllness?: string
-  historyIllnessLo?: string
-  historyIllnessCn?: string
-  previousHistory?: string
-  previousHistoryLo?: string
-  previousHistoryCn?: string
-  allergichistory?: string
-  allergichistoryLo?: string
-  allergichistoryCn?: string
-  familyhistory?: string
-  familyhistoryLo?: string
-  familyhistoryCn?: string
-  chiefComplaint?: string
-  presentIllness?: string
-  pastHistory?: string
-  allergyHistory?: string
-  familyHistory?: string
   patientIdCard?: string
   patientPhone?: string
   patientName?: string
@@ -276,6 +178,10 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
+const hasMeaningfulValue = (value: unknown) => {
+  return value !== null && value !== undefined && String(value).trim() !== ''
+}
+
 const toIsoDateTime = (value: string) => {
   const normalized = value.trim()
   if (!normalized) {
@@ -304,12 +210,7 @@ const createEmptyForm = () => ({
   patientIdCard: '',
   patientPhone: '',
   medicalAccount: '',
-  address: '',
-  chiefComplaint: '',
-  presentIllness: '',
-  pastHistory: '',
-  allergyHistory: '',
-  familyHistory: ''
+  address: ''
 })
 
 const patientId = ref<number | undefined>(undefined)
@@ -334,11 +235,11 @@ const buildSavePayload = (): PatientSaveParams => ({
   medicalAccount: form.medicalAccount.trim(),
   address: form.address.trim(),
   ...(caseId.value !== undefined ? { caseId: caseId.value } : {}),
-  mainSuit: form.chiefComplaint.trim(),
-  historyIllness: form.presentIllness.trim(),
-  previousHistory: form.pastHistory.trim(),
-  allergichistory: form.allergyHistory.trim(),
-  familyhistory: form.familyHistory.trim()
+  mainSuit: '',
+  historyIllness: '',
+  previousHistory: '',
+  allergichistory: '',
+  familyhistory: ''
 })
 
 const validateForm = () => {
@@ -347,8 +248,7 @@ const validateForm = () => {
     form.patientSex &&
     form.patientBirthday.trim() &&
     form.patientIdCard.trim() &&
-    form.patientPhone.trim() &&
-    form.chiefComplaint.trim()
+    form.patientPhone.trim()
   )
 }
 
@@ -363,45 +263,6 @@ const saveStatusText = computed(() => {
   return loadingDetail.value ? map.loading : map[saveState.value]
 })
 
-const fourDiagnosisCards = computed(() => [
-  {
-    key: 'inspection',
-    tone: 'blue',
-    mode: 'preview',
-    title: t('assistant.intake.fourDiagnosis.cards.inspection.title'),
-    subtitle: t('assistant.intake.fourDiagnosis.cards.inspection.subtitle'),
-    emptyText: t('assistant.intake.fourDiagnosis.cards.inspection.empty'),
-    actionText: t('assistant.intake.fourDiagnosis.cards.inspection.action')
-  },
-  {
-    key: 'pulse',
-    tone: 'cyan',
-    mode: 'preview',
-    title: t('assistant.intake.fourDiagnosis.cards.pulse.title'),
-    subtitle: t('assistant.intake.fourDiagnosis.cards.pulse.subtitle'),
-    emptyText: t('assistant.intake.fourDiagnosis.cards.pulse.empty'),
-    actionText: t('assistant.intake.fourDiagnosis.cards.pulse.action')
-  },
-  {
-    key: 'auscultation',
-    tone: 'teal',
-    mode: 'result',
-    title: t('assistant.intake.fourDiagnosis.cards.auscultation.title'),
-    subtitle: t('assistant.intake.fourDiagnosis.cards.auscultation.subtitle'),
-    emptyText: t('assistant.intake.fourDiagnosis.cards.auscultation.empty'),
-    actionText: t('assistant.intake.fourDiagnosis.cards.auscultation.action')
-  },
-  {
-    key: 'inquiry',
-    tone: 'sky',
-    mode: 'result',
-    title: t('assistant.intake.fourDiagnosis.cards.inquiry.title'),
-    subtitle: t('assistant.intake.fourDiagnosis.cards.inquiry.subtitle'),
-    emptyText: t('assistant.intake.fourDiagnosis.cards.inquiry.empty'),
-    actionText: t('assistant.intake.fourDiagnosis.cards.inquiry.action')
-  }
-])
-
 const takeText = (...values: unknown[]) => {
   for (const value of values) {
     if (value !== null && value !== undefined && String(value).trim() !== '') {
@@ -411,15 +272,7 @@ const takeText = (...values: unknown[]) => {
   return ''
 }
 
-const takeLocalizedCaseText = (data: Record<string, unknown>, cnKey: string, loKey: string, fallbackKey: string, currentValue: string) => {
-  if (locale.value === 'lo') {
-    return takeText(data[loKey], data[fallbackKey], currentValue)
-  }
-
-  return takeText(data[cnKey], data[fallbackKey], currentValue)
-}
-
-const hydrateForm = (data?: Record<string, unknown> | null) => {
+const hydrateForm = (data?: IntakePatientData | null) => {
   if (!data) {
     return
   }
@@ -430,6 +283,7 @@ const hydrateForm = (data?: Record<string, unknown> | null) => {
 
   if (data.caseId !== undefined && data.caseId !== null) {
     caseId.value = toNumber(data.caseId)
+    sessionStore.setCaseId(caseId.value)
   }
 
   form.patientName = takeText(data.patientName, form.patientName)
@@ -439,35 +293,6 @@ const hydrateForm = (data?: Record<string, unknown> | null) => {
   form.patientPhone = takeText(data.patientPhone, form.patientPhone)
   form.medicalAccount = takeText(data.medicalAccount, form.medicalAccount)
   form.address = takeText(data.address, form.address)
-  form.chiefComplaint = takeLocalizedCaseText(data, 'mainSuitCn', 'mainSuitLo', 'mainSuit', form.chiefComplaint)
-  form.presentIllness = takeLocalizedCaseText(
-    data,
-    'historyIllnessCn',
-    'historyIllnessLo',
-    'historyIllness',
-    form.presentIllness
-  )
-  form.pastHistory = takeLocalizedCaseText(
-    data,
-    'previousHistoryCn',
-    'previousHistoryLo',
-    'previousHistory',
-    form.pastHistory
-  )
-  form.allergyHistory = takeLocalizedCaseText(
-    data,
-    'allergichistoryCn',
-    'allergichistoryLo',
-    'allergichistory',
-    form.allergyHistory
-  )
-  form.familyHistory = takeLocalizedCaseText(
-    data,
-    'familyhistoryCn',
-    'familyhistoryLo',
-    'familyhistory',
-    form.familyHistory
-  )
 
   if (form.patientBirthday) {
     form.patientAge = calculateAge(form.patientBirthday)
@@ -509,6 +334,7 @@ const submitSave = async () => {
     }
     if (response?.data?.caseId !== undefined) {
       caseId.value = toNumber(response.data.caseId)
+      sessionStore.setCaseId(caseId.value)
     }
     lastSavedSnapshot.value = JSON.stringify(buildSavePayload())
     saveState.value = 'saved'
@@ -591,6 +417,20 @@ const syncPatientIdToRoute = async () => {
   })
 }
 
+const ensureCaseIdReady = async (detail?: IntakePatientData | null) => {
+  if (hasMeaningfulValue(detail?.caseId) && caseId.value !== undefined) {
+    sessionStore.setCaseId(caseId.value)
+    return
+  }
+
+  if (!validateForm()) {
+    sessionStore.setCaseId(undefined)
+    return
+  }
+
+  await submitSave()
+}
+
 const initializeFromRouteQuery = async () => {
   initialized.value = false
   clearSaveTimer()
@@ -599,6 +439,7 @@ const initializeFromRouteQuery = async () => {
 
   patientId.value = getRoutePatientId()
   caseId.value = undefined
+  sessionStore.setCaseId(undefined)
   resetForm()
 
   if (patientId.value === undefined) {
@@ -611,7 +452,9 @@ const initializeFromRouteQuery = async () => {
 
   try {
     const response = await getPatientDetail(patientId.value)
-    hydrateForm(response?.data)
+    const detail = (response?.data || null) as IntakePatientData | null
+    hydrateForm(detail)
+    await ensureCaseIdReady(detail)
   } finally {
     loadingDetail.value = false
     resetSaveBaseline()
@@ -795,201 +638,6 @@ const goToDoctorSelect = () => {
   align-items: stretch;
 }
 
-.four-diagnosis-section {
-  box-sizing: border-box;
-  border-radius: 24px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  box-shadow: 0 24px 54px rgba(53, 88, 129, 0.14);
-  backdrop-filter: blur(12px);
-}
-
-.four-diagnosis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 22px 24px;
-}
-
-.four-diagnosis-head h3 {
-  margin: 0;
-  color: #1f2c3d;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.device-connection {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 16px;
-  border: 1px solid #e2ecf5;
-  background: rgba(255, 255, 255, 0.96);
-}
-
-.device-connection-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #36475b;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.device-connection-status i {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff4d4f;
-  box-shadow: 0 0 0 4px rgba(255, 77, 79, 0.12);
-}
-
-.connect-device-btn,
-.collect-btn {
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #4d78f4 0%, #3c67ef 100%);
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 14px 28px rgba(75, 121, 238, 0.18);
-}
-
-.connect-device-btn {
-  min-width: 92px;
-  height: 36px;
-  padding: 0 16px;
-}
-
-.device-card-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding: 0 20px 20px;
-}
-
-.device-card {
-  border: 1px solid #d9e6f1;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.98);
-  overflow: hidden;
-  box-shadow: 0 16px 34px rgba(84, 111, 150, 0.06);
-}
-
-.device-card-head {
-  min-height: 38px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: linear-gradient(180deg, #f7fbff 0%, #f1f7fc 100%);
-  border-bottom: 1px solid #e4edf5;
-}
-
-.device-card-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #1f2d3d;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.device-card-title small {
-  color: #5f7082;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.device-card-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.device-card-dot.is-blue {
-  background: #168fd4;
-}
-
-.device-card-dot.is-cyan {
-  background: #1f9ff2;
-}
-
-.device-card-dot.is-teal {
-  background: #16a6a0;
-}
-
-.device-card-dot.is-sky {
-  background: #41a0f3;
-}
-
-.device-card-status {
-  color: #8d9bad;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.device-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 14px;
-}
-
-.device-card-preview {
-  min-height: 114px;
-  border: 1px dashed #dbe4ec;
-  border-radius: 16px;
-  background: #fbfdff;
-  padding: 18px 14px;
-}
-
-.device-card-preview p {
-  margin: 0;
-  color: #a3afbd;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.device-card.is-preview .device-card-preview {
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-
-.device-card.is-result .device-card-preview {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.collect-btn {
-  width: 100%;
-  height: 38px;
-}
-
-.diagnosis-result-panel {
-  min-height: 210px;
-  border-top: 1px solid #d9e6f1;
-  background: rgba(255, 255, 255, 0.96);
-  display: grid;
-  place-items: center;
-  padding: 28px 20px;
-}
-
-.diagnosis-result-panel span {
-  color: #1f2c3d;
-  font-size: 18px;
-  font-weight: 700;
-}
-
 .intake-submit-wrap {
   padding: 4px 0 26px;
 }
@@ -1057,6 +705,55 @@ const goToDoctorSelect = () => {
   gap: 14px;
 }
 
+.placeholder-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.placeholder-body {
+  flex: 1;
+  min-height: 320px;
+  border: 1px dashed #d7e4f1;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(77, 120, 244, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(240, 246, 253, 0.92) 100%);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 28px;
+}
+
+.placeholder-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(77, 120, 244, 0.12);
+  color: #4b79ee;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.placeholder-body h4 {
+  margin: 18px 0 10px;
+  color: #1d2b3d;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.placeholder-body p {
+  width: min(320px, 100%);
+  margin: 0;
+  color: #6a7b8d;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -1117,6 +814,35 @@ const goToDoctorSelect = () => {
   color: #a5b2c1;
 }
 
+.field :deep(.field-date-picker.el-date-editor) {
+  width: 100%;
+}
+
+.field :deep(.field-date-picker .el-input__wrapper) {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: inset 0 0 0 1px #dde6ef;
+  transition: box-shadow 0.2s ease;
+}
+
+.field :deep(.field-date-picker .el-input__inner) {
+  color: #25364a;
+  font-size: 14px;
+}
+
+.field :deep(.field-date-picker .el-input__inner::placeholder) {
+  color: #a5b2c1;
+}
+
+.field :deep(.field-date-picker.is-focus .el-input__wrapper),
+.field :deep(.field-date-picker .el-input__wrapper:hover) {
+  box-shadow:
+    inset 0 0 0 1px #4b79ee,
+    0 0 0 4px rgba(75, 121, 238, 0.12);
+}
+
 .gender-group {
   min-height: 44px;
   display: flex;
@@ -1153,19 +879,6 @@ const goToDoctorSelect = () => {
   .intake-grid {
     grid-template-columns: 1fr;
   }
-
-  .four-diagnosis-head {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .device-connection {
-    justify-content: space-between;
-  }
-
-  .device-card-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {
@@ -1186,26 +899,13 @@ const goToDoctorSelect = () => {
     grid-column: 1;
   }
 
-  .four-diagnosis-head {
-    padding: 16px;
+  .placeholder-body {
+    min-height: 260px;
+    padding: 24px 18px;
   }
 
-  .device-connection {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .device-card-grid {
-    padding: 0 12px 12px;
-  }
-
-  .device-card-head {
-    padding: 10px 12px;
-    align-items: flex-start;
-  }
-
-  .device-card-title {
-    flex-wrap: wrap;
+  .placeholder-body h4 {
+    font-size: 20px;
   }
 }
 </style>

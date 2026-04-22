@@ -1,10 +1,14 @@
 import { createI18n } from 'vue-i18n'
 import zhCn from './lang/zh-cn'
 import lo from './lang/lo'
+import en from './lang/en'
+
+const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+type SupportedLocale = typeof supportedLocales[number]
 
 const resolveLocale = () => {
   const storedLang = localStorage.getItem('lang')
-  const locale = storedLang === 'lo' ? 'lo' : 'zh-cn'
+  const locale = supportedLocales.includes(storedLang as SupportedLocale) ? (storedLang as SupportedLocale) : 'zh-cn'
 
   if (storedLang !== locale) {
     localStorage.setItem('lang', locale)
@@ -19,7 +23,8 @@ const i18n = createI18n({
   fallbackLocale: 'zh-cn',
   messages: {
     'zh-cn': zhCn,
-    lo: lo
+    lo,
+    en
   }
 })
 

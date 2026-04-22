@@ -78,6 +78,13 @@
             <span>{{ displayValue(scope.row.diagnosisResult) }}</span>
           </template>
         </el-table-column>
+        <el-table-column :label="t('common.operate')" align="center" fixed="right" min-width="120">
+          <template #default="scope">
+            <el-button link type="primary" @click="handleDetail(scope.row)">
+              {{ t('common.view') }}
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pagination-container">
@@ -93,6 +100,16 @@
         />
       </div>
     </el-card>
+
+    <el-drawer
+      v-model="drawerVisible"
+      :title="t('common.view')"
+      size="60%"
+      destroy-on-close
+      append-to-body
+    >
+      <case-detail v-if="drawerVisible" :case-id="currentCaseId" />
+    </el-drawer>
   </div>
 </template>
 
@@ -103,6 +120,7 @@ import { to } from 'await-to-js'
 import type { FormInstance } from 'element-plus'
 import { listDiagnosisRecord } from '@/api/record'
 import type { DiagnosisRecordQuery, DiagnosisRecordVO } from '@/api/types'
+import CaseDetail from './components/CaseDetail.vue'
 
 const { t } = useI18n()
 
@@ -110,6 +128,9 @@ const queryRef = ref<FormInstance>()
 const loading = ref(false)
 const total = ref(0)
 const recordList = ref<DiagnosisRecordVO[]>([])
+
+const drawerVisible = ref(false)
+const currentCaseId = ref('')
 
 const queryParams = reactive<DiagnosisRecordQuery>({
   patientName: '',
@@ -177,6 +198,11 @@ const resetQuery = () => {
   queryParams.pageNum = 1
   queryParams.pageSize = 10
   getList()
+}
+
+const handleDetail = (row: DiagnosisRecordVO) => {
+  currentCaseId.value = String(row.caseId ?? row.recordId ?? '')
+  drawerVisible.value = true
 }
 
 onMounted(() => {

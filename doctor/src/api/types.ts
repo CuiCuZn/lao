@@ -84,6 +84,7 @@ export interface PendingConsultation {
   sexText?: string;
   patientId?: string;
   caseId?: string;
+  doctorAideId?: string;
   roomId?: string;
   historyIllness?: string;
   previousHistory?: string;
@@ -108,6 +109,7 @@ export interface ConsultationNavigationContext {
   caseId?: string | number;
   videoId?: string | number;
   patientId?: string | number;
+  doctorAideId?: string;
   roomId?: string | number;
   consultationMode?: ConsultationMode;
   raw?: unknown;
@@ -125,6 +127,7 @@ export interface IncompleteConsultation {
   patientSex?: string;
   patientAge?: string | number;
   videoId?: string | number;
+  doctorAideId?: string;
   roomId?: string;
   raw?: unknown;
 }
@@ -190,6 +193,50 @@ export interface VideoConversationHistoryResponse {
   code?: number;
   msg?: string;
   data?: Record<string, unknown> | unknown[] | null;
+  [key: string]: unknown;
+}
+
+export interface CaseListItem {
+  caseId?: string | number;
+  departmentName?: string;
+  diagnosis?: string;
+  date?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseListResponse {
+  code?: number;
+  msg?: string;
+  data?: CaseListItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface GenerateMedicalRecordData {
+  caseId?: string | number;
+  patientId?: string | number;
+  mainSuitCn?: string;
+  historyIllnessCn?: string;
+  previousHistoryCn?: string;
+  allergichistoryCn?: string;
+  familyhistoryCn?: string;
+  mainSuitLo?: string;
+  historyIllnessLo?: string;
+  previousHistoryLo?: string;
+  allergichistoryLo?: string;
+  familyhistoryLo?: string;
+  status?: string;
+  delFlag?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+  [key: string]: unknown;
+}
+
+export interface GenerateMedicalRecordResponse {
+  code?: number;
+  msg?: string;
+  data?: GenerateMedicalRecordData | null;
   [key: string]: unknown;
 }
 

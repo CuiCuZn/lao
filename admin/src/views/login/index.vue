@@ -8,8 +8,9 @@
         </span>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="zh-cn">中文</el-dropdown-item>
-            <el-dropdown-item command="lo">ພາສາລາວ (Lao)</el-dropdown-item>
+            <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
+            <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
+            <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -86,10 +87,11 @@ const { locale, t } = useI18n()
  */
 const currentLangName = computed(() => {
   const map: Record<string, string> = {
-    'zh-cn': '中文',
-    lo: 'ພາສາລາວ'
+    'zh-cn': t('language.zhCn'),
+    lo: t('language.lo'),
+    en: t('language.en')
   }
-  return map[locale.value] || '中文'
+  return map[locale.value] || t('language.zhCn')
 })
 
 /**
@@ -112,11 +114,19 @@ watch(() => route.query, (query) => {
   }
 }, { immediate: true })
 
+const getLoginRedirect = () => {
+  const redirectPath = redirect.value
+  if (!redirectPath || !redirectPath.startsWith('/') || redirectPath.startsWith('/login')) {
+    return '/'
+  }
+  return redirectPath
+}
+
 // 1. 响应式表单数据：初始化参考 plus-ui-ts
 const loginForm = ref<LoginData>({
   tenantId: '000000',
-  username: '',
-  password: '',
+  username: import.meta.env.DEV ? '医院管理员' : '',
+  password: import.meta.env.DEV ? '000000' : '',
   rememberMe: false,
   clientId: import.meta.env.VITE_APP_CLIENT_ID, // 从环境变量读取正确的 Client ID
   grantType: 'password'
@@ -160,7 +170,7 @@ const handleLogin = () => {
       const [err] = await to(userStore.login(loginForm.value))
       if (!err) {
         // 登录成功后跳转到主页或重定向页
-        router.push({ path: redirect.value || '/admin/dashboard' })
+        await router.replace(getLoginRedirect())
       }
       loading.value = false
     }

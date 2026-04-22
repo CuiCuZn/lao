@@ -21,6 +21,10 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     roomId.value = ''
   }
 
+  const setCaseId = (nextCaseId?: string | number) => {
+    caseId.value = nextCaseId
+  }
+
   const syncPatientById = async (nextPatientId: string) => {
     patientId.value = nextPatientId
     resetVideoContext()
@@ -30,6 +34,10 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     try {
       const response = await getPatientDetail(nextPatientId)
       patientDetail.value = (response?.data || null) as PatientDetailRecord
+      const nextCaseId = response?.data?.caseId
+      if (nextCaseId !== undefined && nextCaseId !== null && String(nextCaseId).trim() !== '') {
+        caseId.value = nextCaseId as string | number
+      }
     } catch (err) {
       patientDetail.value = null
       error.value = err instanceof Error ? err.message : ''
@@ -55,6 +63,10 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const setPatientDetail = (nextPatientId: string, detail: PatientDetailRecord) => {
     patientId.value = nextPatientId
     patientDetail.value = detail
+    const nextCaseId = detail?.caseId
+    if (nextCaseId !== undefined && nextCaseId !== null && String(nextCaseId).trim() !== '') {
+      caseId.value = nextCaseId as string | number
+    }
     loading.value = false
     error.value = ''
   }
@@ -79,6 +91,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     loading,
     error,
     syncPatientById,
+    setCaseId,
     setPatientDetail,
     setPatientDetailError,
     setVideoRoomContext,

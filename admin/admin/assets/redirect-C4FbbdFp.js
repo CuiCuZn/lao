@@ -1,0 +1,1 @@
+import{H as e,T as t,x as n}from"./vue.runtime.esm-bundler-B2O0VlGR.js";import{a as r,i}from"./index-DEIfKD64.js";var a=t({__name:`index`,setup(t){let a=i(),o=r(),{params:s,query:c}=a,{path:l}=s;return o.replace({path:`/`+l,query:c}),(t,r)=>(e(),n(`div`))}});export{a as default};

@@ -46,13 +46,13 @@
             </span>
             <strong>{{ t('assistant.records.listTitle') }}</strong>
             <span class="records-panel__count">
-              {{ filteredRecords.length }} {{ t('assistant.records.totalSuffix') }}
+              {{ total }} {{ t('assistant.records.totalSuffix') }}
             </span>
           </div>
         </header>
 
         <div class="records-table-wrap">
-          <el-table :data="pagedRecords" class="records-table">
+          <el-table :data="records" v-loading="loading" class="records-table">
             <el-table-column :label="t('assistant.records.visitDate')" min-width="132">
               <template #default="{ row }">
                 <span>{{ row.visitDate }}</span>
@@ -92,7 +92,7 @@
             <el-table-column :label="t('assistant.records.contractStatus')" min-width="132">
               <template #default="{ row }">
                 <el-tag
-                  :type="statusTagTypeMap[row.status]"
+                  :type="getStatusTagType(row.status)"
                   effect="light"
                   :class="['status-tag', `is-${row.status}`]"
                 >
@@ -102,8 +102,8 @@
             </el-table-column>
 
             <el-table-column :label="t('assistant.records.action')" min-width="120" align="center">
-              <template #default>
-                <el-button link class="detail-link">
+              <template #default="{ row }">
+                <el-button link class="detail-link" :disabled="!row.caseId" @click="goToCaseResult(row.caseId)">
                   {{ t('assistant.records.viewDetail') }}
                 </el-button>
               </template>
@@ -116,7 +116,7 @@
             v-model:current-page="page"
             v-model:page-size="pageSize"
             :page-sizes="[20, 50, 100]"
-            :total="filteredRecords.length"
+            :total="total"
             background
             layout="sizes, prev, pager, next, jumper"
           />
@@ -127,24 +127,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Search, Tickets } from '@element-plus/icons-vue'
 import type { TagProps } from 'element-plus'
+import { getCaseRecordList } from '@/api/record'
+import type { CaseRecordItem } from '@/api/types'
 import AppPage from '@/components/AppPage.vue'
 
-type FilterKey = 'all' | 'recent7' | 'recent30' | 'completed' | 'cancelled'
-type RecordStatus = 'completed' | 'incomplete' | 'cancelled'
+type FilterKey = 'all' | 'recent7' | 'recent30' | 'completed' | 'incomplete'
+type RecordStatus = 'completed' | 'incomplete'
 
 interface RecordRow {
-  id: number
+  id: string
+  caseId: string
   visitDate: string
   visitId: string
   patientName: string
   patientMeta: string
-  patientIdCard: string
-  patientPhone: string
   doctorName: string
   doctorMeta: string
   chiefComplaint: string
@@ -159,125 +160,210 @@ const activeFilter = ref<FilterKey>('all')
 const keyword = ref('')
 const page = ref(1)
 const pageSize = ref(20)
-
-const baseDate = new Date('2026-01-12T09:00:00')
-const patientNames = ['李女士', '王先生', '赵女士', '周先生', '刘女士', '陈先生']
-const doctorNames = ['陈医生', '王医生', '刘医生', '赵医生']
-const departments = ['中医内科', '针灸科', '康复科', '全科门诊']
-const doctorTitles = ['主任医师', '副主任医师', '主治医师']
-const complaints = [
-  '头晕1周，晨起加重',
-  '反复咳嗽3天，夜间明显',
-  '胃脘不适5天，餐后加剧',
-  '腰腿酸痛2周，活动受限',
-  '失眠多梦1月，伴心悸',
-  '乏力纳差4天，伴低热'
-]
+const loading = ref(false)
+const total = ref(0)
+const records = ref<RecordRow[]>([])
+let searchTimer = 0
 
 const statusTagTypeMap: Record<RecordStatus, TagProps['type']> = {
   completed: 'success',
-  incomplete: 'info',
-  cancelled: 'danger'
+  incomplete: 'info'
 }
 
-const formatDate = (date: Date) => {
+const getStatusTagType = (status: any) => statusTagTypeMap[status as RecordStatus] || 'info'
+
+const takeOptionalText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  const text = String(value).trim()
+  return text || ''
+}
+
+const formatDate = (value: unknown) => {
+  const text = takeOptionalText(value)
+  if (!text) {
+    return '--'
+  }
+
+  const date = new Date(text)
+  if (Number.isNaN(date.getTime())) {
+    return text
+  }
+
   const year = date.getFullYear()
   const month = `${date.getMonth() + 1}`.padStart(2, '0')
   const day = `${date.getDate()}`.padStart(2, '0')
   return `${year}-${month}-${day}`
 }
 
-const buildRecordRows = () => {
-  const rows: RecordRow[] = []
+const normalizeGenderKey = (value: unknown) => {
+  const text = takeOptionalText(value).toLowerCase()
 
-  for (let index = 0; index < 60; index += 1) {
-    const patientName = patientNames[index % patientNames.length]
-    const genderKey = index % 2 === 0 ? 'female' : 'male'
-    const doctorName = doctorNames[index % doctorNames.length]
-    const department = departments[index % departments.length]
-    const doctorTitle = doctorTitles[index % doctorTitles.length]
-    const status: RecordStatus = index % 5 === 4 ? 'cancelled' : index % 2 === 0 ? 'completed' : 'incomplete'
-    const visitDate = new Date(baseDate)
-    visitDate.setDate(baseDate.getDate() - (index % 34))
-
-    rows.push({
-      id: index + 1,
-      visitDate: formatDate(visitDate),
-      visitId: `VS20260325${String(index + 1).padStart(4, '0')}`,
-      patientName,
-      patientMeta: t('assistant.records.patientAgeGender', {
-        age: 26 + (index % 18),
-        gender: t(`assistant.records.${genderKey}`)
-      }),
-      patientIdCard: `31010119920${String((index % 28) + 1).padStart(2, '0')}015${String(index % 10)}`,
-      patientPhone: `156568${String(60000 + index).padStart(5, '0')}`,
-      doctorName,
-      doctorMeta: t('assistant.records.doctorMeta', {
-        title: doctorTitle,
-        department
-      }),
-      chiefComplaint: complaints[index % complaints.length],
-      status,
-      statusLabel: t(`assistant.records.${status}`)
-    })
+  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
+    return 'male'
   }
 
-  return rows
+  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
+    return 'female'
+  }
+
+  return ''
 }
 
-const rawRecords = computed(() => buildRecordRows())
+const normalizeStatus = (item: CaseRecordItem): RecordStatus => {
+  const rawStatus = takeOptionalText(item.status).toLowerCase()
+
+  if (
+    item.checkInfo === 1 ||
+    rawStatus === '1' ||
+    rawStatus.includes('complete') ||
+    rawStatus.includes('finish') ||
+    rawStatus.includes('done') ||
+    rawStatus.includes('完成') ||
+    rawStatus.includes('已完成')
+  ) {
+    return 'completed'
+  }
+
+  return 'incomplete'
+}
+
+const buildDoctorMeta = (item: CaseRecordItem) => {
+  const parts = [takeOptionalText(item.title)]
+  const departmentName = takeOptionalText(item.departmentName)
+
+  if (departmentName) {
+    parts.push(departmentName)
+  }
+
+  return parts.filter(Boolean).join(' / ') || '--'
+}
+
+const normalizeRecordRow = (item: CaseRecordItem, index: number): RecordRow => {
+  const genderKey = normalizeGenderKey(item.patientSex)
+  const ageText = takeOptionalText(item.patientAge) || '--'
+  const status = normalizeStatus(item)
+  const patientMeta =
+    ageText === '--' && !genderKey
+      ? '--'
+      : t('assistant.records.patientAgeGender', {
+          age: ageText,
+          gender: genderKey ? t(`assistant.records.${genderKey}`) : '--'
+        })
+
+  return {
+    id: takeOptionalText(item.caseId) || takeOptionalText(item.patientNumber) || `row-${index + 1}`,
+    caseId: takeOptionalText(item.caseId),
+    visitDate: formatDate(item.visitDate || item.createTime || item.updateTime || item.registerTime),
+    visitId: takeOptionalText(item.patientNumber) || takeOptionalText(item.caseId) || '--',
+    patientName: takeOptionalText(item.patientName) || '--',
+    patientMeta,
+    doctorName: takeOptionalText(item.nickName) || '--',
+    doctorMeta: buildDoctorMeta(item),
+    chiefComplaint: takeOptionalText(item.mainSuit) || '--',
+    status,
+    statusLabel: t(`assistant.records.${status}`)
+  }
+}
+
+const resolveCheckInfo = (filter: FilterKey) => {
+  switch (filter) {
+    case 'recent7':
+      return 7
+    case 'recent30':
+      return 30
+    case 'completed':
+      return 1
+    case 'incomplete':
+      return 0
+    default:
+      return -1
+  }
+}
+
+const fetchRecords = async () => {
+  loading.value = true
+
+  try {
+    const response = await getCaseRecordList({
+      searchInfo: keyword.value.trim(),
+      checkInfo: resolveCheckInfo(activeFilter.value),
+      pageSize: pageSize.value,
+      pageNum: page.value
+    })
+
+    const parsedTotal = Number(response?.total)
+    total.value = Number.isFinite(parsedTotal) ? parsedTotal : 0
+    records.value = Array.isArray(response?.rows)
+      ? response.rows.map((item, index) => normalizeRecordRow(item, index))
+      : []
+  } catch (error) {
+    console.warn('Failed to load assistant case records.', error)
+    total.value = 0
+    records.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+const scheduleFetchRecords = () => {
+  window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => {
+    void fetchRecords()
+  }, 300)
+}
 
 const filterOptions = computed(() => [
   { key: 'all' as const, label: t('assistant.records.allFilter') },
   { key: 'recent7' as const, label: t('assistant.records.recentSevenDays') },
   { key: 'recent30' as const, label: t('assistant.records.recentThirtyDays') },
   { key: 'completed' as const, label: t('assistant.records.completedFilter') },
-  { key: 'cancelled' as const, label: t('assistant.records.cancelledFilter') }
+  { key: 'incomplete' as const, label: t('assistant.records.incompleteFilter') }
 ])
 
-const filteredRecords = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
+watch([activeFilter, keyword], () => {
+  if (page.value !== 1) {
+    page.value = 1
+    return
+  }
 
-  return rawRecords.value.filter((row) => {
-    const diffDays = Math.floor(
-      (baseDate.getTime() - new Date(`${row.visitDate}T00:00:00`).getTime()) / (1000 * 60 * 60 * 24)
-    )
-
-    const matchFilter =
-      activeFilter.value === 'all' ||
-      (activeFilter.value === 'recent7' && diffDays <= 7) ||
-      (activeFilter.value === 'recent30' && diffDays <= 30) ||
-      (activeFilter.value === 'completed' && row.status === 'completed') ||
-      (activeFilter.value === 'cancelled' && row.status === 'cancelled')
-
-    if (!matchFilter) {
-      return false
-    }
-
-    if (!normalizedKeyword) {
-      return true
-    }
-
-    return [
-      row.patientName,
-      row.visitId,
-      row.patientIdCard,
-      row.patientPhone
-    ].some((value) => value.toLowerCase().includes(normalizedKeyword))
-  })
+  scheduleFetchRecords()
 })
 
-const pagedRecords = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredRecords.value.slice(start, start + pageSize.value)
+watch([page, pageSize], () => {
+  void fetchRecords()
 })
 
-watch([activeFilter, keyword, pageSize, locale], () => {
-  page.value = 1
+watch(locale, () => {
+  void fetchRecords()
+})
+
+onMounted(() => {
+  void fetchRecords()
+})
+
+onBeforeUnmount(() => {
+  window.clearTimeout(searchTimer)
 })
 
 const goBack = () => {
   router.push('/assistant/workbench')
+}
+
+const goToCaseResult = (caseId: string) => {
+  if (!caseId) {
+    return
+  }
+
+  router.push({
+    path: '/assistant/case-result',
+    query: {
+      caseId,
+      from: 'records'
+    }
+  })
 }
 </script>
 
@@ -522,11 +608,6 @@ const goBack = () => {
 .status-tag.is-incomplete {
   color: #74839a;
   background: #f3f5f7;
-}
-
-.status-tag.is-cancelled {
-  color: #d75f5f;
-  background: #fdeeee;
 }
 
 .detail-link {

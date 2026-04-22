@@ -121,7 +121,9 @@ import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
 import { saveSubtitle } from '@/api/video'
+import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import { listenPatientChannelMessages } from '@/utils/patient-channel'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
 import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from '@/views/patient/consultation/components/ConsultSubtitleTimeline.vue'
@@ -139,6 +141,8 @@ const { t } = useI18n()
 const sessionStore = usePatientSessionStore()
 const session = usePatientConsultationSession()
 const savedSubtitleKeys = new Set<string>()
+let stopListening: (() => void) | null = null
+let leavingInProgress = false
 
 const takeText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!source) {
@@ -162,6 +166,19 @@ const takeOptionalText = (value: unknown) => {
 
   const normalizedValue = String(value).trim()
   return normalizedValue || ''
+}
+
+const isCurrentConsultationContext = (payload: { patientId: string; caseId: string }) => {
+  if (payload.patientId && userId.value && payload.patientId !== userId.value) {
+    return false
+  }
+
+  const currentCaseId = takeOptionalText(consultationCaseId.value)
+  if (payload.caseId && currentCaseId && payload.caseId !== currentCaseId) {
+    return false
+  }
+
+  return true
 }
 
 const queryValue = (key: string) => {
@@ -553,21 +570,43 @@ const retrySubtitle = async () => {
 }
 
 const handleLeave = async () => {
+  if (leavingInProgress) {
+    return
+  }
+
+  leavingInProgress = true
   savedSubtitleKeys.clear()
   chatDraft.value = ''
   chat.disconnect()
   timeline.clearTimeline()
-  await session.leaveConsultationRoom()
-  await goBackToWaiting()
+  try {
+    await session.leaveConsultationRoom()
+    await goBackToWaiting()
+  } finally {
+    leavingInProgress = false
+  }
 }
 
 onMounted(async () => {
+  stopListening = listenPatientChannelMessages(async (message) => {
+    if (message.type !== PATIENT_CHANNEL_MESSAGE_TYPES.consultationEnded) {
+      return
+    }
+
+    if (!isCurrentConsultationContext(message.payload)) {
+      return
+    }
+
+    await handleLeave()
+  })
   syncCurrentDate()
   dateTimer = window.setInterval(syncCurrentDate, 60_000)
   await bootstrapConsultation()
 })
 
 onBeforeUnmount(async () => {
+  stopListening?.()
+  stopListening = null
   window.clearInterval(dateTimer)
   savedSubtitleKeys.clear()
   chatDraft.value = ''

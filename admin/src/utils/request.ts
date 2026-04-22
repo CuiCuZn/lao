@@ -7,6 +7,8 @@ import { encrypt as rsaEncrypt } from '@/utils/jsencrypt'
 
 // 标记是否正在显示重新登录对话框，避免并发请求时重复弹出
 let isReloginShow = false
+const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+type SupportedLocale = typeof supportedLocales[number]
 
 /**
  * 后端约定的加密头字段
@@ -28,13 +30,16 @@ class Request {
       (config: InternalAxiosRequestConfig) => {
         // 1. 设置全局 content-language 请求头
         const storedLang = localStorage.getItem('lang')
-        const currentLang = storedLang === 'lo' ? 'lo' : 'zh-cn'
+        const currentLang = supportedLocales.includes(storedLang as SupportedLocale)
+          ? (storedLang as SupportedLocale)
+          : 'zh-cn'
         if (storedLang !== currentLang) {
           localStorage.setItem('lang', currentLang)
         }
         const langMap: Record<string, string> = {
           'zh-cn': 'zh_CN',
-          'lo': 'lo_LA'
+          lo: 'lo_LA',
+          en: 'en_US'
         }
         config.headers['content-language'] = langMap[currentLang] || 'zh_CN'
 

@@ -8,3 +8,11 @@ import type { DiagnosisRecordQuery, DiagnosisRecordVO, ResponseData } from './ty
 export function listDiagnosisRecord(query: DiagnosisRecordQuery): Promise<ResponseData<DiagnosisRecordVO[]>> {
   return request.get('/case/diagnosisList', query)
 }
+
+/**
+ * 查询就诊详情
+ * @param caseId 
+ */
+export function getCaseDetail(caseId: string | number): Promise<ResponseData<any>> {
+  return request.get(`/case/detail/${caseId}`)
+}

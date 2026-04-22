@@ -1,5 +1,7 @@
 import request from '@/utils/request'
 import type {
+  CaseListResponse,
+  GenerateMedicalRecordResponse,
   VideoCloseSubtitleParams,
   VideoCloseSubtitleResponse,
   VideoConversationHistoryResponse,
@@ -37,6 +39,23 @@ export function getVideoConversation(videoId: string | number): Promise<VideoCon
   })
 }
 
+export function getCaseList(patientId: string | number, caseId: string | number): Promise<CaseListResponse> {
+  return request.get(`/case/list/${patientId}/${caseId}`, undefined, {
+    headers: {
+      silentError: true
+    }
+  })
+}
+
+export function generateMedicalRecord(caseId: string | number): Promise<GenerateMedicalRecordResponse> {
+  return request.post(`/case/generateMedicalRecord/${caseId}`, undefined, {
+    headers: {
+      silentError: true,
+      successCodes: '0,200'
+    }
+  })
+}
+
 export function getVideoToken(data: VideoGetTokenParams): Promise<VideoGetTokenResponse> {
   return request.get('/video/getToken', data)
 }
@@ -58,11 +77,17 @@ export function saveSubtitle(data: VideoSaveSubtitleParams): Promise<VideoSaveSu
 }
 
 export interface SubmitDiagnosisParams {
-  caseId: string | number
+  caseId: number
+  doctorAideId?: string
   diseaseNameCn: string
   syndromeTypeCn: string
   therapyCn: string
   adviceCn: string
+  mainSuitCn: string
+  historyIllnessCn: string
+  previousHistoryCn: string
+  allergichistoryCn: string
+  familyhistoryCn: string
 }
 
 export function submitDiagnosis(data: SubmitDiagnosisParams) {
