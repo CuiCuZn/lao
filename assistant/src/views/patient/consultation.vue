@@ -102,12 +102,26 @@
               :camera-enabled="session.cameraEnabled.value"
               :mic-enabled="session.micEnabled.value"
               :on-toggle-camera="session.toggleCamera"
+              :on-switch-camera="openCameraSwitchDialog"
               :on-toggle-mic="session.toggleMic"
               :on-leave="handleLeave"
+              :camera-switching="session.cameraSwitching.value"
+              show-camera
             />
           </footer>
         </section>
       </div>
+
+      <consult-camera-select-dialog
+        v-model="cameraDialogVisible"
+        :devices="session.cameraDevices.value"
+        :selected-device-id="session.selectedCameraId.value"
+        :loading="session.cameraDeviceLoading.value"
+        :switching="session.cameraSwitching.value"
+        :initial-required="cameraDialogRequired"
+        @confirm="handleCameraSelectionConfirm"
+        @refresh="refreshCameraDevices"
+      />
     </section>
   </patient-page-shell>
 </template>
@@ -124,6 +138,7 @@ import { saveSubtitle } from '@/api/video'
 import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { listenPatientChannelMessages } from '@/utils/patient-channel'
+import ConsultCameraSelectDialog from '@/views/patient/consultation/components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
 import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from '@/views/patient/consultation/components/ConsultSubtitleTimeline.vue'
@@ -200,7 +215,10 @@ const pageError = ref('')
 const currentDate = ref('')
 const chatDraft = ref('')
 const chatSending = ref(false)
+const cameraDialogVisible = ref(false)
+const cameraDialogRequired = ref(false)
 let dateTimer = 0
+let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
 
 const patientName = computed(() => {
   return takeText(sessionStore.patientDetail, ['patientName', 'name']) || userId.value || t('common.notAvailable')
@@ -409,6 +427,56 @@ const connectConsultationChat = async () => {
   }
 }
 
+const refreshCameraDevices = async () => {
+  try {
+    await session.loadCameraDevices()
+  } catch (error) {
+    console.warn('Failed to load patient camera devices.', error)
+    ElMessage.warning(t('assistant.patientVideo.consultation.cameraLoadFailed'))
+  }
+}
+
+const requestInitialCameraSelection = async () => {
+  await refreshCameraDevices()
+
+  if (session.rememberedCameraAvailable.value && session.selectedCameraId.value) {
+    return session.selectedCameraId.value
+  }
+
+  cameraDialogRequired.value = true
+  cameraDialogVisible.value = true
+
+  return new Promise<string>((resolve) => {
+    pendingInitialCameraSelection = resolve
+  })
+}
+
+const openCameraSwitchDialog = async () => {
+  cameraDialogRequired.value = false
+  cameraDialogVisible.value = true
+  await refreshCameraDevices()
+}
+
+const handleCameraSelectionConfirm = async (deviceId: string) => {
+  if (cameraDialogRequired.value) {
+    session.selectCamera(deviceId)
+    pendingInitialCameraSelection?.(deviceId)
+    pendingInitialCameraSelection = null
+    cameraDialogVisible.value = false
+    cameraDialogRequired.value = false
+    return
+  }
+
+  try {
+    await session.switchCamera(deviceId)
+    cameraDialogVisible.value = false
+    ElMessage.success(t('assistant.patientVideo.consultation.cameraSwitchSuccess'))
+  } catch (error) {
+    console.warn('Failed to switch patient camera.', error)
+    ElMessage.warning(t('assistant.patientVideo.consultation.cameraSwitchFailed'))
+  }
+}
+
 const handleChatInput = (value: string) => {
   chatDraft.value = value
 }
@@ -536,7 +604,8 @@ const bootstrapConsultation = async () => {
   // 关键修复：趁着上一级页面的跳转产生的 User Gesture Token 尚未过期，
   // 提前进行媒体设备预加载，这一步会提前同步创建 DingRTC 的 AudioContext，
   // 避免等到异步 API 请结束后再进入房间出现 audioContext suspended 导致的警告
-  await session.prepareLocalTracks()
+  const initialCameraId = await requestInitialCameraSelection()
+  await session.prepareLocalTracks(initialCameraId)
 
   try {
     const userName = await ensurePatientProfile()
@@ -577,6 +646,7 @@ const handleLeave = async () => {
   leavingInProgress = true
   savedSubtitleKeys.clear()
   chatDraft.value = ''
+  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
   try {
@@ -610,6 +680,7 @@ onBeforeUnmount(async () => {
   window.clearInterval(dateTimer)
   savedSubtitleKeys.clear()
   chatDraft.value = ''
+  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
   await session.leaveConsultationRoom()

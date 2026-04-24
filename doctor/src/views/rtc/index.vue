@@ -71,8 +71,10 @@
               :camera-enabled="session.cameraEnabled.value"
               :mic-enabled="session.micEnabled.value"
               :on-toggle-camera="session.toggleCamera"
+              :on-switch-camera="openCameraSwitchDialog"
               :on-toggle-mic="session.toggleMic"
               :on-leave="handleLeave"
+              :camera-switching="session.cameraSwitching.value"
               show-camera
             />
           </div>
@@ -277,6 +279,17 @@
         </div>
       </aside>
     </div>
+
+    <consult-camera-select-dialog
+      v-model="cameraDialogVisible"
+      :devices="session.cameraDevices.value"
+      :selected-device-id="session.selectedCameraId.value"
+      :loading="session.cameraDeviceLoading.value"
+      :switching="session.cameraSwitching.value"
+      :initial-required="cameraDialogRequired"
+      @confirm="handleCameraSelectionConfirm"
+      @refresh="refreshCameraDevices"
+    />
   </section>
 </template>
 
@@ -290,6 +303,7 @@ import { addWrittenRecord, translateConsultationText } from '@/api/patient'
 import type { ConsultationMode, GenerateMedicalRecordData } from '@/api/types'
 import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
 import { useUserStore } from '@/stores/user'
+import ConsultCameraSelectDialog from './components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from './components/ConsultParticipantCard.vue'
 import ConsultRoomControls from './components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from './components/ConsultSubtitleTimeline.vue'
@@ -339,7 +353,10 @@ const historyCaseList = ref<HistoryCaseRecord[]>([])
 const historyCaseLoading = ref(false)
 const historyCaseError = ref('')
 const generatingMedicalRecord = ref(false)
+const cameraDialogVisible = ref(false)
+const cameraDialogRequired = ref(false)
 let dateTimer = 0
+let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
 
 const normalizeConsultationMode = (value: unknown): ConsultationMode => {
   return value === 'continue' ? 'continue' : 'accept'
@@ -1209,6 +1226,56 @@ const connectConsultationChat = async () => {
   }
 }
 
+const refreshCameraDevices = async () => {
+  try {
+    await session.loadCameraDevices()
+  } catch (error) {
+    console.warn('Failed to load doctor camera devices.', error)
+    ElMessage.warning(t('doctorVideo.consultation.cameraLoadFailed'))
+  }
+}
+
+const requestInitialCameraSelection = async () => {
+  await refreshCameraDevices()
+
+  if (session.rememberedCameraAvailable.value && session.selectedCameraId.value) {
+    return session.selectedCameraId.value
+  }
+
+  cameraDialogRequired.value = true
+  cameraDialogVisible.value = true
+
+  return new Promise<string>((resolve) => {
+    pendingInitialCameraSelection = resolve
+  })
+}
+
+const openCameraSwitchDialog = async () => {
+  cameraDialogRequired.value = false
+  cameraDialogVisible.value = true
+  await refreshCameraDevices()
+}
+
+const handleCameraSelectionConfirm = async (deviceId: string) => {
+  if (cameraDialogRequired.value) {
+    session.selectCamera(deviceId)
+    pendingInitialCameraSelection?.(deviceId)
+    pendingInitialCameraSelection = null
+    cameraDialogVisible.value = false
+    cameraDialogRequired.value = false
+    return
+  }
+
+  try {
+    await session.switchCamera(deviceId)
+    cameraDialogVisible.value = false
+    ElMessage.success(t('doctorVideo.consultation.cameraSwitchSuccess'))
+  } catch (error) {
+    console.warn('Failed to switch doctor camera.', error)
+    ElMessage.warning(t('doctorVideo.consultation.cameraSwitchFailed'))
+  }
+}
+
 const handleChatInput = (value: string) => {
   chatDraft.value = value
 }
@@ -1311,7 +1378,8 @@ const bootstrapConsultation = async () => {
     return
   }
 
-  await session.prepareLocalTracks()
+  const initialCameraId = await requestInitialCameraSelection()
+  await session.prepareLocalTracks(initialCameraId)
 
   try {
     const primaryChannelId = `${roomId.value}_cn`
@@ -1389,6 +1457,7 @@ const retrySubtitle = async () => {
 const handleLeave = async () => {
   savedSubtitleKeys.clear()
   chatDraft.value = ''
+  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
   await session.leaveConsultationRoom()
@@ -1412,6 +1481,7 @@ onBeforeUnmount(async () => {
   window.clearInterval(dateTimer)
   savedSubtitleKeys.clear()
   chatDraft.value = ''
+  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
   await session.leaveConsultationRoom()

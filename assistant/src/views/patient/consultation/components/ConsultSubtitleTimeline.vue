@@ -17,6 +17,29 @@
           {{ loading ? t('assistant.patientVideo.consultation.subtitleStarting') : error ? t('assistant.patientVideo.consultation.subtitleRetryNeeded') : t('assistant.patientVideo.consultation.subtitleReady') }}
         </span>
 
+        <button
+          type="button"
+          class="language-toggle"
+          :class="{ 'is-active': showOriginalLanguage }"
+          role="switch"
+          :aria-checked="showOriginalLanguage"
+          @click="toggleOriginalLanguage"
+        >
+          <span class="language-toggle-copy">
+            <span class="language-toggle-label">{{ t('assistant.patientVideo.consultation.originalLanguage') }}</span>
+            <span class="language-toggle-value">
+              {{
+                showOriginalLanguage
+                  ? t('assistant.patientVideo.consultation.showOriginalLanguage')
+                  : t('assistant.patientVideo.consultation.hideOriginalLanguage')
+              }}
+            </span>
+          </span>
+          <span class="language-toggle-track">
+            <span class="language-toggle-thumb" />
+          </span>
+        </button>
+
         <button v-if="error" type="button" class="retry-button" @click="onRetry">
           <el-icon><refresh-right /></el-icon>
           <span>{{ t('assistant.patientVideo.consultation.retrySubtitle') }}</span>
@@ -38,17 +61,34 @@
             <span class="message-time">{{ formatTime(item.anchorTimestamp) }}</span>
           </div>
 
-          <div :class="['message-bubble', item.side === 'self' ? 'bubble-self' : 'bubble-remote']">
-            <div v-if="item.sourceText" class="message-section">
+          <div
+            :class="[
+              'message-bubble',
+              item.side === 'self' ? 'bubble-self' : 'bubble-remote',
+              !showOriginalLanguage ? 'message-bubble--translated-only' : ''
+            ]"
+          >
+            <div v-if="showOriginalLanguage && item.sourceText" class="message-section">
               <p class="section-title">{{ formatLanguageLabel(item.sourceLanguage) }}</p>
               <p class="message-text">{{ item.sourceText }}</p>
             </div>
 
-            <div v-if="item.sourceText && item.translatedText" class="message-divider" />
+            <div v-if="showOriginalLanguage && item.sourceText && item.translatedText" class="message-divider" />
 
-            <div v-if="item.translatedText" class="message-section">
-              <p class="section-title section-title--translated">{{ t('assistant.patientVideo.consultation.translation') }}</p>
-              <p class="message-text translated-text">{{ item.translatedText }}</p>
+            <div
+              v-if="showOriginalLanguage ? item.translatedText : true"
+              :class="['message-section', !showOriginalLanguage ? 'message-section--translated-only' : '']"
+            >
+              <p v-if="showOriginalLanguage" class="section-title section-title--translated">{{ t('assistant.patientVideo.consultation.translation') }}</p>
+              <p
+                :class="[
+                  'message-text',
+                  'translated-text',
+                  !showOriginalLanguage && !hasTranslatedText(item) ? 'message-text--pending' : ''
+                ]"
+              >
+                {{ resolveTranslatedDisplayText(item) }}
+              </p>
             </div>
 
             <span v-if="!item.isFinal" class="draft-tag">{{ t('assistant.patientVideo.consultation.recognizing') }}</span>
@@ -122,6 +162,7 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
+const showOriginalLanguage = ref(false)
 const sendDisabled = computed(() => {
   return Boolean(
     props.chatInputDisabled ||
@@ -142,6 +183,22 @@ const languageLabelMap: Record<string, string> = {
 const formatLanguageLabel = (languageCode: string) => {
   const normalizedCode = languageCode?.trim().toLowerCase()
   return languageLabelMap[normalizedCode] || languageCode?.toUpperCase() || t('assistant.patientVideo.consultation.sourceText')
+}
+
+const toggleOriginalLanguage = () => {
+  showOriginalLanguage.value = !showOriginalLanguage.value
+}
+
+const hasTranslatedText = (item: SubtitleTimelineItem) => {
+  return Boolean(item.translatedText?.trim())
+}
+
+const resolveTranslatedDisplayText = (item: SubtitleTimelineItem) => {
+  if (hasTranslatedText(item)) {
+    return item.translatedText
+  }
+
+  return showOriginalLanguage.value ? '' : t('assistant.patientVideo.consultation.translationPending')
 }
 
 const formatTime = (timestamp: number) => {
@@ -242,6 +299,8 @@ onMounted(async () => {
 .status-group {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -265,6 +324,89 @@ onMounted(async () => {
 .is-error {
   background: #fff1f1;
   color: #bf4141;
+}
+
+.language-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  border: 1px solid rgba(141, 168, 214, 0.58);
+  border-radius: 999px;
+  padding: 6px 8px 6px 12px;
+  background: linear-gradient(180deg, rgba(250, 252, 255, 0.98) 0%, rgba(239, 245, 255, 0.98) 100%);
+  color: #20406f;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.language-toggle:hover {
+  border-color: rgba(74, 123, 232, 0.62);
+  box-shadow: 0 10px 20px rgba(77, 115, 192, 0.12);
+}
+
+.language-toggle:focus-visible {
+  outline: none;
+  border-color: #4a7be8;
+  box-shadow: 0 0 0 4px rgba(74, 123, 232, 0.14);
+}
+
+.language-toggle.is-active {
+  border-color: rgba(56, 120, 230, 0.72);
+  background: linear-gradient(180deg, rgba(241, 247, 255, 0.98) 0%, rgba(228, 239, 255, 0.98) 100%);
+}
+
+.language-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  text-align: left;
+}
+
+.language-toggle-label {
+  color: #5f769d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.language-toggle-value {
+  color: #214171;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.language-toggle-track {
+  position: relative;
+  width: 42px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #c8d6f2 0%, #b3c6e9 100%);
+  box-shadow: inset 0 1px 2px rgba(74, 103, 156, 0.16);
+  transition: background 0.2s ease;
+}
+
+.language-toggle.is-active .language-toggle-track {
+  background: linear-gradient(180deg, #4a86ef 0%, #2f68dd 100%);
+}
+
+.language-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 3px 8px rgba(51, 75, 123, 0.22);
+  transition: transform 0.2s ease;
+}
+
+.language-toggle.is-active .language-toggle-thumb {
+  transform: translateX(18px);
 }
 
 .retry-button {
@@ -354,6 +496,10 @@ onMounted(async () => {
   box-shadow: 0 12px 28px rgba(80, 104, 150, 0.08);
 }
 
+.message-bubble--translated-only {
+  padding: 14px 18px 12px;
+}
+
 .bubble-remote {
   border-top-left-radius: 10px;
   background: linear-gradient(180deg, #f8f1ff 0%, #f3ebff 100%);
@@ -368,6 +514,10 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.message-section--translated-only {
+  gap: 5px;
 }
 
 .message-divider {
@@ -396,6 +546,10 @@ onMounted(async () => {
 
 .translated-text {
   color: #414a72;
+}
+
+.message-text--pending {
+  color: #7b8cad;
 }
 
 .draft-tag {
@@ -512,6 +666,14 @@ onMounted(async () => {
   .consult-subtitle-panel {
     border-right: none;
     border-bottom: 1px solid rgba(222, 231, 243, 0.96);
+  }
+
+  .panel-header {
+    align-items: stretch;
+  }
+
+  .status-group {
+    justify-content: flex-start;
   }
 }
 </style>

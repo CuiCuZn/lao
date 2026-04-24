@@ -175,11 +175,13 @@ export default {
     inputDepartmentName: 'ກະລຸນາປ້ອນຊື່ພະແນກ',
     selectVisitDate: 'ກະລຸນາເລືອກວັນທີກວດ'
   },
+  message: {
+    noPermission: 'ບັນຊີນີ້ບໍ່ມີສິດເຂົ້າໃຊ້ລະບົບນີ້.'
+  },
   menu: {
     doctorMgmt: 'ການຈັດການບັນຊີທ່ານໝໍ',
     deptMgmt: 'ການຈັດການພະແນກ',
     recordMgmt: 'ບັນທຶກການກວດພະຍາດ',
-    adminSystem: 'ລະບົບການຈັດການພາກສ່ວນຫຼັງ',
-    profile: 'ສູນສ່ວນຕົວ'
+    adminSystem: 'ລະບົບການຈັດການພາກສ່ວນຫຼັງ'
   }
 }

@@ -5,12 +5,26 @@
       type="button"
       class="control-button control-button--secondary"
       :class="cameraEnabled ? 'is-active' : 'is-inactive'"
+      :disabled="cameraSwitching"
       @click="onToggleCamera"
     >
       <span class="icon-shell">
         <el-icon><video-camera /></el-icon>
       </span>
       <span class="label">{{ cameraEnabled ? t('assistant.patientVideo.consultation.cameraOn') : t('assistant.patientVideo.consultation.cameraOff') }}</span>
+    </button>
+
+    <button
+      v-if="showCamera && onSwitchCamera"
+      type="button"
+      class="control-button control-button--secondary is-active"
+      :disabled="cameraSwitching"
+      @click="onSwitchCamera"
+    >
+      <span class="icon-shell">
+        <el-icon><refresh /></el-icon>
+      </span>
+      <span class="label">{{ t('assistant.patientVideo.consultation.cameraSwitch') }}</span>
     </button>
 
     <button
@@ -41,6 +55,7 @@
 import {
   Microphone,
   MuteNotification,
+  Refresh,
   SwitchButton,
   VideoCamera
 } from '@element-plus/icons-vue'
@@ -50,12 +65,15 @@ interface Props {
   cameraEnabled: boolean
   micEnabled: boolean
   onToggleCamera: () => void | Promise<void>
+  onSwitchCamera?: () => void | Promise<void>
   onToggleMic: () => void | Promise<void>
   onLeave: () => void | Promise<void>
+  cameraSwitching?: boolean
   showCamera?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
+  cameraSwitching: false,
   showCamera: false
 })
 
@@ -88,6 +106,12 @@ const { t } = useI18n()
 
 .control-button:hover {
   transform: translateY(-1px);
+}
+
+.control-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
 }
 
 .icon-shell {

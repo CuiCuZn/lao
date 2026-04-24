@@ -21,23 +21,36 @@
         <div class="login-card__header">
           <h2>{{ t('login.accountLoginTitle') }}</h2>
 
-          <el-dropdown @command="handleSetLanguage">
-            <button type="button" class="language-button">
-              <span class="language-button__icon">
-                <el-icon><Connection /></el-icon>
-              </span>
-              <span>{{ currentLangName }}</span>
-              <el-icon class="language-button__arrow"><ArrowDown /></el-icon>
-            </button>
+          <div class="login-card__actions">
+            <el-tooltip :content="t('login.refreshPage')" placement="top">
+              <button
+                type="button"
+                class="refresh-button"
+                :aria-label="t('login.refreshPage')"
+                @click="handleRefreshPage"
+              >
+                <el-icon><RefreshRight /></el-icon>
+              </button>
+            </el-tooltip>
 
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
-                <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
-                <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+            <el-dropdown @command="handleSetLanguage">
+              <button type="button" class="language-button">
+                <span class="language-button__icon">
+                  <el-icon><Connection /></el-icon>
+                </span>
+                <span>{{ currentLangName }}</span>
+                <el-icon class="language-button__arrow"><ArrowDown /></el-icon>
+              </button>
+
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
+                  <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
+                  <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </div>
 
         <el-form
@@ -111,7 +124,7 @@
 import { computed, markRaw, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowDown, Connection, DataAnalysis, Document, Files, VideoCamera } from '@element-plus/icons-vue'
+import { ArrowDown, Connection, DataAnalysis, Document, Files, RefreshRight, VideoCamera } from '@element-plus/icons-vue'
 import { to } from 'await-to-js'
 import type { FormInstance } from 'element-plus'
 import type { LoginData, TenantVO } from '@/api/types'
@@ -187,6 +200,10 @@ const handleSetLanguage = (lang: string) => {
   locale.value = lang
   localStorage.setItem('lang', lang)
   location.reload()
+}
+
+const handleRefreshPage = () => {
+  window.location.reload()
 }
 
 const handleLogin = () => {
@@ -395,17 +412,42 @@ onMounted(() => {
   line-height: 1.2;
 }
 
+.login-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refresh-button,
 .language-button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   height: 38px;
-  padding: 0 12px;
   border: 1px solid #d9dee8;
   border-radius: 8px;
   background: #f8f8f8;
   color: #4c5564;
   cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+}
+
+.refresh-button:hover,
+.language-button:hover {
+  border-color: #b8c6da;
+  background: #ffffff;
+  color: #2f6cd5;
+}
+
+.refresh-button {
+  width: 38px;
+  justify-content: center;
+  padding: 0;
+  font-size: 16px;
+}
+
+.language-button {
+  gap: 8px;
+  padding: 0 12px;
 }
 
 .language-button__icon {

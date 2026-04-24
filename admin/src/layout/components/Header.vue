@@ -28,8 +28,7 @@
         </div>
         <template #dropdown>
           <el-dropdown-menu>
-            <el-dropdown-item command="profile">{{ t('menu.profile') }}</el-dropdown-item>
-            <el-dropdown-item divided command="logout">
+            <el-dropdown-item command="logout">
               <span>{{ t('common.logout') }}</span>
             </el-dropdown-item>
           </el-dropdown-menu>
@@ -66,8 +65,6 @@ const handleCommand = (command: string) => {
       await userStore.logout()
       window.location.replace(router.resolve({ path: '/login' }).href) // 强制刷新清除所有状态
     })
-  } else if (command === 'profile') {
-    // 预留跳转个人中心
   }
 }
 

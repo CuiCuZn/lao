@@ -450,7 +450,7 @@ const heroMetaItems = computed(() => [
   {
     icon: Calendar,
     label: t('assistant.caseResult.visitDate'),
-    value: formatDate(pickText(['visitDate', 'createTime', 'registerTime', 'updateTime']))
+    value: formatDate(pickText(['visitTime', 'visitDate', 'createTime', 'registerTime', 'updateTime']))
   },
   {
     icon: Timer,
@@ -510,7 +510,7 @@ const patientInfoItems = computed<DetailItem[]>(() => [
 const consultationInfoItems = computed<DetailItem[]>(() => [
   {
     label: t('assistant.caseResult.visitDate'),
-    value: formatDate(pickText(['visitDate', 'createTime', 'registerTime', 'updateTime']))
+    value: formatDate(pickText(['visitTime', 'visitDate', 'createTime', 'registerTime', 'updateTime']))
   },
   {
     label: t('assistant.caseResult.visitDuration'),

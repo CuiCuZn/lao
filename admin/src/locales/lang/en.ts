@@ -175,11 +175,13 @@ export default {
     inputDepartmentName: 'Please enter the department name',
     selectVisitDate: 'Please select the date of service'
   },
+  message: {
+    noPermission: 'The current account does not have permission to access this system.'
+  },
   menu: {
     doctorMgmt: 'Physician Roster',
     deptMgmt: 'Department Management',
     recordMgmt: 'Encounter History',
-    adminSystem: 'Hospital Administration Console',
-    profile: 'Profile Center'
+    adminSystem: 'Hospital Administration Console'
   }
 }

@@ -10,6 +10,7 @@ import 'nprogress/nprogress.css'
 NProgress.configure({ showSpinner: false })
 
 const whiteList = ['/login']
+const requiredRole = 'doctor'
 
 router.beforeEach(async (to) => {
   NProgress.start()
@@ -26,6 +27,14 @@ router.beforeEach(async (to) => {
     if (userStore.roles.length === 0) {
       try {
         await userStore.getInfo()
+        if (!userStore.roles.includes(requiredRole)) {
+          await userStore.logout(false)
+          permissionStore.resetRoutes()
+          ElMessage.error(i18n.global.t('message.noPermission'))
+          NProgress.done()
+          return { path: '/login' }
+        }
+
         const accessRoutes = await permissionStore.generateRoutes()
         accessRoutes.forEach((route) => {
           router.addRoute(route)
@@ -54,6 +63,14 @@ router.beforeEach(async (to) => {
         NProgress.done()
         return { path: '/login', query: { redirect: to.fullPath } }
       }
+    }
+
+    if (!userStore.roles.includes(requiredRole)) {
+      await userStore.logout(false)
+      permissionStore.resetRoutes()
+      ElMessage.error(i18n.global.t('message.noPermission'))
+      NProgress.done()
+      return { path: '/login' }
     }
 
     if (to.matched.length === 0) {

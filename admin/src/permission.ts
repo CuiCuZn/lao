@@ -3,6 +3,7 @@ import { getToken } from '@/utils/auth'
 import { useUserStore } from '@/stores/user'
 import { usePermissionStore } from '@/stores/permission'
 import { useDictStore } from '@/stores/dict'
+import i18n from '@/locales'
 import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
@@ -11,6 +12,7 @@ NProgress.configure({ showSpinner: false })
 
 // 白名单，不需要登录即可访问
 const whiteList = ['/login', '/auth-redirect']
+const requiredRole = 'hospital_admin'
 
 /**
  * 路由守卫逻辑
@@ -32,6 +34,14 @@ router.beforeEach(async (to, from) => {
         try {
           // 获取用户信息
           await userStore.getInfo()
+
+          if (!userStore.roles.includes(requiredRole)) {
+            await userStore.logout()
+            dictStore.clearDict()
+            ElMessage.error(i18n.global.t('message.noPermission'))
+            NProgress.done()
+            return { path: '/login' }
+          }
           
           // 获取并缓存系统必要的字典数据
           // 此处提前加载科室字典：sys_dept 和 职称字典：sys_user_title
@@ -69,6 +79,14 @@ router.beforeEach(async (to, from) => {
           }
         }
       } else {
+        if (!userStore.roles.includes(requiredRole)) {
+          await userStore.logout()
+          dictStore.clearDict()
+          ElMessage.error(i18n.global.t('message.noPermission'))
+          NProgress.done()
+          return { path: '/login' }
+        }
+
         return true
       }
     }

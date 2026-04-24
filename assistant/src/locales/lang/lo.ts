@@ -30,6 +30,7 @@ export default {
     rememberMe: 'ຈື່ລະຫັດຜ່ານ',
     loginBtn: 'ເຂົ້າລະບົບ',
     loggingIn: 'ກໍາລັງເຂົ້າລະບົບ...',
+    refreshPage: 'ໂຫຼດໜ້າຄືນໃໝ່',
     usernameLabel: 'ຊື່ຜູ້ໃຊ້',
     passwordLabel: 'ລະຫັດຜ່ານ',
     tenantLabel: 'ຜູ້ເຊົ່າ',
@@ -323,11 +324,26 @@ export default {
         translation: 'ຄຳແປ',
         recognizing: 'ກຳລັງຮັບຮູ້...',
         sourceText: 'ຂໍ້ຄວາມຕົ້ນສະບັບ',
+        originalLanguage: 'ພາສາຕົ້ນສະບັບ',
+        showOriginalLanguage: 'ເປີດ',
+        hideOriginalLanguage: 'ປິດ',
+        translationPending: 'ກຳລັງແປ',
         muted: 'ປິດສຽງ',
         micOn: 'ປິດສຽງ',
         micOff: 'ເປີດສຽງ',
         cameraOn: 'ປິດວິດີໂອ',
         cameraOff: 'ເປີດວິດີໂອ',
+        cameraSwitch: 'ປ່ຽນກ້ອງ',
+        cameraSelectTitle: 'ເລືອກກ້ອງ',
+        cameraSelectDescription: 'ກະລຸນາເລືອກກ້ອງທີ່ຈະໃຊ້ໃນການກວດນີ້.',
+        cameraFallbackName: 'ກ້ອງ',
+        cameraCurrent: 'ກຳລັງໃຊ້',
+        cameraRefresh: 'ໂຫຼດອຸປະກອນໃໝ່',
+        cameraConfirm: 'ຢືນຢັນໃຊ້ກ້ອງ',
+        cameraEmpty: 'ບໍ່ພົບກ້ອງທີ່ໃຊ້ໄດ້ ກະລຸນາກວດສອບການຕໍ່ອຸປະກອນ ຫຼື ສິດການໃຊ້ງານໃນ browser.',
+        cameraLoadFailed: 'ໂຫຼດລາຍຊື່ກ້ອງບໍ່ສຳເລັດ ກະລຸນາກວດສອບສິດການໃຊ້ງານໃນ browser.',
+        cameraSwitchSuccess: 'ປ່ຽນກ້ອງແລ້ວ.',
+        cameraSwitchFailed: 'ປ່ຽນກ້ອງບໍ່ສຳເລັດ ກະລຸນາກວດສອບວ່າອຸປະກອນໃຊ້ໄດ້ຫຼືບໍ່.',
         leave: 'ສິ້ນສຸດການກວດ',
         inCall: 'ກຳລັງສົນທະນາ',
         selfBadge: 'ທ່ານ',
@@ -367,6 +383,7 @@ export default {
   message: {
     sessionExpired: 'ເຊສຊັນບໍ່ຖືກຕ້ອງ ຫຼື ໝົດອາຍຸແລ້ວ, ກະລຸນາເຂົ້າລະບົບໃໝ່.',
     authCheckFailed: 'ການກວດສອບຕົວຕົນລົ້ມເຫຼວ. ກະລຸນາເຂົ້າລະບົບໃໝ່.',
+    noPermission: 'ບັນຊີນີ້ບໍ່ມີສິດເຂົ້າໃຊ້ລະບົບນີ້.',
     networkError: 'ບໍ່ສາມາດເຊື່ອມຕໍ່ backend ໄດ້',
     timeout: 'ການຮ້ອງຂໍໄປຫາ backend ໃຊ້ເວລາເກີນກໍານົດ',
     systemError: 'ລະບົບຜິດພາດ, ກະລຸນາລອງໃໝ່ພາຍຫຼັງ',
@@ -387,4 +404,3 @@ export default {
     patientConsultation: 'ການກວດວິດີໂອຄົນໄຂ້'
   }
 }
-

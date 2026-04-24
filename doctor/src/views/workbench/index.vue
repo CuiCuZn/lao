@@ -8,22 +8,15 @@
         </div>
 
         <div class="control-actions">
-          <span
-            class="panel-status control-status"
-            :class="[`is-${sseStatus}`, { 'is-highlighted': sseStatus !== 'offline' }]"
-          >
+          <span class="panel-status control-status"
+            :class="[`is-${sseStatus}`, { 'is-highlighted': sseStatus !== 'offline' }]">
             <span class="status-dot"></span>
             {{ connectionStatusText }}
           </span>
 
-          <el-button
-            class="online-action-btn"
-            :class="{ 'is-online': isOnlineRequested }"
-            :type="isOnlineRequested ? 'danger' : 'primary'"
-            :loading="isSwitchingOnlineStatus"
-            round
-            @click="toggleOnlineStatus"
-          >
+          <el-button class="online-action-btn" :class="{ 'is-online': isOnlineRequested }"
+            :type="isOnlineRequested ? 'danger' : 'primary'" :loading="isSwitchingOnlineStatus" round
+            @click="toggleOnlineStatus">
             {{ onlineActionButtonText }}
           </el-button>
         </div>
@@ -124,26 +117,12 @@
                 </div>
               </div>
 
-              <el-button
-                v-if="item.progressText !== t('workbench.completedStatus')"
-                type="primary"
-                class="queue-action"
-                size="small"
-                round
-                :loading="continuingConsultationId === item.id"
-                @click="handleContinueConsultation(item)"
-              >
+              <el-button v-if="item.progressText !== t('workbench.completedStatus')" type="primary" class="queue-action"
+                size="small" round :loading="continuingConsultationId === item.id"
+                @click="handleContinueConsultation(item)">
                 {{ t('workbench.continueAction') }}
               </el-button>
-              <el-button
-                v-else
-                type="info"
-                plain
-                class="queue-action"
-                size="small"
-                round
-                @click="openCaseDetail(item)"
-              >
+              <el-button v-else type="info" plain class="queue-action" size="small" round @click="openCaseDetail(item)">
                 {{ t('workbench.viewDetail', '查看详情') }}
               </el-button>
             </article>
@@ -165,7 +144,7 @@
 
           <h3 class="doctor-name">{{ doctorDisplayName }}</h3>
           <p class="doctor-tagline">{{ doctorTagline }}</p>
-          <span class="doctor-role-pill">{{ doctorInstitution }}</span>
+          <!-- <span class="doctor-role-pill">{{ doctorInstitution }}</span> -->
         </div>
 
         <div class="doctor-details">
@@ -196,43 +175,32 @@
       </article>
     </aside>
 
-    <el-dialog
-      v-model="acceptDialogVisible"
-      :show-close="false"
-      width="400px"
-      class="accept-request-dialog"
-      append-to-body
-      destroy-on-close
-    >
+    <el-dialog v-model="acceptDialogVisible" :show-close="false" width="400px" class="accept-request-dialog"
+      append-to-body destroy-on-close>
       <div v-if="activePatient" class="accept-dialog-content">
         <div class="accept-avatar">
           {{ activePatient.patientName.slice(0, 1) }}
         </div>
         <h2 class="accept-title">{{ t('workbench.acceptRequestTitle') }}</h2>
-        
+
         <div class="accept-actions">
           <el-button class="action-btn reject-btn" :disabled="acceptingConsultation" @click="handleReject">
-            <el-icon><Delete /></el-icon> {{ t('workbench.rejectAction') }}
+            <el-icon>
+              <Delete />
+            </el-icon> {{ t('workbench.rejectAction') }}
           </el-button>
-          <el-button
-            class="action-btn resolve-btn"
-            type="success"
-            :loading="acceptingConsultation"
-            @click="handleConfirmAccept"
-          >
-            <el-icon><VideoCamera /></el-icon> {{ t('workbench.acceptRequestAction') }}
+          <el-button class="action-btn resolve-btn" type="success" :loading="acceptingConsultation"
+            @click="handleConfirmAccept">
+            <el-icon>
+              <VideoCamera />
+            </el-icon> {{ t('workbench.acceptRequestAction') }}
           </el-button>
         </div>
       </div>
     </el-dialog>
 
-    <el-drawer
-      v-model="drawerVisible"
-      :title="t('workbench.viewDetail', '查看详情')"
-      size="60%"
-      destroy-on-close
-      append-to-body
-    >
+    <el-drawer v-model="drawerVisible" :title="t('workbench.viewDetail', '查看详情')" size="60%" destroy-on-close
+      append-to-body>
       <case-detail v-if="drawerVisible" :case-id="currentCaseId" />
     </el-drawer>
   </div>
@@ -405,6 +373,9 @@ async function prepareConsultationNavigation(
   const resolvedPatientId =
     (seedData.patientId !== null && seedData.patientId !== undefined ? String(seedData.patientId).trim() : '') ||
     pickString(rawRecord, ['patientId', 'patId', 'id'])
+  const resolvedDoctorAideId =
+    (seedData.doctorAideId !== null && seedData.doctorAideId !== undefined ? String(seedData.doctorAideId).trim() : '') ||
+    pickString(rawRecord, ['doctorAideId', 'doctorAidId'])
 
   if (!resolvedCaseId) {
     throw new Error(t('workbench.missingCaseId'))
@@ -439,10 +410,14 @@ async function prepareConsultationNavigation(
       ...patientDetail,
       caseId: resolvedCaseId,
       patientId: resolvedPatientId || pickString({ ...basicInfo, ...patientDetail }, ['patientId', 'patId', 'id']),
+      doctorAideId:
+        resolvedDoctorAideId ||
+        pickString({ ...basicInfo, ...patientDetail }, ['doctorAideId', 'doctorAidId']),
       raw: {
         ...rawRecord,
         ...basicInfo,
-        ...patientDetail
+        ...patientDetail,
+        ...(resolvedDoctorAideId ? { doctorAideId: resolvedDoctorAideId } : {})
       }
     },
     consultationMode,
@@ -565,8 +540,8 @@ const doctorInstitution = computed(() => {
 })
 const doctorDepartment = computed(() => {
   if (doctorProfile.value?.departmentId) {
-    const matched = departmentOptions.value.find(d => 
-      String(d.id) === String(doctorProfile.value?.departmentId) || 
+    const matched = departmentOptions.value.find(d =>
+      String(d.id) === String(doctorProfile.value?.departmentId) ||
       String(d.departmentId) === String(doctorProfile.value?.departmentId) ||
       String(d.deptId) === String(doctorProfile.value?.departmentId)
     )
@@ -915,12 +890,12 @@ async function handleSseMessage(message: SseMessage) {
     const basicInfo = (basicResp as any).data || {}
 
     const incomingItem = normalizePendingItem({ ...record, ...basicInfo, ...detail }, message, 0)
-    
+
     // Check if the item is newly arrived
     const isNew = !pendingPatients.value.some(p => p.id === incomingItem.id)
 
     pendingPatients.value = mergePendingItems(pendingPatients.value, [incomingItem]).slice(0, 8)
-    
+
     if (isNew) {
       notifyIncomingConsultation(incomingItem)
     }
@@ -1432,6 +1407,7 @@ function getAvatarGradient(name: string): string {
 .queue-list,
 .unfinished-list,
 .doctor-details {
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -1814,6 +1790,7 @@ function getAvatarGradient(name: string): string {
 }
 
 @keyframes status-pulse {
+
   0%,
   100% {
     box-shadow: 0 8px 20px rgba(31, 120, 255, 0.08);
@@ -1827,6 +1804,7 @@ function getAvatarGradient(name: string): string {
 }
 
 @keyframes status-dot-pulse {
+
   0%,
   100% {
     transform: scale(1);

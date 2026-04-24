@@ -63,7 +63,7 @@ export const useUserStore = defineStore('user', () => {
    * @returns {Promise<void>}
    */
   const logout = async (): Promise<void> => {
-    await logoutApi()
+    await logoutApi().catch(() => undefined)
     token.value = ''
     roles.value = []
     permissions.value = []

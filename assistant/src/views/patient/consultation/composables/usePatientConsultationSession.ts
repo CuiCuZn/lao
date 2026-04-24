@@ -1,5 +1,6 @@
 import DingRTC, {
   type CameraVideoTrack,
+  type CameraVideoTrackConfig,
   type DingRTCClient,
   type MicrophoneAudioTrack,
   type RemoteAudioTrack,
@@ -29,9 +30,84 @@ import type {
 } from '../types'
 
 let autoplayFailedHandlerBound = false
+const CAMERA_STORAGE_KEY = 'assistant.patient.consultation.cameraDeviceId'
+const CAMERA_VIDEO_CONFIG: Omit<CameraVideoTrackConfig, 'deviceId'> = {
+  dimension: 'VD_1280x720',
+  frameRate: 17,
+  optimizationMode: 'detail'
+}
+
+interface StoredCameraSelection {
+  deviceId: string
+  label: string
+  groupId: string
+}
 
 const buildSubtitleTaskId = (channelId: string, sourceLanguage: string) => {
   return `rtc_${sourceLanguage}_${channelId}_${Date.now()}`
+}
+
+const readStoredCameraSelection = (): StoredCameraSelection | null => {
+  try {
+    const rawValue = window.localStorage.getItem(CAMERA_STORAGE_KEY)
+
+    if (!rawValue) {
+      return null
+    }
+
+    try {
+      const parsedValue = JSON.parse(rawValue) as Partial<StoredCameraSelection>
+      return {
+        deviceId: parsedValue.deviceId || '',
+        label: parsedValue.label || '',
+        groupId: parsedValue.groupId || ''
+      }
+    } catch {
+      return {
+        deviceId: rawValue,
+        label: '',
+        groupId: ''
+      }
+    }
+  } catch {
+    return null
+  }
+}
+
+const saveStoredCameraSelection = (device: MediaDeviceInfo) => {
+  try {
+    const payload: StoredCameraSelection = {
+      deviceId: device.deviceId || '',
+      label: device.label || '',
+      groupId: device.groupId || ''
+    }
+    window.localStorage.setItem(CAMERA_STORAGE_KEY, JSON.stringify(payload))
+  } catch {
+    undefined
+  }
+}
+
+const buildCameraVideoConfig = (deviceId?: string): CameraVideoTrackConfig => {
+  return {
+    ...CAMERA_VIDEO_CONFIG,
+    ...(deviceId ? { deviceId } : {})
+  }
+}
+
+const resolveStoredCameraDeviceId = (
+  devices: MediaDeviceInfo[],
+  selection: StoredCameraSelection | null
+) => {
+  if (!selection) {
+    return ''
+  }
+
+  const matchedDevice =
+    devices.find((device) => selection.deviceId && device.deviceId === selection.deviceId) ||
+    devices.find((device) => selection.groupId && device.groupId === selection.groupId) ||
+    devices.find((device) => selection.label && device.label === selection.label)
+
+  return matchedDevice?.deviceId || ''
 }
 
 export const usePatientConsultationSession = () => {
@@ -41,6 +117,11 @@ export const usePatientConsultationSession = () => {
   const subtitleLoading = ref(false)
   const subtitleError = ref('')
   const connectionError = ref('')
+  const cameraDevices = ref<MediaDeviceInfo[]>([])
+  const selectedCameraId = ref('')
+  const rememberedCameraAvailable = ref(false)
+  const cameraDeviceLoading = ref(false)
+  const cameraSwitching = ref(false)
 
   const primaryClient = shallowRef<DingRTCClient | null>(null)
   const secondaryClient = shallowRef<DingRTCClient | null>(null)
@@ -308,6 +389,52 @@ export const usePatientConsultationSession = () => {
     joined.value = false
   }
 
+  const bindCameraTrackEnded = (track: CameraVideoTrack) => {
+    track.on('track-ended', () => {
+      if (cameraTrack.value !== track) {
+        return
+      }
+
+      cameraTrack.value = null
+      triggerRef(cameraTrack)
+      updateTrackStats()
+    })
+  }
+
+  const assignCameraTrack = (track: CameraVideoTrack) => {
+    cameraTrack.value = track
+    bindCameraTrackEnded(track)
+    triggerRef(cameraTrack)
+  }
+
+  const loadCameraDevices = async () => {
+    cameraDeviceLoading.value = true
+
+    try {
+      const devices = await DingRTC.getCameras()
+      cameraDevices.value = devices
+
+      const storedCameraId = resolveStoredCameraDeviceId(devices, readStoredCameraSelection())
+      const preferredCameraId = selectedCameraId.value || storedCameraId
+      const preferredDeviceExists = devices.some((device) => device.deviceId === preferredCameraId)
+      rememberedCameraAvailable.value = Boolean(storedCameraId)
+      selectedCameraId.value = preferredDeviceExists ? preferredCameraId : devices[0]?.deviceId || ''
+
+      return devices
+    } finally {
+      cameraDeviceLoading.value = false
+    }
+  }
+
+  const selectCamera = (deviceId: string) => {
+    selectedCameraId.value = deviceId
+
+    const selectedDevice = cameraDevices.value.find((device) => device.deviceId === deviceId)
+    if (selectedDevice) {
+      saveStoredCameraSelection(selectedDevice)
+    }
+  }
+
   const leaveConsultationRoom = async (options: ConsultationLeaveOptions = {}) => {
     if (teardownInProgress.value) {
       return
@@ -493,28 +620,19 @@ export const usePatientConsultationSession = () => {
     })
   }
 
-  const prepareLocalTracks = async () => {
+  const prepareLocalTracks = async (deviceId = selectedCameraId.value) => {
     if (cameraTrack.value && micTrack.value) {
       return
     }
 
     try {
       const [nextCameraTrack, nextMicTrack] = (await DingRTC.createMicrophoneAndCameraTracks(
-        {
-          dimension: 'VD_1280x720',
-          frameRate: 17,
-          optimizationMode: 'detail'
-        },
+        buildCameraVideoConfig(deviceId),
         {}
       )) as [CameraVideoTrack, MicrophoneAudioTrack]
 
       if (!cameraTrack.value) {
-        cameraTrack.value = nextCameraTrack
-        cameraTrack.value.on('track-ended', () => {
-          cameraTrack.value = null
-          updateTrackStats()
-        })
-        triggerRef(cameraTrack)
+        assignCameraTrack(nextCameraTrack)
       } else {
         closeLocalTrack(nextCameraTrack)
       }
@@ -718,18 +836,9 @@ export const usePatientConsultationSession = () => {
     }
 
     if (!cameraTrack.value) {
-      const track = await DingRTC.createCameraVideoTrack({
-        dimension: 'VD_1280x720',
-        frameRate: 17,
-        optimizationMode: 'detail'
-      })
+      const track = await DingRTC.createCameraVideoTrack(buildCameraVideoConfig(selectedCameraId.value))
 
-      cameraTrack.value = track
-      track.on('track-ended', () => {
-        cameraTrack.value = null
-        updateTrackStats()
-      })
-      triggerRef(cameraTrack)
+      assignCameraTrack(track)
 
       await publishTracksToPrimaryChannel(activePrimaryClient, [track])
       updatePublishedTrackIds([track.getTrackId()], 'add')
@@ -759,6 +868,66 @@ export const usePatientConsultationSession = () => {
 
     triggerRef(cameraTrack)
     updateTrackStats()
+  }
+
+  const switchCamera = async (deviceId: string) => {
+    const normalizedDeviceId = deviceId.trim()
+
+    if (!normalizedDeviceId) {
+      return
+    }
+
+    if (normalizedDeviceId === selectedCameraId.value) {
+      selectCamera(normalizedDeviceId)
+      return
+    }
+
+    cameraSwitching.value = true
+
+    try {
+      const activePrimaryClient = primaryClient.value
+      const track = cameraTrack.value
+
+      if (!track) {
+        const nextTrack = await DingRTC.createCameraVideoTrack(buildCameraVideoConfig(normalizedDeviceId))
+        assignCameraTrack(nextTrack)
+        selectCamera(normalizedDeviceId)
+
+        if (activePrimaryClient && nextTrack.enabled) {
+          await publishTracksToPrimaryChannel(activePrimaryClient, [nextTrack])
+          updatePublishedTrackIds([nextTrack.getTrackId()], 'add')
+        }
+
+        updateTrackStats()
+        return
+      }
+
+      const shouldRepublishAfterSwitch = Boolean(track.enabled && activePrimaryClient)
+      const previousTrackId = track.getTrackId()
+      const wasPublished = publishedTrackIds.value.has(previousTrackId)
+
+      if (!track.enabled) {
+        await track.setDevice(normalizedDeviceId)
+        selectCamera(normalizedDeviceId)
+        triggerRef(cameraTrack)
+        updateTrackStats()
+        return
+      }
+
+      await track.setDevice(normalizedDeviceId)
+      selectCamera(normalizedDeviceId)
+      triggerRef(cameraTrack)
+
+      const nextTrackId = track.getTrackId()
+      if (shouldRepublishAfterSwitch && wasPublished && nextTrackId !== previousTrackId) {
+        updatePublishedTrackIds([previousTrackId], 'remove')
+        updatePublishedTrackIds([nextTrackId], 'add')
+      }
+
+      updateTrackStats()
+    } finally {
+      cameraSwitching.value = false
+    }
   }
 
   const toggleMic = async () => {
@@ -898,6 +1067,11 @@ export const usePatientConsultationSession = () => {
     subtitleLoading,
     subtitleError,
     connectionError,
+    cameraDevices,
+    selectedCameraId,
+    rememberedCameraAvailable,
+    cameraDeviceLoading,
+    cameraSwitching,
     cameraEnabled,
     micEnabled,
     subtitleBindings,
@@ -907,6 +1081,9 @@ export const usePatientConsultationSession = () => {
     featuredParticipant,
     extraParticipants,
     bindAutoplayFailedHandler,
+    loadCameraDevices,
+    selectCamera,
+    switchCamera,
     prepareLocalTracks,
     localPreviewTrack,
     enterConsultationRoom,

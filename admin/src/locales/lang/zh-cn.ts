@@ -175,11 +175,13 @@ export default {
     inputDepartmentName: '请输入就诊科室',
     selectVisitDate: '请选择接诊日期'
   },
+  message: {
+    noPermission: '当前账号没有权限进入该系统'
+  },
   menu: {
     doctorMgmt: '医师档案管理',
     deptMgmt: '科室编制管理',
     recordMgmt: '诊疗记录审计',
-    adminSystem: '院端数据总控台',
-    profile: '个人中心'
+    adminSystem: '院端数据总控台'
   }
 }
