@@ -324,7 +324,7 @@ export default {
         translation: 'ຄຳແປ',
         recognizing: 'ກຳລັງຮັບຮູ້...',
         sourceText: 'ຂໍ້ຄວາມຕົ້ນສະບັບ',
-        originalLanguage: 'ພາສາຕົ້ນສະບັບ',
+        originalLanguage: 'ສະແດງສອງພາສາບໍ',
         showOriginalLanguage: 'ເປີດ',
         hideOriginalLanguage: 'ປິດ',
         translationPending: 'ກຳລັງແປ',

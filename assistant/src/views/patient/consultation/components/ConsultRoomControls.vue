@@ -149,7 +149,7 @@ const { t } = useI18n()
 }
 
 .control-button--danger {
-  color: #fefefe;
+  color: #2d4268;
 }
 
 .control-button--danger .icon-shell {

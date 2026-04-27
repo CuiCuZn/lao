@@ -20,20 +20,13 @@
         <button
           type="button"
           class="language-toggle"
-          :class="{ 'is-active': showOriginalLanguage }"
+          :class="{ 'is-active': showBilingual }"
           role="switch"
-          :aria-checked="showOriginalLanguage"
-          @click="toggleOriginalLanguage"
+          :aria-checked="showBilingual"
+          @click="toggleBilingual"
         >
           <span class="language-toggle-copy">
             <span class="language-toggle-label">{{ t('doctorVideo.consultation.originalLanguage') }}</span>
-            <span class="language-toggle-value">
-              {{
-                showOriginalLanguage
-                  ? t('doctorVideo.consultation.showOriginalLanguage')
-                  : t('doctorVideo.consultation.hideOriginalLanguage')
-              }}
-            </span>
           </span>
           <span class="language-toggle-track">
             <span class="language-toggle-thumb" />
@@ -65,29 +58,29 @@
             :class="[
               'message-bubble',
               item.side === 'self' ? 'bubble-self' : 'bubble-remote',
-              !showOriginalLanguage ? 'message-bubble--translated-only' : ''
+              !showBilingual ? 'message-bubble--translated-only' : ''
             ]"
           >
-            <div v-if="showOriginalLanguage && item.sourceText" class="message-section">
+            <div v-if="showBilingual && item.sourceText" class="message-section">
               <p class="section-title">{{ formatLanguageLabel(item.sourceLanguage) }}</p>
               <p class="message-text">{{ item.sourceText }}</p>
             </div>
 
-            <div v-if="showOriginalLanguage && item.sourceText && item.translatedText" class="message-divider" />
+            <div v-if="showBilingual && item.sourceText && item.translatedText" class="message-divider" />
 
             <div
-              v-if="showOriginalLanguage ? item.translatedText : true"
-              :class="['message-section', !showOriginalLanguage ? 'message-section--translated-only' : '']"
+              v-if="showBilingual ? item.translatedText : true"
+              :class="['message-section', !showBilingual ? 'message-section--translated-only' : '']"
             >
-              <p v-if="showOriginalLanguage" class="section-title section-title--translated">{{ t('doctorVideo.consultation.translation') }}</p>
+              <p v-if="showBilingual" class="section-title section-title--translated">{{ t('doctorVideo.consultation.translation') }}</p>
               <p
                 :class="[
                   'message-text',
                   'translated-text',
-                  !showOriginalLanguage && !hasTranslatedText(item) ? 'message-text--pending' : ''
+                  !showBilingual && isSingleLanguageDisplayPending(item) ? 'message-text--pending' : ''
                 ]"
               >
-                {{ resolveTranslatedDisplayText(item) }}
+                {{ resolveDisplayText(item) }}
               </p>
             </div>
 
@@ -162,7 +155,7 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
-const showOriginalLanguage = ref(false)
+const showBilingual = ref(false)
 const sendDisabled = computed(() => {
   return Boolean(
     props.chatInputDisabled ||
@@ -185,20 +178,44 @@ const formatLanguageLabel = (languageCode: string) => {
   return languageLabelMap[normalizedCode] || languageCode?.toUpperCase() || t('doctorVideo.consultation.sourceText')
 }
 
-const toggleOriginalLanguage = () => {
-  showOriginalLanguage.value = !showOriginalLanguage.value
+const toggleBilingual = () => {
+  showBilingual.value = !showBilingual.value
 }
 
 const hasTranslatedText = (item: SubtitleTimelineItem) => {
   return Boolean(item.translatedText?.trim())
 }
 
-const resolveTranslatedDisplayText = (item: SubtitleTimelineItem) => {
+const hasSourceText = (item: SubtitleTimelineItem) => {
+  return Boolean(item.sourceText?.trim())
+}
+
+const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
+  return item.side === 'remote' && !hasTranslatedText(item)
+}
+
+const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
+  if (item.side === 'self') {
+    return item.sourceText?.trim() || item.translatedText?.trim() || ''
+  }
+
   if (hasTranslatedText(item)) {
     return item.translatedText
   }
 
-  return showOriginalLanguage.value ? '' : t('doctorVideo.consultation.translationPending')
+  return t('doctorVideo.consultation.translationPending')
+}
+
+const resolveDisplayText = (item: SubtitleTimelineItem) => {
+  if (showBilingual.value) {
+    return item.translatedText
+  }
+
+  if (hasSourceText(item) || hasTranslatedText(item)) {
+    return resolveSingleLanguageDisplayText(item)
+  }
+
+  return item.side === 'remote' ? t('doctorVideo.consultation.translationPending') : ''
 }
 
 const formatTime = (timestamp: number) => {

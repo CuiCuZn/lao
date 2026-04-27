@@ -261,7 +261,7 @@
                 </div>
 
                 <p class="history-case-diagnosis">
-                  {{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}
+                  {{ t('workbench.diagnosisLabel') }}{{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}
                 </p>
               </article>
             </div>
@@ -1784,7 +1784,6 @@ onBeforeUnmount(async () => {
 .compact-history-form :deep(.el-form-item__label),
 .compact-diagnosis-form :deep(.el-form-item__label) {
   padding-bottom: 6px;
-  color: #f25c35;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.45;

@@ -13,13 +13,7 @@
           </div>
 
           <div class="waiting-stage__visual" aria-hidden="true">
-            <span class="pulse-ring pulse-ring--lg" />
-            <span class="pulse-ring pulse-ring--md" />
-            <span class="pulse-ring pulse-ring--sm" />
-
-            <div class="pulse-core">
-              <el-icon><video-camera-filled /></el-icon>
-            </div>
+            <loading-lottie />
           </div>
         </section>
       </div>
@@ -31,7 +25,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { VideoCameraFilled } from '@element-plus/icons-vue'
+import LoadingLottie from '@/components/LoadingLottie.vue'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
@@ -72,6 +66,7 @@ onMounted(() => {
       sessionStore.setVideoRoomContext({
         patientId: message.payload.patientId,
         doctorId: message.payload.doctorId,
+        doctorName: message.payload.doctorName,
         roomId: message.payload.roomId,
         ...(caseId ? { caseId } : {})
       })
@@ -117,6 +112,7 @@ onMounted(() => {
         sessionStore.setVideoRoomContext({
           patientId: message.payload.patientId,
           doctorId: message.payload.doctorId,
+          doctorName: message.payload.doctorName,
           roomId: message.payload.roomId,
           ...(caseId ? { caseId } : {}),
           ...(videoId ? { videoId } : {})
@@ -129,6 +125,8 @@ onMounted(() => {
             secondaryToken,
             channelId: message.payload.roomId,
             userId: message.payload.patientId,
+            doctorId: message.payload.doctorId,
+            doctorName: message.payload.doctorName,
             ...(caseId ? { caseId } : {}),
             ...(videoId ? { videoId } : {})
           }
@@ -207,82 +205,11 @@ onBeforeUnmount(() => {
 }
 
 .waiting-stage__visual {
-  position: relative;
-  width: 232px;
-  height: 232px;
+  width: 260px;
+  height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.pulse-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid rgba(74, 136, 255, 0.12);
-  animation: pulse-wave 2.8s ease-out infinite;
-}
-
-.pulse-ring--lg {
-  width: 176px;
-  height: 176px;
-}
-
-.pulse-ring--md {
-  width: 146px;
-  height: 146px;
-  animation-delay: 0.35s;
-}
-
-.pulse-ring--sm {
-  width: 116px;
-  height: 116px;
-  animation-delay: 0.7s;
-}
-
-.pulse-core {
-  position: relative;
-  z-index: 1;
-  width: 72px;
-  height: 72px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #4a8cff 0%, #3774ef 100%);
-  color: #ffffff;
-  font-size: 28px;
-  box-shadow:
-    0 16px 30px rgba(62, 119, 239, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.36);
-  animation: core-breathe 2.4s ease-in-out infinite;
-}
-
-@keyframes pulse-wave {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.78;
-  }
-
-  70% {
-    opacity: 0.22;
-  }
-
-  100% {
-    transform: scale(1.08);
-    opacity: 0;
-  }
-}
-
-@keyframes core-breathe {
-
-  0%,
-  100% {
-    transform: scale(1);
-  }
-
-  50% {
-    transform: scale(1.06);
-  }
 }
 
 @media (max-width: 1200px) {
@@ -320,23 +247,8 @@ onBeforeUnmount(() => {
   }
 
   .waiting-stage__visual {
-    width: 184px;
-    height: 184px;
-  }
-
-  .pulse-ring--lg {
-    width: 150px;
-    height: 150px;
-  }
-
-  .pulse-ring--md {
-    width: 122px;
-    height: 122px;
-  }
-
-  .pulse-ring--sm {
-    width: 96px;
-    height: 96px;
+    width: 200px;
+    height: 200px;
   }
 }
 </style>

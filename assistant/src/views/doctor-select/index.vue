@@ -366,6 +366,10 @@ const selectedDoctorName = computed(() => {
   return selected ? `${selected.name} ${t('assistant.doctorSelect.selectedDoctor')}` : t('assistant.doctorSelect.footerTip')
 })
 
+const selectedDoctor = computed(() => {
+  return doctorCards.value.find((item) => item.id === selectedDoctorId.value) || null
+})
+
 const departmentStatusText = computed(() => {
   return departmentLoading.value ? t('assistant.doctorSelect.loadingDepartments') : t('assistant.doctorSelect.noDepartments')
 })
@@ -497,6 +501,7 @@ const handleCreateRoom = async () => {
     broadcastVideoRoomCreated({
       patientId,
       doctorId: selectedDoctorId.value,
+      doctorName: selectedDoctor.value?.name || '',
       ...(caseId ? { caseId } : {}),
       roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : ''
     })

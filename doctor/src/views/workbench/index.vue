@@ -27,7 +27,7 @@
           <div class="metric-copy">
             <span class="metric-label">{{ card.label }}</span>
             <strong class="metric-value">{{ card.value }}</strong>
-            <p class="metric-hint">{{ card.hint }}</p>
+            <!-- <p class="metric-hint">{{ card.hint }}</p> -->
           </div>
 
           <div class="metric-icon">
@@ -43,7 +43,7 @@
           <div class="panel-header">
             <div class="panel-heading">
               <span class="panel-kicker">{{ t('workbench.pendingTitle') }}</span>
-              <p class="panel-description">{{ t('workbench.pendingPanelHint', { count: pendingCount }) }}</p>
+              <!-- <p class="panel-description">{{ t('workbench.pendingPanelHint', { count: pendingCount }) }}</p> -->
             </div>
           </div>
 
@@ -80,10 +80,9 @@
 
           <div v-else class="empty-state">
             <el-icon class="empty-icon">
-              <CircleCheckFilled />
+              <Box />
             </el-icon>
-            <h4>{{ pendingEmptyTitle }}</h4>
-            <p>{{ pendingEmptyDescription }}</p>
+            <h4>{{ pendingEmptyDescription }}</h4>
           </div>
         </article>
 
@@ -103,9 +102,11 @@
               <div class="unfinished-content">
                 <div class="unfinished-top">
                   <h4>{{ item.displayName || item.patientName }}</h4>
-                  <span class="unfinished-progress">{{ item.progressText }}</span>
+                  <span :class="['unfinished-progress', getDiagnosisStatusClass(item.progressText)]">
+                    {{ item.progressText }}
+                  </span>
                 </div>
-                <p class="unfinished-result">{{ item.projectName }}</p>
+                <p class="unfinished-result">{{ t('workbench.diagnosisLabel') }}{{ item.projectName }}</p>
 
                 <div class="queue-meta unfinished-meta">
                   <span class="unfinished-time-chip">
@@ -117,12 +118,13 @@
                 </div>
               </div>
 
-              <el-button v-if="item.progressText !== t('workbench.completedStatus')" type="primary" class="queue-action"
-                size="small" round :loading="continuingConsultationId === item.id"
+              <el-button v-if="item.progressText !== t('workbench.completedStatus')" type="primary"
+                class="queue-action continue-action" size="small" round :loading="continuingConsultationId === item.id"
                 @click="handleContinueConsultation(item)">
                 {{ t('workbench.continueAction') }}
               </el-button>
-              <el-button v-else type="info" plain class="queue-action" size="small" round @click="openCaseDetail(item)">
+              <el-button v-else type="info" plain class="queue-action detail-action" size="small" round
+                @click="openCaseDetail(item)">
                 {{ t('workbench.viewDetail', '查看详情') }}
               </el-button>
             </article>
@@ -211,7 +213,7 @@ import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  CircleCheckFilled,
+  Box,
   Clock,
   DataAnalysis,
   Document,
@@ -295,6 +297,14 @@ const openCaseDetail = (item: IncompleteConsultation) => {
 const openAcceptDialog = (item: PendingConsultation) => {
   activePatient.value = item
   acceptDialogVisible.value = true
+}
+
+const openIncomingAcceptDialog = (item: PendingConsultation) => {
+  if (acceptDialogVisible.value || acceptingConsultation.value) {
+    return
+  }
+
+  openAcceptDialog(item)
 }
 
 const handleReject = () => {
@@ -898,6 +908,7 @@ async function handleSseMessage(message: SseMessage) {
 
     if (isNew) {
       notifyIncomingConsultation(incomingItem)
+      openIncomingAcceptDialog(incomingItem)
     }
   } catch (error) {
     console.error('Failed to fetch patient or basic details:', error)
@@ -1052,6 +1063,18 @@ function formatDiagnosisStatus(value?: string): string {
   if (normalizedValue === '0' || normalizedValue === '未完成') return t('workbench.incompleteStatus')
   if (normalizedValue === '1' || normalizedValue === '已完成') return t('workbench.completedStatus')
   return value?.trim() || t('workbench.notAvailable')
+}
+
+function getDiagnosisStatusClass(value: string): string {
+  if (value === t('workbench.completedStatus')) {
+    return 'unfinished-progress--completed'
+  }
+
+  if (value === t('workbench.incompleteStatus')) {
+    return 'unfinished-progress--incomplete'
+  }
+
+  return ''
 }
 
 function formatAgeLabel(value?: string | number): string {
@@ -1632,6 +1655,18 @@ function getAvatarGradient(name: string): string {
   font-size: 11px;
 }
 
+.unfinished-progress--incomplete {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.unfinished-progress--completed {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #16a34a;
+}
+
 .unfinished-meta {
   margin-top: 12px;
 }
@@ -1647,6 +1682,56 @@ function getAvatarGradient(name: string): string {
   min-width: 84px;
   min-height: 36px;
   justify-self: end;
+}
+
+.continue-action {
+  --el-button-bg-color: #d85a2b;
+  --el-button-border-color: #d85a2b;
+  --el-button-hover-bg-color: #c94f23;
+  --el-button-hover-border-color: #c94f23;
+  --el-button-active-bg-color: #b9461f;
+  --el-button-active-border-color: #b9461f;
+  --el-button-disabled-bg-color: rgba(216, 90, 43, 0.55);
+  --el-button-disabled-border-color: rgba(216, 90, 43, 0.45);
+  color: #fff;
+}
+
+.continue-action:hover,
+.continue-action:focus {
+  background: #c94f23;
+  border-color: #c94f23;
+  color: #fff;
+}
+
+.continue-action:active {
+  background: #b9461f;
+  border-color: #b9461f;
+  color: #fff;
+}
+
+.detail-action {
+  --el-button-bg-color: #357efe;
+  --el-button-border-color: #357efe;
+  --el-button-hover-bg-color: #246fe8;
+  --el-button-hover-border-color: #246fe8;
+  --el-button-active-bg-color: #1d62d2;
+  --el-button-active-border-color: #1d62d2;
+  background: #357efe !important;
+  border-color: #357efe !important;
+  color: #fff !important;
+}
+
+.detail-action:hover,
+.detail-action:focus {
+  background: #246fe8 !important;
+  border-color: #246fe8 !important;
+  color: #fff !important;
+}
+
+.detail-action:active {
+  background: #1d62d2 !important;
+  border-color: #1d62d2 !important;
+  color: #fff !important;
 }
 
 .secondary-action {

@@ -13,6 +13,7 @@ export type VideoRoomCreatedMessage = {
     patientId: string
     caseId?: string | number
     doctorId: string
+    doctorName: string
     roomId: string
   }
 }
@@ -66,7 +67,12 @@ const isPatientChannelMessage = (value: unknown): value is PatientChannelMessage
   }
 
   if (value.type === PATIENT_CHANNEL_MESSAGE_TYPES.videoRoomCreated) {
-    return typeof value.payload.patientId === 'string' && typeof value.payload.doctorId === 'string' && typeof value.payload.roomId === 'string'
+    return (
+      typeof value.payload.patientId === 'string' &&
+      typeof value.payload.doctorId === 'string' &&
+      typeof value.payload.doctorName === 'string' &&
+      typeof value.payload.roomId === 'string'
+    )
   }
 
   if (value.type === PATIENT_CHANNEL_MESSAGE_TYPES.reconnectFailed) {

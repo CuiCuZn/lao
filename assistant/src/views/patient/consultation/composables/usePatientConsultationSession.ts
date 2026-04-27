@@ -9,6 +9,7 @@ import DingRTC, {
 import { ElMessageBox } from 'element-plus'
 import { computed, ref, shallowRef, triggerRef } from 'vue'
 import { closeVideoSubtitle, openVideoSubtitle } from '@/api/video'
+import { usePatientSessionStore } from '@/stores/patient-session'
 import {
   closeLocalTrack,
   createConsultationClients,
@@ -94,6 +95,14 @@ const buildCameraVideoConfig = (deviceId?: string): CameraVideoTrackConfig => {
   }
 }
 
+const takeOptionalText = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  return String(value).trim()
+}
+
 const resolveStoredCameraDeviceId = (
   devices: MediaDeviceInfo[],
   selection: StoredCameraSelection | null
@@ -111,6 +120,7 @@ const resolveStoredCameraDeviceId = (
 }
 
 export const usePatientConsultationSession = () => {
+  const patientSessionStore = usePatientSessionStore()
   const joining = ref(false)
   const joined = ref(false)
   const supported = ref(true)
@@ -1040,9 +1050,15 @@ export const usePatientConsultationSession = () => {
       return participantWithTrack
     }
 
+    const doctorId = takeOptionalText(patientSessionStore.doctorId)
+    const doctorName = takeOptionalText(patientSessionStore.doctorName)
+    const doctorDisplayName = doctorName
+      ? `${doctorName}${doctorId ? ` · ${doctorId}` : ''}`
+      : doctorId || '等待医生接入'
+
     return remoteParticipants.value[0] || {
-      userId: 'placeholder',
-      userName: '等待医生接入',
+      userId: doctorId || 'placeholder',
+      userName: doctorDisplayName,
       track: null,
       muted: true,
       speaking: false,

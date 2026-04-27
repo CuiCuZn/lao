@@ -48,7 +48,6 @@
 
       <!-- 3. 数据表格 -->
       <el-table v-loading="loading" :data="userList" style="width: 100%; margin-top: 15px" border>
-        <el-table-column label="ID" align="center" prop="userId" width="100" :show-overflow-tooltip="true" />
         <el-table-column :label="t('doctor.nickName')" align="center" prop="nickName" />
         <el-table-column :label="t('doctor.userName')" align="center" prop="userName" />
         <el-table-column :label="t('doctor.jobNumber')" align="center" prop="jobNumber" />

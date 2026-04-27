@@ -8,6 +8,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const patientId = ref('')
   const patientDetail = ref<PatientDetailRecord>(null)
   const doctorId = ref('')
+  const doctorName = ref('')
   const caseId = ref<string | number | undefined>(undefined)
   const videoId = ref<string | number | undefined>(undefined)
   const roomId = ref('')
@@ -16,6 +17,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
 
   const resetVideoContext = () => {
     doctorId.value = ''
+    doctorName.value = ''
     caseId.value = undefined
     videoId.value = undefined
     roomId.value = ''
@@ -49,15 +51,27 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const setVideoRoomContext = (payload: {
     patientId: string
     doctorId: string
+    doctorName?: string
     caseId?: string | number
     videoId?: string | number
     roomId: string
   }) => {
     patientId.value = payload.patientId
     doctorId.value = payload.doctorId
+    doctorName.value = payload.doctorName !== undefined ? payload.doctorName : doctorName.value
     caseId.value = payload.caseId
     videoId.value = payload.videoId
     roomId.value = payload.roomId
+  }
+
+  const setDoctorInfo = (payload: { doctorId?: string; doctorName?: string }) => {
+    if (payload.doctorId !== undefined) {
+      doctorId.value = payload.doctorId
+    }
+
+    if (payload.doctorName !== undefined) {
+      doctorName.value = payload.doctorName
+    }
   }
 
   const setPatientDetail = (nextPatientId: string, detail: PatientDetailRecord) => {
@@ -85,6 +99,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     patientId,
     patientDetail,
     doctorId,
+    doctorName,
     caseId,
     videoId,
     roomId,
@@ -94,6 +109,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     setCaseId,
     setPatientDetail,
     setPatientDetailError,
+    setDoctorInfo,
     setVideoRoomContext,
     resetVideoContext
   }

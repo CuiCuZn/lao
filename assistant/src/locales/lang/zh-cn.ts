@@ -224,7 +224,7 @@ export default {
     },
     intake: {
       pageTitle: '患者问诊建档',
-      pageSubtitle: '请录入患者脱敏后的基本信息，并在右侧控制面板进行四诊取样辅助。',
+      pageSubtitle: '请录入患者基本信息，并在右侧进行四诊仪数据采集。',
       basicTitle: '患者基线信息',
       fourDiagnosis: {
         displayTitle: '四诊仪采集区',
@@ -272,12 +272,12 @@ export default {
       allDepartments: '全部科室',
       patientVisitNo: '就诊ID',
       currentComplaint: '本班就诊',
-      loadingDepartments: '正在获取专科列表...',
-      noDepartments: '暂无配置相关专科',
+      loadingDepartments: '正在获取科室列表...',
+      noDepartments: '暂无配置相关科室',
       loadingDoctors: '正在获取在线医师排班...',
       refreshDoctors: '刷新可用排班',
       refreshingDoctors: '检索中...',
-      noDoctors: '当前时段该专科下暂无在线医师',
+      noDoctors: '当前时段该科室下暂无在线医师',
       online: '当值',
       offline: '离线',
       selectDoctor: '选定医师',
@@ -287,7 +287,7 @@ export default {
       footerLoading: '引擎启动中...',
       createRoomSuccess: '安全会诊房间已分配',
       ageSuffix: '岁',
-      specialties: '专家专长',
+      specialties: '擅长',
       metrics: {
         consultations: '累计接诊',
         approval: '患者好评'
@@ -324,7 +324,7 @@ export default {
         translation: '翻译',
         recognizing: '语音识别中...',
         sourceText: '原文',
-        originalLanguage: '原语言',
+        originalLanguage: '是否展示双语',
         showOriginalLanguage: '开启',
         hideOriginalLanguage: '关闭',
         translationPending: '翻译中',

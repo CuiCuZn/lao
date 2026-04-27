@@ -88,13 +88,12 @@
                   </span>
                 </div>
 
-                <p>{{ t('assistant.patientVideo.consultation.footerSubtitle') }}</p>
-
-                <div class="doctor-meta">
-                  <span>{{ t('assistant.patientVideo.consultation.doctorId') }}: {{ sessionStore.doctorId || '--' }}</span>
+                <!-- 显示会诊信息（可选）：此处代码只注释不删除 -->
+                <!-- <div class="doctor-meta">
+                  <span>{{ t('assistant.patientVideo.consultation.doctorId') }}: {{ consultationDoctorId || '--' }}</span>
                   <span>{{ t('assistant.patientVideo.consultation.caseId') }}: {{ consultationCaseId || '--' }}</span>
                   <span>{{ t('assistant.patientVideo.consultation.channelId') }}: {{ channelId || '--' }}</span>
-                </div>
+                </div> -->
               </div>
             </div>
 
@@ -211,6 +210,8 @@ const channelId = computed(() => queryValue('channelId'))
 const userId = computed(() => queryValue('userId'))
 const consultationCaseId = computed(() => takeOptionalText(sessionStore.caseId) || queryValue('caseId'))
 const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId) || queryValue('videoId'))
+const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
+const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const pageError = ref('')
 const currentDate = ref('')
 const chatDraft = ref('')
@@ -225,13 +226,15 @@ const patientName = computed(() => {
 })
 
 const doctorTitle = computed(() => {
-  return sessionStore.doctorId
-    ? `${t('assistant.patientVideo.consultation.doctorPrefix')}${sessionStore.doctorId}`
+  return consultationDoctorName.value
+    ? consultationDoctorName.value
+    : consultationDoctorId.value
+      ? consultationDoctorId.value
     : t('assistant.patientVideo.consultation.waitingDoctor')
 })
 
 const doctorAvatarText = computed(() => {
-  return doctorTitle.value.slice(0, 1) || '医'
+  return doctorTitle.value.slice(0, 1) || '?'
 })
 
 const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
@@ -370,7 +373,7 @@ const timeline = usePatientSubtitleTimeline({
 
 const chat = createPatientConsultationChatService({
   onMessage: ({ contentLo, contentCn }) => {
-    const doctorId = takeOptionalText(sessionStore.doctorId) || 'doctor'
+    const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
     timeline.appendManualMessage({
       speakerId: `doctor:${doctorId}`,
       speakerName: doctorTitle.value,
@@ -389,14 +392,14 @@ const chatSendDisabled = computed(() => {
   return (
     chatSending.value ||
     !chatDraft.value.trim() ||
-    !takeOptionalText(sessionStore.doctorId) ||
+    !takeOptionalText(consultationDoctorId.value) ||
     !takeOptionalText(consultationCaseId.value) ||
     chat.connectionStatus.value !== 'connected'
   )
 })
 
 const chatStatusText = computed(() => {
-  if (!takeOptionalText(sessionStore.doctorId)) {
+  if (!takeOptionalText(consultationDoctorId.value)) {
     return t('assistant.patientVideo.consultation.chatDoctorUnavailable')
   }
 
@@ -500,7 +503,7 @@ const handleChatSend = async () => {
     return
   }
 
-  const doctorId = takeOptionalText(sessionStore.doctorId)
+  const doctorId = takeOptionalText(consultationDoctorId.value)
   const caseId = takeOptionalText(consultationCaseId.value)
 
   if (!doctorId) {
@@ -599,6 +602,13 @@ const bootstrapConsultation = async () => {
   if (!token.value || !channelId.value || !userId.value) {
     pageError.value = t('assistant.patientVideo.consultation.missingParams')
     return
+  }
+
+  if (consultationDoctorId.value || consultationDoctorName.value) {
+    sessionStore.setDoctorInfo({
+      doctorId: consultationDoctorId.value,
+      doctorName: consultationDoctorName.value
+    })
   }
 
   // 关键修复：趁着上一级页面的跳转产生的 User Gesture Token 尚未过期，

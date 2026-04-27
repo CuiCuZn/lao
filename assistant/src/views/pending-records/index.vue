@@ -164,6 +164,11 @@ const takeOptionalText = (value: unknown) => {
   return text || ''
 }
 
+const takeDisplayText = (value: unknown) => {
+  const text = takeOptionalText(value)
+  return text === '--' ? '' : text
+}
+
 const isObjectRecord = (value: unknown): value is DetailRecord => {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -296,7 +301,7 @@ const normalizePendingRecordRow = (item: CaseRecordItem, index: number): Pending
     visitId: takeOptionalText(item.patientNumber) || resolveCaseId(item) || '--',
     patientName: takeOptionalText(item.patientName) || '--',
     patientMeta,
-    doctorName: takeOptionalText(item.nickName) || '--',
+    doctorName: pickText(item, ['doctorName', 'nickName', 'userName', 'name']) || '--',
     doctorMeta: buildDoctorMeta(item)
   }
 }
@@ -340,17 +345,26 @@ const fetchPendingRecords = async () => {
 const resolveReconnectTargets = async (row: PendingRecordRow) => {
   let patientId = row.patientId
   let originalDoctorId = row.originalDoctorId
+  let originalDoctorName = takeDisplayText(row.doctorName)
 
-  if (patientId && originalDoctorId) {
+  if (patientId && originalDoctorId && originalDoctorName) {
     return {
       caseId: row.caseId,
       patientId,
-      originalDoctorId
+      originalDoctorId,
+      originalDoctorName
     }
   }
 
   if (!row.caseId) {
-    return null
+    return patientId && originalDoctorId
+      ? {
+          caseId: row.caseId,
+          patientId,
+          originalDoctorId,
+          originalDoctorName
+        }
+      : null
   }
 
   const response = await getCaseDetail(row.caseId)
@@ -361,12 +375,16 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
   originalDoctorId =
     originalDoctorId ||
     pickTextFromRecords(records, ['doctorId', 'userId', 'doctorUserId', 'receiveDoctorId', 'receptionDoctorId', 'attendingDoctorId'])
+  originalDoctorName =
+    originalDoctorName ||
+    pickTextFromRecords(records, ['doctorName', 'nickName', 'userName', 'name'])
 
   return patientId && originalDoctorId
     ? {
         caseId: row.caseId || pickTextFromRecords(records, ['caseId', 'caseID', 'medicalCaseId']),
         patientId,
-        originalDoctorId
+        originalDoctorId,
+        originalDoctorName
       }
     : null
 }
@@ -423,6 +441,7 @@ const handleReconnect = async (row: PendingRecordRow) => {
     broadcastVideoRoomCreated({
       patientId: resolvedPatientId,
       doctorId: reconnectTargets.originalDoctorId,
+      doctorName: reconnectTargets.originalDoctorName,
       roomId,
       ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
     })

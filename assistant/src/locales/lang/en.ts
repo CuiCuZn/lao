@@ -324,7 +324,7 @@ export default {
         translation: 'Interpretation',
         recognizing: 'Transcribing...',
         sourceText: 'Source Text',
-        originalLanguage: 'Original Language',
+        originalLanguage: 'Show Bilingual',
         showOriginalLanguage: 'On',
         hideOriginalLanguage: 'Off',
         translationPending: 'Translation in progress',
