@@ -50,6 +50,11 @@
       <el-table v-loading="loading" :data="userList" style="width: 100%; margin-top: 15px" border>
         <el-table-column :label="t('doctor.nickName')" align="center" prop="nickName" />
         <el-table-column :label="t('doctor.userName')" align="center" prop="userName" />
+        <el-table-column :label="t('doctor.role')" align="center" min-width="120" show-overflow-tooltip>
+          <template #default="scope">
+            <span>{{ getRoleNames(scope.row) }}</span>
+          </template>
+        </el-table-column>
         <el-table-column :label="t('doctor.jobNumber')" align="center" prop="jobNumber" />
         <el-table-column :label="t('doctor.deptName')" align="center" prop="departmentId">
           <template #default="scope">
@@ -277,6 +282,35 @@ const rules = {
 const getDeptName = (departmentId: string | number) => {
   const dept = deptOptions.value.find(item => String(item.departmentId) === String(departmentId))
   return dept ? dept.departmentName : departmentId
+}
+
+const getRoleNames = (row: UserVO) => {
+  if (Array.isArray(row.roleNames)) {
+    return row.roleNames.filter(Boolean).join('、') || '-'
+  }
+
+  if (row.roleNames) {
+    return row.roleNames
+  }
+
+  if (row.roleName) {
+    return row.roleName
+  }
+
+  if (Array.isArray(row.roles)) {
+    const names = row.roles
+      .map((role) => {
+        if (typeof role === 'string' || typeof role === 'number') {
+          return String(role)
+        }
+        return role.roleName || role.name || role.roleKey || ''
+      })
+      .filter(Boolean)
+
+    return names.join('、') || '-'
+  }
+
+  return '-'
 }
 
 /**

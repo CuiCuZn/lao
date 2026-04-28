@@ -245,6 +245,8 @@ export default {
         age: 'Age',
         idCard: 'ID Number',
         phone: 'Mobile Number',
+        job: 'Job',
+        maritalStatus: 'Marital Status',
         medicalAccount: 'Insurance Information',
         address: 'Residential Address'
       },
@@ -252,12 +254,17 @@ export default {
         male: 'Male',
         female: 'Female'
       },
+      maritalStatusOptions: {
+        unmarried: 'Unmarried',
+        married: 'Married'
+      },
       placeholders: {
         name: 'Please enter the patient name',
         birthday: 'Please select the date of birth',
         age: 'Please enter the age',
         idCard: 'Please enter the ID number',
         phone: 'Please enter the mobile number',
+        job: 'Please enter the patient job',
         medicalAccount: 'Please enter the insurance ID / coverage type',
         address: 'Please enter the full residential address'
       },
@@ -351,6 +358,7 @@ export default {
         waitingDoctor: 'Awaiting physician arrival in the virtual room',
         connected: 'Live Telemetry Connected',
         footerSubtitle: 'Regional Medical Center · Bilingual Telehealth Consult',
+        goodAt: 'Specialty',
         doctorId: 'Physician ID',
         caseId: 'Encounter ID',
         channelId: 'Room ID',

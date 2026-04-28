@@ -222,6 +222,7 @@ export default {
       waitingPatient: 'ກຳລັງລໍຖ້າຄົນໄຂ້',
       connected: 'ເຊື່ອມຕໍ່ແບບທັນທີ',
       footerSubtitle: 'ສູນການແພດພາກພື້ນ · ການປຶກສາສອງພາສາ',
+      goodAt: 'ຄວາມຊ່ຽວຊານ',
       doctorId: 'ID ແພດ',
       caseId: 'ID ເຄສ',
         channelId: 'ເລກຫ້ອງ',

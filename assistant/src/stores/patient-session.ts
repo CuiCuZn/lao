@@ -9,6 +9,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const patientDetail = ref<PatientDetailRecord>(null)
   const doctorId = ref('')
   const doctorName = ref('')
+  const doctorGoodAt = ref('')
   const caseId = ref<string | number | undefined>(undefined)
   const videoId = ref<string | number | undefined>(undefined)
   const roomId = ref('')
@@ -18,6 +19,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const resetVideoContext = () => {
     doctorId.value = ''
     doctorName.value = ''
+    doctorGoodAt.value = ''
     caseId.value = undefined
     videoId.value = undefined
     roomId.value = ''
@@ -52,6 +54,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     patientId: string
     doctorId: string
     doctorName?: string
+    goodAt?: string
     caseId?: string | number
     videoId?: string | number
     roomId: string
@@ -59,18 +62,23 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     patientId.value = payload.patientId
     doctorId.value = payload.doctorId
     doctorName.value = payload.doctorName !== undefined ? payload.doctorName : doctorName.value
+    doctorGoodAt.value = payload.goodAt !== undefined ? payload.goodAt : doctorGoodAt.value
     caseId.value = payload.caseId
     videoId.value = payload.videoId
     roomId.value = payload.roomId
   }
 
-  const setDoctorInfo = (payload: { doctorId?: string; doctorName?: string }) => {
+  const setDoctorInfo = (payload: { doctorId?: string; doctorName?: string; goodAt?: string }) => {
     if (payload.doctorId !== undefined) {
       doctorId.value = payload.doctorId
     }
 
     if (payload.doctorName !== undefined) {
       doctorName.value = payload.doctorName
+    }
+
+    if (payload.goodAt !== undefined) {
+      doctorGoodAt.value = payload.goodAt
     }
   }
 
@@ -100,6 +108,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     patientDetail,
     doctorId,
     doctorName,
+    doctorGoodAt,
     caseId,
     videoId,
     roomId,

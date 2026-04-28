@@ -9,7 +9,7 @@ import 'nprogress/nprogress.css'
 
 NProgress.configure({ showSpinner: false })
 
-const whiteList = ['/login']
+const whiteList = ['/login', '/assistant/patient/waiting']
 const requiredRole = 'assistant_doctor'
 
 const resolveLoginRedirect = (redirect: unknown) => {

@@ -224,6 +224,7 @@ export default {
       waitingPatient: '等待患者接入',
       connected: '实时连接中',
       footerSubtitle: '区域医疗中心 · 双语实时会诊',
+      goodAt: '擅长',
       doctorId: '医生ID',
       caseId: '就诊ID',
       channelId: '房间号',

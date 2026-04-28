@@ -156,6 +156,7 @@ interface DoctorCard {
   name: string
   title: string
   departmentName: string
+  goodAt: string
   online: boolean
   consultationText: string
   approvalText: string
@@ -335,6 +336,7 @@ const normalizeDoctor = (item: Record<string, unknown>, fallbackDepartmentName: 
   const id = pickText(item, ['doctorId', 'userId', 'id'])
   const name = pickText(item, ['doctorName', 'nickName', 'userName', 'name'])
   const doctorDepartmentId = pickText(item, ['departmentId', 'deptId'])
+  const goodAt = pickText(item, ['goodAt', 'specialty', 'speciality', 'expertise', 'description'])
 
   if (!id || !name) {
     return null
@@ -349,12 +351,13 @@ const normalizeDoctor = (item: Record<string, unknown>, fallbackDepartmentName: 
       getDepartmentNameById(doctorDepartmentId) ||
       fallbackDepartmentName ||
       t('common.notAvailable'),
+    goodAt,
     online: isDoctorOnline(item),
     consultationText: formatConsultations(
       item.receptionCount ?? item.receiveCount ?? item.receiveNum ?? item.consultationCount ?? item.visitCount ?? item.orderCount
     ),
     approvalText: formatApproval(item.praiseRate ?? item.goodRate ?? item.approvalRate ?? item.favorRate),
-    specialty: pickText(item, ['goodAt', 'specialty', 'speciality', 'expertise', 'description']) || t('common.notAvailable'),
+    specialty: goodAt || t('common.notAvailable'),
     avatarLabel: buildAvatarLabel(name)
   }
 }
@@ -502,6 +505,7 @@ const handleCreateRoom = async () => {
       patientId,
       doctorId: selectedDoctorId.value,
       doctorName: selectedDoctor.value?.name || '',
+      goodAt: selectedDoctor.value?.goodAt || '',
       ...(caseId ? { caseId } : {}),
       roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : ''
     })

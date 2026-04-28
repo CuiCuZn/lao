@@ -142,6 +142,7 @@ export default {
   doctor: {
     nickName: 'ຊື່ທ່ານໝໍ',
     userName: 'ບັນຊີເຂົ້າສູ່ລະບົບ',
+    role: 'ບົດບາດ',
     jobNumber: 'ລະຫັດພະນັກງານ',
     deptName: 'ພະແນກທີ່ສັງກັດ',
     title: 'ຕຳແໜ່ງວິຊາການ',

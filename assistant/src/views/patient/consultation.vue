@@ -88,6 +88,11 @@
                   </span>
                 </div>
 
+                <p v-if="consultationDoctorGoodAt" class="doctor-good-at">
+                  <span>{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
+                  {{ consultationDoctorGoodAt }}
+                </p>
+
                 <!-- 显示会诊信息（可选）：此处代码只注释不删除 -->
                 <!-- <div class="doctor-meta">
                   <span>{{ t('assistant.patientVideo.consultation.doctorId') }}: {{ consultationDoctorId || '--' }}</span>
@@ -212,6 +217,7 @@ const consultationCaseId = computed(() => takeOptionalText(sessionStore.caseId) 
 const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId) || queryValue('videoId'))
 const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
+const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
 const pageError = ref('')
 const currentDate = ref('')
 const chatDraft = ref('')
@@ -607,7 +613,8 @@ const bootstrapConsultation = async () => {
   if (consultationDoctorId.value || consultationDoctorName.value) {
     sessionStore.setDoctorInfo({
       doctorId: consultationDoctorId.value,
-      doctorName: consultationDoctorName.value
+      doctorName: consultationDoctorName.value,
+      goodAt: consultationDoctorGoodAt.value
     })
   }
 
@@ -861,6 +868,20 @@ onBeforeUnmount(async () => {
   margin: 0;
   color: #5f7697;
   font-size: 13px;
+}
+
+.doctor-good-at {
+  max-width: min(520px, 46vw);
+  line-height: 1.5;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doctor-good-at span {
+  color: #22365d;
+  font-weight: 800;
 }
 
 .doctor-meta {

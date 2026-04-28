@@ -140,6 +140,9 @@ export interface UserVO {
   title?: string;
   jobNumber?: string;
   goodAt?: string;
+  roleName?: string;
+  roleNames?: string | string[];
+  roles?: Array<string | number | { roleName?: string; roleKey?: string; name?: string }>;
 }
 
 /**

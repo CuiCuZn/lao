@@ -142,6 +142,7 @@ export default {
   doctor: {
     nickName: 'Physician Name',
     userName: 'Login Account',
+    role: 'Role',
     jobNumber: 'Employee ID',
     deptName: 'Department',
     title: 'Professional Title',

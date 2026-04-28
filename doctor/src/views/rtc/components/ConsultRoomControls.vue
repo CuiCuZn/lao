@@ -148,10 +148,6 @@ const { t } = useI18n()
   opacity: 0.72;
 }
 
-.control-button--danger {
-  color: #fefefe;
-}
-
 .control-button--danger .icon-shell {
   background: linear-gradient(180deg, #f86a6a 0%, #e94a4a 100%);
 }

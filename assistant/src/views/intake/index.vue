@@ -74,6 +74,21 @@
                 <input v-model="form.patientPhone" :placeholder="t('assistant.intake.placeholders.phone')" @blur="triggerImmediateSave" />
               </label>
 
+              <label class="field field-half">
+                <span class="field-label">{{ t('assistant.intake.fields.job') }}</span>
+                <input v-model="form.job" :placeholder="t('assistant.intake.placeholders.job')" @blur="triggerImmediateSave" />
+              </label>
+
+              <div class="field field-half">
+                <span class="field-label">{{ t('assistant.intake.fields.maritalStatus') }}</span>
+                <div class="radio-group">
+                  <label v-for="item in maritalStatusOptions" :key="item.dictValue" class="radio-option">
+                    <input v-model="form.maritalStatus" type="radio" :value="item.dictValue" @change="triggerImmediateSave" />
+                    <span>{{ item.dictLabel }}</span>
+                  </label>
+                </div>
+              </div>
+
               <label class="field field-full">
                 <span class="field-label">{{ t('assistant.intake.fields.medicalAccount') }}</span>
                 <input
@@ -97,9 +112,80 @@
             </div>
 
             <div class="placeholder-body">
-              <span class="placeholder-badge">{{ t('assistant.intake.fourDiagnosis.placeholderLabel') }}</span>
-              <h4>{{ t('assistant.intake.fourDiagnosis.placeholderTitle') }}</h4>
-              <p>{{ t('assistant.intake.fourDiagnosis.placeholderDescription') }}</p>
+              <img class="diagnosis-image diagnosis-image-zhu" :src="zhuImage" alt="" />
+              <div class="diagnosis-table-wrap">
+                <table class="diagnosis-table">
+                  <tbody>
+                    <tr>
+                      <th class="table-title" colspan="6">舌象诊断结果</th>
+                    </tr>
+                    <tr>
+                      <th>舌色</th>
+                      <td>淡白色</td>
+                      <th>舌形</th>
+                      <td>点次舌，齿痕舌</td>
+                      <th>舌态</th>
+                      <td>正常</td>
+                    </tr>
+                    <tr>
+                      <th>苔色</th>
+                      <td>黄白相间苔</td>
+                      <th>苔质</th>
+                      <td>厚苔</td>
+                      <th>舌下络脉</th>
+                      <td>正常</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table class="diagnosis-table">
+                  <tbody>
+                    <tr>
+                      <th class="table-title" colspan="4">面相诊断结果</th>
+                    </tr>
+                    <tr>
+                      <th>面色</th>
+                      <td>面色淡黄</td>
+                      <th>面部光泽</th>
+                      <td>少量光泽</td>
+                    </tr>
+                    <tr>
+                      <th>唇色</th>
+                      <td>青紫</td>
+                      <th>局部特征</th>
+                      <td>-</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table class="diagnosis-table">
+                  <tbody>
+                    <tr>
+                      <th class="table-title" colspan="3">脉象诊断结果</th>
+                    </tr>
+                    <tr>
+                      <th></th>
+                      <td>左手</td>
+                      <td>右手</td>
+                    </tr>
+                    <tr>
+                      <th>寸</th>
+                      <td>虚</td>
+                      <td>缓</td>
+                    </tr>
+                    <tr>
+                      <th>关</th>
+                      <td>缓</td>
+                      <td>虚</td>
+                    </tr>
+                    <tr>
+                      <th>尺</th>
+                      <td>虚</td>
+                      <td>虚</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </section>
         </div>
@@ -115,14 +201,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Document, Tickets } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { listDictData } from '@/api/dict'
 import { getPatientDetail, savePatient } from '@/api/patient'
-import type { PatientSaveParams } from '@/api/types'
+import type { DictDataVO, PatientSaveParams } from '@/api/types'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import zhuImage from '@/assets/zhu.png'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -138,6 +226,8 @@ interface IntakePatientData {
   patientName?: string
   patientSex?: string
   patientBirthday?: string
+  job?: string | null
+  maritalStatus?: string | null
   medicalAccount?: string | null
   address?: string | null
   [key: string]: unknown
@@ -209,6 +299,8 @@ const createEmptyForm = () => ({
   patientAge: '',
   patientIdCard: '',
   patientPhone: '',
+  job: '',
+  maritalStatus: '',
   medicalAccount: '',
   address: ''
 })
@@ -224,6 +316,18 @@ const initialized = ref(false)
 const lastSavedSnapshot = ref('')
 const queuedSave = ref(false)
 const loadingDetail = ref(false)
+const maritalStatusDict = ref<DictDataVO[]>([])
+
+const maritalStatusOptions = computed(() => {
+  if (maritalStatusDict.value.length > 0) {
+    return maritalStatusDict.value
+  }
+
+  return [
+    { dictLabel: t('assistant.intake.maritalStatusOptions.unmarried'), dictValue: '0' },
+    { dictLabel: t('assistant.intake.maritalStatusOptions.married'), dictValue: '1' }
+  ]
+})
 
 const buildSavePayload = (): PatientSaveParams => ({
   ...(patientId.value !== undefined ? { patientId: patientId.value } : {}),
@@ -232,6 +336,8 @@ const buildSavePayload = (): PatientSaveParams => ({
   patientBirthday: toIsoDateTime(form.patientBirthday),
   patientIdCard: form.patientIdCard.trim(),
   patientPhone: form.patientPhone.trim(),
+  job: form.job.trim(),
+  maritalStatus: form.maritalStatus,
   medicalAccount: form.medicalAccount.trim(),
   address: form.address.trim(),
   ...(caseId.value !== undefined ? { caseId: caseId.value } : {}),
@@ -291,6 +397,8 @@ const hydrateForm = (data?: IntakePatientData | null) => {
   form.patientBirthday = takeText(formatBirthday(String(data.patientBirthday || '')), form.patientBirthday)
   form.patientIdCard = takeText(data.patientIdCard, form.patientIdCard)
   form.patientPhone = takeText(data.patientPhone, form.patientPhone)
+  form.job = takeText(data.job, data.occupation, form.job)
+  form.maritalStatus = takeText(data.maritalStatus, data.marriage, form.maritalStatus)
   form.medicalAccount = takeText(data.medicalAccount, form.medicalAccount)
   form.address = takeText(data.address, form.address)
 
@@ -391,6 +499,15 @@ const resetForm = () => {
   Object.assign(form, createEmptyForm())
 }
 
+const loadMaritalStatusDict = async () => {
+  try {
+    const response = await listDictData({ dictType: 'sys_marriage_status' })
+    maritalStatusDict.value = response.rows || response.data || []
+  } catch {
+    maritalStatusDict.value = []
+  }
+}
+
 const getRoutePatientId = () => {
   const queryValue = Array.isArray(route.query.patientId) ? route.query.patientId[0] : route.query.patientId
   return toNumber(queryValue)
@@ -475,6 +592,10 @@ watch(
   { immediate: true }
 )
 
+onMounted(() => {
+  void loadMaritalStatusDict()
+})
+
 onBeforeUnmount(() => {
   clearSaveTimer()
 })
@@ -495,9 +616,10 @@ const goToDoctorSelect = () => {
 
 <style scoped lang="scss">
 .intake-page {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   position: relative;
-  min-height: 100%;
+  height: calc(100vh - 40px);
+  min-height: 0;
   width: 100%;
   box-sizing: border-box;
   overflow: hidden;
@@ -533,6 +655,8 @@ const goToDoctorSelect = () => {
   position: relative;
   z-index: 1;
   width: min(1080px, 100%);
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -632,6 +756,8 @@ const goToDoctorSelect = () => {
 }
 
 .intake-grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
@@ -658,7 +784,7 @@ const goToDoctorSelect = () => {
 
 .form-panel {
   height: 100%;
-  min-height: 620px;
+  min-height: 0;
   padding: 20px 20px 24px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.9);
@@ -708,50 +834,78 @@ const goToDoctorSelect = () => {
 .placeholder-panel {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .placeholder-body {
   flex: 1;
-  min-height: 320px;
-  border: 1px dashed #d7e4f1;
+  min-height: 0;
+  border: 1px solid #dbe8f4;
   border-radius: 22px;
-  background:
-    radial-gradient(circle at top left, rgba(77, 120, 244, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(240, 246, 253, 0.92) 100%);
-  display: grid;
-  place-items: center;
-  text-align: center;
-  padding: 28px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(240, 246, 253, 0.92) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 18px;
+  padding: 22px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
-.placeholder-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 32px;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: rgba(77, 120, 244, 0.12);
-  color: #4b79ee;
+.diagnosis-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.diagnosis-image-zhu {
+  max-height: 230px;
+}
+
+.diagnosis-table-wrap {
+  width: 100%;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.diagnosis-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
   font-size: 12px;
+  line-height: 1.45;
+}
+
+.diagnosis-table th,
+.diagnosis-table td {
+  height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #e5e9f0;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.diagnosis-table th {
+  background: #f0f2ff;
   font-weight: 700;
-  letter-spacing: 0.08em;
 }
 
-.placeholder-body h4 {
-  margin: 18px 0 10px;
-  color: #1d2b3d;
-  font-size: 22px;
-  font-weight: 800;
-  line-height: 1.4;
+.diagnosis-table td {
+  background: rgba(255, 255, 255, 0.96);
 }
 
-.placeholder-body p {
-  width: min(320px, 100%);
-  margin: 0;
-  color: #6a7b8d;
-  font-size: 14px;
-  line-height: 1.8;
+.diagnosis-table .table-title {
+  height: 36px;
+  background: #f5f5f5;
+  font-size: 13px;
 }
 
 .field {
@@ -843,24 +997,37 @@ const goToDoctorSelect = () => {
     0 0 0 4px rgba(75, 121, 238, 0.12);
 }
 
-.gender-group {
+.gender-group,
+.radio-group {
   min-height: 44px;
   display: flex;
   align-items: center;
   gap: 22px;
   padding: 0 2px;
+  flex-wrap: wrap;
 }
 
-.gender-option {
+.gender-option,
+.radio-option {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
   color: #233244;
   font-size: 14px;
   cursor: pointer;
 }
 
-.gender-option input {
+.radio-option {
+  gap: 6px;
+}
+
+.radio-option span {
+  min-width: 2em;
+}
+
+.gender-option input,
+.radio-option input {
   margin: 0;
   accent-color: #168fd4;
 }
@@ -900,12 +1067,9 @@ const goToDoctorSelect = () => {
   }
 
   .placeholder-body {
-    min-height: 260px;
+    min-height: 0;
     padding: 24px 18px;
-  }
-
-  .placeholder-body h4 {
-    font-size: 20px;
+    gap: 14px;
   }
 }
 </style>

@@ -22,17 +22,6 @@
           <h2>{{ t('login.accountLoginTitle') }}</h2>
 
           <div class="login-card__actions">
-            <el-tooltip :content="t('login.refreshPage')" placement="top">
-              <button
-                type="button"
-                class="refresh-button"
-                :aria-label="t('login.refreshPage')"
-                @click="handleRefreshPage"
-              >
-                <el-icon><RefreshRight /></el-icon>
-              </button>
-            </el-tooltip>
-
             <el-dropdown @command="handleSetLanguage">
               <button type="button" class="language-button">
                 <span class="language-button__icon">
@@ -202,9 +191,6 @@ const handleSetLanguage = (lang: string) => {
   location.reload()
 }
 
-const handleRefreshPage = () => {
-  window.location.reload()
-}
 
 const handleLogin = () => {
   loginRef.value?.validate(async (valid: boolean) => {

@@ -72,6 +72,8 @@ export interface PatientSaveParams {
   patientBirthday: string;
   patientIdCard: string;
   patientPhone: string;
+  job: string;
+  maritalStatus: string;
   medicalAccount: string;
   address: string;
   caseId?: number;
@@ -104,6 +106,23 @@ export interface PatientWsTokenResponse {
   code?: number;
   msg?: string;
   data?: string | null;
+  [key: string]: unknown;
+}
+
+export interface DictDataVO {
+  dictCode?: number | string;
+  dictLabel: string;
+  dictValue: string;
+  dictType?: string;
+  [key: string]: unknown;
+}
+
+export interface DictDataListResponse {
+  code?: number;
+  msg?: string;
+  rows?: DictDataVO[] | null;
+  data?: DictDataVO[] | null;
+  total?: number;
   [key: string]: unknown;
 }
 

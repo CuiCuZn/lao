@@ -63,10 +63,12 @@ onMounted(() => {
 
       reconnectFailedMessage.value = ''
       const caseId = toOptionalText(message.payload.caseId)
+      const goodAt = toOptionalText(message.payload.goodAt)
       sessionStore.setVideoRoomContext({
         patientId: message.payload.patientId,
         doctorId: message.payload.doctorId,
         doctorName: message.payload.doctorName,
+        goodAt,
         roomId: message.payload.roomId,
         ...(caseId ? { caseId } : {})
       })
@@ -113,6 +115,7 @@ onMounted(() => {
           patientId: message.payload.patientId,
           doctorId: message.payload.doctorId,
           doctorName: message.payload.doctorName,
+          goodAt,
           roomId: message.payload.roomId,
           ...(caseId ? { caseId } : {}),
           ...(videoId ? { videoId } : {})
@@ -127,6 +130,7 @@ onMounted(() => {
             userId: message.payload.patientId,
             doctorId: message.payload.doctorId,
             doctorName: message.payload.doctorName,
+            ...(goodAt ? { goodAt } : {}),
             ...(caseId ? { caseId } : {}),
             ...(videoId ? { videoId } : {})
           }

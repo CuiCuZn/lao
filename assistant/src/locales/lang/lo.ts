@@ -245,6 +245,8 @@ export default {
         age: 'ອາຍຸ',
         idCard: 'ເລກບັດປະຈຳຕົວ',
         phone: 'ເບີໂທ',
+        job: 'ອາຊີບ',
+        maritalStatus: 'ສະຖານະການແຕ່ງງານ',
         medicalAccount: 'ຂໍ້ມູນປະກັນສຸຂະພາບ',
         address: 'ທີ່ຢູ່ອາໄສ'
       },
@@ -252,12 +254,17 @@ export default {
         male: 'ຊາຍ',
         female: 'ຍິງ'
       },
+      maritalStatusOptions: {
+        unmarried: 'ຍັງບໍ່ແຕ່ງງານ',
+        married: 'ແຕ່ງງານແລ້ວ'
+      },
       placeholders: {
         name: 'ກະລຸນາປ້ອນຊື່ຄົນໄຂ້',
         birthday: 'ກະລຸນາເລືອກວັນເກີດ',
         age: 'ກະລຸນາປ້ອນອາຍຸ',
         idCard: 'ກະລຸນາປ້ອນເລກບັດປະຈຳຕົວ',
         phone: 'ກະລຸນາປ້ອນເບີໂທ',
+        job: 'ກະລຸນາປ້ອນອາຊີບຂອງຄົນໄຂ້',
         medicalAccount: 'ກະລຸນາປ້ອນເລກບັດປະກັນ/ປະເພດປະກັນ',
         address: 'ກະລຸນາປ້ອນທີ່ຢູ່ລະອຽດ'
       },
@@ -351,6 +358,7 @@ export default {
         waitingDoctor: 'ກຳລັງລໍຖ້າແພດ',
         connected: 'ເຊື່ອມຕໍ່ແບບທັນທີ',
         footerSubtitle: 'ສູນການແພດພາກພື້ນ · ການປຶກສາສອງພາສາ',
+        goodAt: 'ຄວາມຊ່ຽວຊານ',
         doctorId: 'ID ແພດ',
         caseId: 'ID ເຄສ',
           channelId: 'ເລກຫ້ອງ',

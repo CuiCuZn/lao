@@ -224,6 +224,7 @@ export default {
       waitingPatient: 'Awaiting patient arrival in the virtual room',
       connected: 'Live Telemetry Connected',
       footerSubtitle: 'Regional Medical Center · Bilingual Telehealth Consult',
+      goodAt: 'Specialty',
       doctorId: 'Physician ID',
       caseId: 'Encounter ID',
       channelId: 'Room ID',

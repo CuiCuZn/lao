@@ -99,19 +99,16 @@
 
             <div class="doctor-copy">
               <div class="doctor-heading">
-                <strong>{{ doctorTitleText }}</strong>
+                <strong>{{ doctorName }}</strong>
                 <span v-if="session.joined.value" class="doctor-status">
                   {{ t('doctorVideo.consultation.connected') }}
                 </span>
               </div>
 
-              <p>{{ t('doctorVideo.consultation.footerSubtitle') }}</p>
-
-              <div class="doctor-meta">
-                <span>{{ t('doctorVideo.consultation.doctorId') }}: {{ doctorId || '--' }}</span>
-                <span>{{ t('doctorVideo.consultation.caseId') }}: {{ caseId || '--' }}</span>
-                <span>{{ t('doctorVideo.consultation.channelId') }}: {{ roomId }}</span>
-              </div>
+              <p v-if="doctorGoodAt" class="doctor-good-at">
+                <span>{{ t('doctorVideo.consultation.goodAt') }}:</span>
+                {{ doctorGoodAt }}
+              </p>
             </div>
           </div>
         </footer>
@@ -401,9 +398,17 @@ const doctorName = computed(() => {
   return userStore.profile?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
 
-const doctorTitleText = computed(() => {
-  const title = userStore.profile?.title || userStore.profile?.postName || ''
-  return title ? `${doctorName.value} · ${title}` : doctorName.value
+const doctorGoodAt = computed(() => {
+  const profile = userStore.profile
+  const value =
+    profile?.goodAt ||
+    profile?.specialty ||
+    profile?.speciality ||
+    profile?.expertise ||
+    profile?.description ||
+    ''
+
+  return value !== null && value !== undefined ? String(value).trim() : ''
 })
 
 const doctorAvatarText = computed(() => doctorName.value.slice(0, 1) || t('workbench.defaultRole').slice(0, 1))
@@ -1637,8 +1642,8 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
   color: #ffffff;
@@ -1667,10 +1672,7 @@ onBeforeUnmount(async () => {
 }
 
 .doctor-status {
-  border-radius: 999px;
-  padding: 4px 10px;
-  background: rgba(47, 202, 104, 0.14);
-  color: #1f9958;
+  color: #24a35c;
   font-size: 12px;
   font-weight: 700;
 }
@@ -1681,13 +1683,18 @@ onBeforeUnmount(async () => {
   font-size: 13px;
 }
 
-.doctor-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px 18px;
-  color: #486285;
-  font-size: 12px;
+.doctor-good-at {
+  max-width: min(520px, 46vw);
+  line-height: 1.5;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doctor-good-at span {
+  color: #22365d;
+  font-weight: 800;
 }
 
 .record-column {

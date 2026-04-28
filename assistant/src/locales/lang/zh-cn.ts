@@ -245,6 +245,8 @@ export default {
         age: '年龄',
         idCard: '身份证件',
         phone: '联系手机',
+        job: '工作',
+        maritalStatus: '婚姻状况',
         medicalAccount: '医保账户',
         address: '常住地址'
       },
@@ -252,12 +254,17 @@ export default {
         male: '男',
         female: '女'
       },
+      maritalStatusOptions: {
+        unmarried: '未婚',
+        married: '已婚'
+      },
       placeholders: {
         name: '手动输入患者全名',
         birthday: '请选择出生日期',
         age: '根据出生日期自动计算',
         idCard: '输入本人有效证件号',
         phone: '输入可保持联络的手机号',
+        job: '请输入患者工作',
         medicalAccount: '选填：输入医保凭证/类型',
         address: '选填：患者当前的居住地址'
       },
@@ -351,6 +358,7 @@ export default {
         waitingDoctor: '等待医生接入',
         connected: '实时连接已建立',
         footerSubtitle: '区域医疗中心 · 双语实时会诊',
+        goodAt: '擅长',
         doctorId: '医生编号',
         caseId: '就诊ID',
         channelId: '房间号',
