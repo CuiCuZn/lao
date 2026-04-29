@@ -43,7 +43,7 @@
       <span class="label">{{ micEnabled ? t('assistant.patientVideo.consultation.micOn') : t('assistant.patientVideo.consultation.micOff') }}</span>
     </button>
 
-    <button type="button" class="control-button control-button--danger" @click="onLeave">
+    <button v-if="showLeave" type="button" class="control-button control-button--danger" @click="onLeave">
       <span class="icon-shell">
         <el-icon><switch-button /></el-icon>
       </span>
@@ -72,12 +72,14 @@ interface Props {
   cameraSwitching?: boolean
   showCamera?: boolean
   showMic?: boolean
+  showLeave?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
   cameraSwitching: false,
   showCamera: false,
-  showMic: true
+  showMic: true,
+  showLeave: true
 })
 
 const { t } = useI18n()
@@ -88,7 +90,7 @@ const { t } = useI18n()
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 
@@ -97,14 +99,14 @@ const { t } = useI18n()
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-width: 88px;
+  gap: 5px;
+  min-width: 72px;
   border: none;
   padding: 0;
   background: transparent;
   color: #2d4268;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.15s ease;
 }
 
 .control-button:hover {
@@ -121,15 +123,15 @@ const { t } = useI18n()
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 58px;
-  height: 58px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  box-shadow: 0 14px 28px rgba(66, 90, 136, 0.18);
-  font-size: 22px;
+  box-shadow: 0 4px 14px rgba(66, 90, 136, 0.18);
+  font-size: 18px;
 }
 
 .label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -161,12 +163,13 @@ const { t } = useI18n()
 
 @media (max-width: 900px) {
   .consult-room-controls {
-    gap: 14px;
+    gap: 12px;
   }
 
   .icon-shell {
-    width: 54px;
-    height: 54px;
+    width: 42px;
+    height: 42px;
+    font-size: 16px;
   }
 }
 </style>

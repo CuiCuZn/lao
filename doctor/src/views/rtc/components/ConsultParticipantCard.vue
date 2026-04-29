@@ -116,10 +116,10 @@ onBeforeUnmount(() => {
 .consult-participant-card {
   position: relative;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 10px;
   background: linear-gradient(180deg, #f7fbff 0%, #eef4ff 100%);
   border: 1px solid rgba(57, 111, 226, 0.18);
-  box-shadow: 0 18px 38px rgba(66, 89, 132, 0.1);
+  box-shadow: 0 4px 16px rgba(66, 89, 132, 0.1);
   isolation: isolate;
 
   :deep(video) {
@@ -141,8 +141,8 @@ onBeforeUnmount(() => {
 
 .is-compact {
   width: 100%;
-  height: 124px;
-  border-radius: 16px;
+  height: 110px;
+  border-radius: 8px;
 }
 
 .is-placeholder {
@@ -154,7 +154,7 @@ onBeforeUnmount(() => {
 .is-speaking {
   box-shadow:
     0 0 0 2px rgba(57, 190, 120, 0.36),
-    0 24px 48px rgba(57, 190, 120, 0.16);
+    0 8px 24px rgba(57, 190, 120, 0.16);
 }
 
 .placeholder-pattern {
@@ -169,16 +169,16 @@ onBeforeUnmount(() => {
 
 .participant-overlay {
   position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
+  top: 10px;
+  left: 10px;
+  right: 10px;
   z-index: 4;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   color: #edf5ff;
-  text-shadow: 0 2px 12px rgba(18, 35, 69, 0.4);
+  text-shadow: 0 1px 6px rgba(18, 35, 69, 0.4);
 }
 
 .is-placeholder .participant-overlay {
@@ -191,10 +191,10 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 24px;
   border-radius: 999px;
-  padding: 0 12px;
-  font-size: 12px;
+  padding: 0 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -217,48 +217,48 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 14px;
 }
 
 .avatar-text {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132px;
-  height: 132px;
+  width: 110px;
+  height: 110px;
   border-radius: 50%;
-  border: 6px solid #ffffff;
+  border: 4px solid #ffffff;
   background: #b3d1fb;
   color: #2f5bb7;
-  font-size: 50px;
+  font-size: 42px;
   font-weight: 700;
-  box-shadow: 0 18px 44px rgba(71, 103, 164, 0.18);
+  box-shadow: 0 8px 24px rgba(71, 103, 164, 0.18);
 }
 
 .avatar-name {
   margin: 0;
   border-radius: 999px;
-  padding: 10px 16px;
+  padding: 6px 12px;
   background: rgba(74, 78, 89, 0.72);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .is-compact .avatar-shell {
-  gap: 10px;
+  gap: 6px;
 }
 
 .is-compact .avatar-text {
-  width: 66px;
-  height: 66px;
-  border-width: 4px;
-  font-size: 24px;
+  width: 56px;
+  height: 56px;
+  border-width: 3px;
+  font-size: 22px;
 }
 
 .is-compact .avatar-name {
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .is-video-ready {

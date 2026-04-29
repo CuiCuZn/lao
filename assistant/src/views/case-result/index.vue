@@ -192,16 +192,6 @@
           </section>
         </section>
 
-        <footer class="action-bar">
-          <el-button plain class="action-button action-button--secondary" @click="handlePrint">
-            <el-icon><Printer /></el-icon>
-            <span>{{ t('assistant.caseResult.printPrescription') }}</span>
-          </el-button>
-          <el-button v-if="!isFromRecords" type="primary" class="action-button" @click="startNewVisit">
-            <el-icon><Plus /></el-icon>
-            <span>{{ t('assistant.caseResult.startNewVisit') }}</span>
-          </el-button>
-        </footer>
       </div>
     </section>
   </app-page>
@@ -218,8 +208,6 @@ import {
   DataBoard,
   Document,
   OfficeBuilding,
-  Plus,
-  Printer,
   Tickets,
   UserFilled
 } from '@element-plus/icons-vue'
@@ -757,14 +745,6 @@ const goBack = () => {
   router.push(isFromRecords.value ? '/assistant/records' : '/assistant/workbench')
 }
 
-const startNewVisit = () => {
-  router.push('/assistant/patient-identify')
-}
-
-const handlePrint = () => {
-  window.print()
-}
-
 const fetchDetail = async () => {
   if (!caseId.value) {
     pageError.value = t('assistant.caseResult.missingCaseId')
@@ -1166,34 +1146,6 @@ onMounted(() => {
   margin-top: 12px;
 }
 
-.action-bar {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-  border-radius: 16px 16px 0 0;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 -14px 34px rgba(95, 118, 160, 0.12);
-  backdrop-filter: blur(10px);
-}
-
-.action-button {
-  min-width: 168px;
-  height: 48px;
-  border-radius: 14px;
-  padding-inline: 20px;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.action-button--secondary {
-  border-color: #d6e1f2;
-  color: #40506a;
-  background: #ffffff;
-}
-
 .case-result-state {
   min-height: calc(100vh - 54px);
   display: flex;
@@ -1270,15 +1222,6 @@ onMounted(() => {
   .bar-track {
     width: 40px;
     height: 150px;
-  }
-
-  .action-bar {
-    flex-direction: column;
-    padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
-  }
-
-  .action-button {
-    width: 100%;
   }
 
   .result-table th,

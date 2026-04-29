@@ -42,7 +42,8 @@ const resolveCurrentAideUserId = async () => {
 
 export async function navigateToAideConsultationRoom(
   router: Router,
-  payload: AideConsultationNavigationPayload
+  payload: AideConsultationNavigationPayload,
+  options: { replace?: boolean } = {}
 ) {
   const aideUserId = await resolveCurrentAideUserId()
   const roomId = takeOptionalText(payload.roomId)
@@ -97,7 +98,7 @@ export async function navigateToAideConsultationRoom(
     ...(videoId ? { videoId } : {})
   })
 
-  await router.push({
+  const routeTarget = {
     path: '/assistant/aide/consultation',
     query: {
       token,
@@ -111,5 +112,12 @@ export async function navigateToAideConsultationRoom(
       ...(caseId ? { caseId } : {}),
       ...(videoId ? { videoId } : {})
     }
-  })
+  }
+
+  if (options.replace) {
+    await router.replace(routeTarget)
+    return
+  }
+
+  await router.push(routeTarget)
 }

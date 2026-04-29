@@ -178,7 +178,7 @@
     </aside>
 
     <el-dialog v-model="acceptDialogVisible" :show-close="false" width="400px" class="accept-request-dialog"
-      append-to-body destroy-on-close>
+      append-to-body destroy-on-close style="border-radius: 16px;">
       <div v-if="activePatient" class="accept-dialog-content">
         <div class="accept-avatar">
           {{ activePatient.patientName.slice(0, 1) }}
@@ -2001,7 +2001,7 @@ function getAvatarGradient(name: string): string {
 }
 
 :deep(.accept-request-dialog) {
-  border-radius: 16px;
+  border-radius: 20px !important;
   padding: 0;
   overflow: hidden;
   background: #ffffff;

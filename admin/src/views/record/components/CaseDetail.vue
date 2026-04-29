@@ -177,12 +177,6 @@
           </section>
         </section>
 
-        <footer class="action-bar">
-          <el-button plain class="action-button action-button--secondary" @click="handlePrint">
-            <el-icon><Printer /></el-icon>
-            <span>{{ t('assistant.caseResult.printPrescription') }}</span>
-          </el-button>
-        </footer>
       </div>
     </section>
   </div>
@@ -197,8 +191,6 @@ import {
   DataBoard,
   Document,
   OfficeBuilding,
-  Plus,
-  Printer,
   Tickets,
   UserFilled
 } from '@element-plus/icons-vue'
@@ -718,10 +710,6 @@ const hasDiagnosisData = computed(() => {
   )
 })
 
-const handlePrint = () => {
-  window.print()
-}
-
 const fetchDetail = async () => {
   if (!caseId.value) {
     pageError.value = t('assistant.caseResult.missingCaseId')
@@ -1123,34 +1111,6 @@ onMounted(() => {
   margin-top: 12px;
 }
 
-.action-bar {
-  position: sticky;
-  bottom: 0;
-  z-index: 10;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 16px 18px;
-  border-radius: 16px 16px 0 0;
-  background: #ffffff;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
-}
-
-.action-button {
-  min-width: 168px;
-  height: 48px;
-  border-radius: 14px;
-  padding-inline: 20px;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.action-button--secondary {
-  border-color: #d6e1f2;
-  color: #40506a;
-  background: #ffffff;
-}
-
 .case-result-state {
   min-height: calc(100vh - 54px);
   display: flex;
@@ -1227,15 +1187,6 @@ onMounted(() => {
   .bar-track {
     width: 40px;
     height: 150px;
-  }
-
-  .action-bar {
-    flex-direction: column;
-    padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
-  }
-
-  .action-button {
-    width: 100%;
   }
 
   .result-table th,

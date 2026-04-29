@@ -153,14 +153,14 @@ watch(
 .camera-dialog-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .camera-dialog-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .camera-dialog-heading p {
@@ -178,7 +178,7 @@ watch(
 .camera-device-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
 }
 
@@ -186,11 +186,11 @@ watch(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 48px;
+  gap: 10px;
+  min-height: 42px;
   border: 1px solid #d8e4f5;
-  border-radius: 12px;
-  padding: 0 14px;
+  border-radius: 8px;
+  padding: 0 12px;
   background: #f8fbff;
   cursor: pointer;
   transition:
@@ -203,7 +203,7 @@ watch(
 .camera-device-option.is-selected {
   border-color: #3f7bf4;
   background: #ffffff;
-  box-shadow: 0 10px 22px rgba(61, 104, 190, 0.1);
+  box-shadow: 0 4px 12px rgba(61, 104, 190, 0.1);
 }
 
 .camera-device-name {
@@ -214,16 +214,16 @@ watch(
 .camera-current-tag {
   flex: 0 0 auto;
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   background: rgba(47, 202, 104, 0.12);
   color: #1f9952;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .camera-dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 8px;
 }
 </style>

@@ -44,15 +44,6 @@
 
           <div class="preview-row">
             <consult-participant-card
-              :user-name="aidePreviewParticipant.userName"
-              :track="aidePreviewParticipant.track"
-              :muted="aidePreviewParticipant.muted"
-              :speaking="aidePreviewParticipant.speaking"
-              :badge="aidePreviewParticipant.track ? '' : aidePreviewParticipant.placeholderBadge"
-              :show-status="false"
-              compact
-            />
-            <consult-participant-card
               :user-name="doctorName"
               :track="session.localPreviewTrack.value"
               :muted="!session.micEnabled.value"
@@ -457,7 +448,6 @@ const patientName = computed(() => {
 
 const doctorPreviewBadge = computed(() => t('doctorVideo.consultation.selfBadge'))
 const waitingPatientBadge = computed(() => t('doctorVideo.consultation.waitingPatient'))
-const aidePreviewName = computed(() => doctorAideId.value || t('doctorVideo.consultation.aideFallbackName'))
 
 const buildPlaceholderParticipant = (userId: string, userName: string, placeholderBadge: string) => ({
   userId,
@@ -486,18 +476,6 @@ const patientStageParticipant = computed(() => {
       expectedPatientId || 'patient-placeholder',
       patientName.value,
       waitingPatientBadge.value
-    )
-  )
-})
-
-const aidePreviewParticipant = computed(() => {
-  return (
-    findRemoteParticipant(doctorAideId.value) ||
-    session.remoteParticipants.value.find((participant) => participant.userId !== patientStageParticipant.value.userId) ||
-    buildPlaceholderParticipant(
-      doctorAideId.value || 'aide-placeholder',
-      aidePreviewName.value,
-      t('doctorVideo.consultation.aideFallbackName')
     )
   )
 })
@@ -1537,7 +1515,7 @@ onBeforeUnmount(async () => {
 .doctor-consultation-page {
   height: 100%;
   min-height: 0;
-  padding: 18px;
+  padding: 12px;
   box-sizing: border-box;
   overflow: hidden;
   background:
@@ -1548,22 +1526,22 @@ onBeforeUnmount(async () => {
 .consultation-layout {
   display: grid;
   grid-template-columns: 370px minmax(0, 1fr) 360px;
-  gap: 14px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
 }
 
 .subtitle-column {
   min-height: 0;
-  border-radius: 20px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 16px 34px rgba(77, 103, 154, 0.08);
+  box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
 }
 
 .video-column {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   min-height: 0;
 }
@@ -1572,48 +1550,48 @@ onBeforeUnmount(async () => {
   position: relative;
   flex: 1;
   min-height: 0;
-  padding: 22px 20px 118px;
-  border: 2px solid rgba(53, 118, 242, 0.92);
-  border-radius: 20px;
+  padding: 14px 14px 110px;
+  border: 1.5px solid rgba(53, 118, 242, 0.92);
+  border-radius: 10px;
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-  box-shadow: 0 16px 36px rgba(80, 104, 150, 0.08);
+  box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
   overflow: hidden;
 }
 
 .stage-pill {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 12px;
+  left: 12px;
   z-index: 5;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.96);
   color: #233a64;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 8px 24px rgba(76, 100, 145, 0.12);
+  box-shadow: 0 4px 12px rgba(76, 100, 145, 0.12);
 }
 
 .stage-dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #2fca68;
-  box-shadow: 0 0 0 4px rgba(47, 202, 104, 0.14);
+  box-shadow: 0 0 0 3px rgba(47, 202, 104, 0.14);
 }
 
 .connection-banner {
   position: absolute;
-  top: 18px;
+  top: 12px;
   left: 50%;
   z-index: 6;
   transform: translateX(-50%);
   max-width: calc(100% - 220px);
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: rgba(255, 241, 241, 0.96);
   color: #c54949;
   font-size: 12px;
@@ -1622,13 +1600,13 @@ onBeforeUnmount(async () => {
 
 .preview-row {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 12px;
+  right: 12px;
   z-index: 5;
   display: grid;
-  grid-template-columns: repeat(2, minmax(132px, 176px));
-  gap: 12px;
-  width: min(376px, calc(100% - 220px));
+  grid-template-columns: minmax(120px, 160px);
+  gap: 8px;
+  width: min(160px, calc(100% - 200px));
 }
 
 .preview-row :deep(.consult-participant-card) {
@@ -1642,36 +1620,36 @@ onBeforeUnmount(async () => {
 .featured-caption {
   position: absolute;
   left: 50%;
-  bottom: 112px;
+  bottom: 104px;
   z-index: 4;
   transform: translateX(-50%);
   border-radius: 999px;
-  padding: 10px 18px;
+  padding: 6px 14px;
   background: rgba(74, 78, 89, 0.72);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .stage-controls {
   position: absolute;
   left: 50%;
-  bottom: 18px;
+  bottom: 14px;
   z-index: 5;
   transform: translateX(-50%);
 }
 
 .session-summary {
   border: 1px solid #d7e4f7;
-  border-radius: 18px;
-  padding: 16px 18px;
+  border-radius: 10px;
+  padding: 10px 14px;
   background: linear-gradient(180deg, #edf4ff 0%, #eef6ff 100%);
 }
 
 .doctor-panel {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1679,32 +1657,32 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
   color: #ffffff;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
 }
 
 .doctor-copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
   min-width: 0;
 }
 
 .doctor-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .doctor-heading strong {
   color: #22365d;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -1743,14 +1721,14 @@ onBeforeUnmount(async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 20px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 16px 34px rgba(77, 103, 154, 0.08);
+  box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
   overflow: hidden;
 }
 
 .record-tabs {
-  padding: 0 14px;
+  padding: 0 12px;
   border-bottom: 1px solid #e6eef8;
 }
 
@@ -1758,14 +1736,14 @@ onBeforeUnmount(async () => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 14px 18px;
+  padding: 12px 12px 14px;
 }
 
 .ai-button {
   width: 100%;
   border: none;
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 8px;
+  padding: 10px 14px;
   background: linear-gradient(180deg, #3d77f0 0%, #255cdb 100%);
   color: #ffffff;
   font-size: 14px;
@@ -1779,24 +1757,24 @@ onBeforeUnmount(async () => {
 }
 
 .record-section {
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .record-section h3 {
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   color: #f25c35;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .compact-info-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 6px 14px;
   background: #f8fbff;
   border: 1px solid #e2edff;
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .compact-info-item {
@@ -1821,13 +1799,13 @@ onBeforeUnmount(async () => {
 .compact-diagnosis-form {
   background: #f8fbff;
   border: 1px solid #e2edff;
-  border-radius: 12px;
-  padding: 16px 14px;
+  border-radius: 8px;
+  padding: 12px;
 }
 
 .compact-history-form :deep(.el-form-item__label),
 .compact-diagnosis-form :deep(.el-form-item__label) {
-  padding-bottom: 6px;
+  padding-bottom: 4px;
   font-size: 14px;
   font-weight: 700;
   line-height: 1.45;
@@ -1836,18 +1814,18 @@ onBeforeUnmount(async () => {
 
 .compact-history-form :deep(.el-textarea__inner),
 .compact-diagnosis-form :deep(.el-textarea__inner) {
-  min-height: 88px;
+  min-height: 72px;
   line-height: 1.6;
 }
 
 .compact-diagnosis-form :deep(.el-input__wrapper),
 .compact-history-form :deep(.el-textarea__inner),
 .compact-diagnosis-form :deep(.el-textarea__inner) {
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .compact-form-item {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .compact-history-form .compact-form-item:last-child,
@@ -1856,28 +1834,28 @@ onBeforeUnmount(async () => {
 }
 
 .submit-btn-wrapper {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .history-case-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .history-case-card {
   border: 1px solid #e2edff;
-  border-radius: 14px;
+  border-radius: 8px;
   background: #f8fbff;
-  padding: 14px;
-  box-shadow: 0 8px 18px rgba(78, 114, 168, 0.06);
+  padding: 10px;
+  box-shadow: 0 4px 10px rgba(78, 114, 168, 0.06);
 }
 
 .history-case-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .history-case-head strong {
@@ -1895,11 +1873,11 @@ onBeforeUnmount(async () => {
 }
 
 .history-case-meta {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .history-case-diagnosis {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: #203351;
   font-size: 14px;
   line-height: 1.7;
@@ -1911,8 +1889,8 @@ onBeforeUnmount(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 24px;
+  gap: 8px;
+  padding: 20px;
   color: #617693;
   text-align: center;
 }
@@ -1933,12 +1911,12 @@ onBeforeUnmount(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   width: min(420px, 100%);
-  padding: 36px 28px;
-  border-radius: 24px;
+  padding: 28px 20px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 20px 44px rgba(64, 89, 139, 0.12);
+  box-shadow: 0 8px 24px rgba(64, 89, 139, 0.12);
   text-align: center;
 }
 
@@ -1991,22 +1969,22 @@ onBeforeUnmount(async () => {
   .preview-row {
     position: static;
     width: 100%;
-    margin-top: 46px;
-    margin-bottom: 14px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 36px;
+    margin-bottom: 10px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .featured-stage {
-    padding-top: 18px;
+    padding-top: 14px;
   }
 
   .featured-caption {
-    bottom: 126px;
-    font-size: 16px;
+    bottom: 118px;
+    font-size: 14px;
   }
 
   .stage-controls {
-    width: calc(100% - 32px);
+    width: calc(100% - 24px);
   }
 
   .diagnosis-grid,

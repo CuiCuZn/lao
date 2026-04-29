@@ -22,7 +22,7 @@ export default {
       ageGender: '年龄/性别',
       ageSuffix: '岁',
       marriage: '婚况',
-      patientId: '病历号(MRN)',
+      patientId: '病历号',
       idCard: '身份证号',
       phone: '手机号',
       occupation: '职业',

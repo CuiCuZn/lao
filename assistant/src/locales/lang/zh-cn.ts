@@ -154,7 +154,7 @@ export default {
       ageGender: '年龄/性别',
       ageSuffix: '岁',
       marriage: '婚况',
-      patientId: '病历号(MRN)',
+      patientId: '病历号',
       idCard: '身份证号',
       phone: '手机号',
       occupation: '职业',
@@ -245,7 +245,7 @@ export default {
         age: '年龄',
         idCard: '身份证件',
         phone: '联系手机',
-        job: '工作',
+        job: '职业',
         maritalStatus: '婚姻状况',
         medicalAccount: '医保账户',
         address: '常住地址'

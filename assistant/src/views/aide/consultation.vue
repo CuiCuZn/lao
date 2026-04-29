@@ -52,14 +52,6 @@
                 :badge="patientPreviewParticipant.track ? '' : patientPreviewParticipant.placeholderBadge"
                 compact
               />
-              <consult-participant-card
-                :user-name="aideName"
-                :track="session.localPreviewTrack.value"
-                muted
-                :badge="t('assistant.patientVideo.consultation.selfBadge')"
-                :show-status="false"
-                compact
-              />
             </div>
 
             <consult-participant-card
@@ -69,6 +61,7 @@
               :muted="doctorStageParticipant.muted"
               :speaking="doctorStageParticipant.speaking"
               :badge="doctorStageParticipant.track ? '' : doctorStageParticipant.placeholderBadge"
+              :placeholder-mode="doctorPlaceholderMode"
             />
           </div>
 
@@ -160,7 +153,7 @@ import { usePatientSessionStore } from '@/stores/patient-session'
 import { useUserStore } from '@/stores/user'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
 import { listenAssistantConsultationRejected, startAssistantConsultationSse, stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
-import { broadcastConsultationRejected, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import { broadcastConsultationEnded, broadcastConsultationRejected, broadcastVideoRoomCreated } from '@/utils/patient-channel'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
 import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from '@/views/patient/consultation/components/ConsultSubtitleTimeline.vue'
@@ -285,10 +278,15 @@ const findRemoteParticipant = (userId: string) => {
   return session.remoteParticipants.value.find((participant) => participant.userId === normalizedUserId) || null
 }
 
+const doctorRoomParticipant = computed(() => {
+  const doctorId = takeOptionalText(consultationDoctorId.value)
+  return doctorId ? findRemoteParticipant(doctorId) : null
+})
+
 const doctorStageParticipant = computed(() => {
   const doctorId = takeOptionalText(consultationDoctorId.value)
   return (
-    findRemoteParticipant(doctorId) ||
+    doctorRoomParticipant.value ||
     (!doctorId ? session.remoteParticipants.value.find((participant) => participant.track) : null) ||
     buildPlaceholderParticipant(
       doctorId || 'doctor-placeholder',
@@ -296,6 +294,10 @@ const doctorStageParticipant = computed(() => {
       t('assistant.patientVideo.consultation.waitingDoctorJoin')
     )
   )
+})
+
+const doctorPlaceholderMode = computed<'waiting' | 'avatar'>(() => {
+  return doctorRoomParticipant.value && !doctorStageParticipant.value.track ? 'avatar' : 'waiting'
 })
 
 const patientPreviewParticipant = computed(() => {
@@ -605,7 +607,10 @@ const goBackToWorkbench = async () => {
 }
 
 const goBackToPreviousRoute = async () => {
-  if (window.history.length > 1) {
+  const previousRoute = router.options.history.state.back
+  const previousPath = typeof previousRoute === 'string' ? previousRoute : ''
+
+  if (window.history.length > 1 && previousPath && !previousPath.startsWith('/assistant/aide/consultation')) {
     router.back()
     return
   }
@@ -625,6 +630,13 @@ const cleanupConsultationRoom = async () => {
   await session.leaveConsultationRoom()
 }
 
+const notifyPatientConsultationEnded = () => {
+  broadcastConsultationEnded({
+    patientId: takeOptionalText(consultationPatientId.value),
+    caseId: takeOptionalText(consultationCaseId.value)
+  })
+}
+
 const handleLeave = async () => {
   if (leavingInProgress) {
     return
@@ -632,6 +644,7 @@ const handleLeave = async () => {
 
   leavingInProgress = true
   try {
+    notifyPatientConsultationEnded()
     await cleanupConsultationRoom()
     await goBackToWorkbench()
   } finally {
@@ -711,6 +724,8 @@ const handleResendRequest = async () => {
       goodAt: consultationDoctorGoodAt.value,
       roomId,
       caseId: context.caseId
+    }, {
+      replace: true
     })
 
     pageError.value = ''
@@ -770,7 +785,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   flex: 1;
-  padding: 18px;
+  padding: 12px;
   box-sizing: border-box;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(240, 245, 251, 0.84) 0%, rgba(250, 252, 255, 0.98) 100%);
@@ -779,7 +794,7 @@ onBeforeUnmount(async () => {
 .consultation-layout {
   display: grid;
   grid-template-columns: 470px minmax(0, 1fr);
-  gap: 14px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
 }
@@ -788,9 +803,9 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   max-height: 100%;
-  border-radius: 20px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 14px 36px rgba(77, 103, 154, 0.08);
+  box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
 }
 
 .video-column {
@@ -799,7 +814,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -807,61 +822,61 @@ onBeforeUnmount(async () => {
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 2px solid rgba(53, 118, 242, 0.94);
-  border-radius: 18px;
-  padding: 18px;
+  border: 1.5px solid rgba(53, 118, 242, 0.94);
+  border-radius: 10px;
+  padding: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  box-shadow: 0 14px 36px rgba(80, 104, 150, 0.08);
+  box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
 .stage-pill {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 12px;
+  left: 12px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #24416e;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 10px 24px rgba(53, 83, 132, 0.14);
+  box-shadow: 0 4px 12px rgba(53, 83, 132, 0.14);
 }
 
 .stage-dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #18b47b;
-  box-shadow: 0 0 0 6px rgba(24, 180, 123, 0.14);
+  box-shadow: 0 0 0 4px rgba(24, 180, 123, 0.14);
 }
 
 .connection-banner {
   position: absolute;
-  top: 58px;
-  left: 18px;
-  right: 18px;
+  top: 48px;
+  left: 12px;
+  right: 12px;
   z-index: 7;
-  padding: 10px 12px;
-  border-radius: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: rgba(255, 241, 229, 0.96);
   color: #a24a12;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .preview-row {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(2, minmax(132px, 170px));
-  gap: 12px;
-  width: min(360px, calc(100% - 220px));
+  grid-template-columns: minmax(120px, 160px);
+  gap: 8px;
+  width: min(160px, calc(100% - 200px));
 }
 
 .preview-row :deep(.consult-participant-card) {
@@ -876,18 +891,18 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
-  border-radius: 18px;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 14px 36px rgba(80, 104, 150, 0.08);
+  box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
 .doctor-panel {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .doctor-avatar {
@@ -895,12 +910,12 @@ onBeforeUnmount(async () => {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, #3576f2, #53b7ff);
   color: #ffffff;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
 }
 
@@ -912,25 +927,25 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .doctor-heading strong {
   color: #22395f;
-  font-size: 17px;
+  font-size: 15px;
 }
 
 .doctor-status {
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 999px;
   background: rgba(24, 180, 123, 0.12);
   color: #139565;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .doctor-good-at {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   color: #6d7d96;
   font-size: 13px;
   line-height: 1.5;
@@ -949,26 +964,27 @@ onBeforeUnmount(async () => {
 }
 
 .error-card {
-  width: min(440px, 92vw);
-  padding: 30px;
-  border-radius: 20px;
+  width: min(420px, 92vw);
+  padding: 24px 20px;
+  border-radius: 12px;
   background: #ffffff;
   text-align: center;
-  box-shadow: 0 18px 45px rgba(71, 93, 134, 0.14);
+  box-shadow: 0 8px 24px rgba(71, 93, 134, 0.14);
 }
 
 .error-icon {
   color: #e45d5d;
-  font-size: 44px;
+  font-size: 36px;
 }
 
 .error-card h2 {
-  margin: 14px 0 8px;
+  margin: 10px 0 6px;
+  font-size: 20px;
   color: #233d66;
 }
 
 .error-card p {
-  margin: 0 0 20px;
+  margin: 0 0 16px;
   color: #71819b;
 }
 
@@ -979,35 +995,35 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 20px;
   background: rgba(20, 32, 54, 0.48);
   backdrop-filter: blur(4px);
 }
 
 .rejected-dialog {
-  width: min(420px, 100%);
-  border-radius: 18px;
-  padding: 30px 28px 24px;
+  width: min(400px, 100%);
+  border-radius: 12px;
+  padding: 24px 20px 20px;
   box-sizing: border-box;
   background: #ffffff;
   text-align: center;
-  box-shadow: 0 24px 60px rgba(25, 40, 70, 0.2);
+  box-shadow: 0 12px 36px rgba(25, 40, 70, 0.2);
 }
 
 .rejected-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 86px;
-  height: 86px;
-  margin: 0 auto 18px;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 14px;
   border-radius: 50%;
   background: linear-gradient(180deg, #fff1f1 0%, #ffe3e3 100%);
 }
 
 .rejected-icon svg {
-  width: 62px;
-  height: 62px;
+  width: 52px;
+  height: 52px;
 }
 
 .rejected-icon circle {
@@ -1027,13 +1043,13 @@ onBeforeUnmount(async () => {
 .rejected-dialog h2 {
   margin: 0;
   color: #17253f;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   letter-spacing: 0;
 }
 
 .rejected-dialog p {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: #6e7d94;
   font-size: 14px;
   line-height: 1.7;
@@ -1042,19 +1058,19 @@ onBeforeUnmount(async () => {
 .rejected-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 26px;
+  gap: 10px;
+  margin-top: 20px;
 }
 
 .rejected-action {
-  min-height: 42px;
-  border-radius: 10px;
-  padding: 0 14px;
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 0 12px;
   border: 1px solid transparent;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
 .rejected-action:not(:disabled):hover {
@@ -1064,7 +1080,7 @@ onBeforeUnmount(async () => {
 .rejected-action--primary {
   background: #2563eb;
   color: #ffffff;
-  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22);
 }
 
 .rejected-action--ghost {
@@ -1101,15 +1117,15 @@ onBeforeUnmount(async () => {
   .preview-row {
     position: static;
     width: 100%;
-    margin-top: 54px;
-    margin-bottom: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 44px;
+    margin-bottom: 10px;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
   .patient-consultation-page {
-    padding: 10px;
+    padding: 8px;
   }
 
   .consultation-footer {
@@ -1118,7 +1134,7 @@ onBeforeUnmount(async () => {
   }
 
   .rejected-dialog {
-    padding: 26px 20px 20px;
+    padding: 20px 16px 16px;
   }
 
   .rejected-actions {

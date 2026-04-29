@@ -823,6 +823,9 @@ const goToDoctorSelect = () => {
 }
 
 .form-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   height: 100%;
   min-height: 0;
   padding: 20px 20px 24px;
@@ -831,6 +834,7 @@ const goToDoctorSelect = () => {
   border: 1px solid rgba(255, 255, 255, 0.76);
   box-shadow: 0 24px 54px rgba(53, 88, 129, 0.14);
   backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 
 .panel-title {
@@ -860,9 +864,28 @@ const goToDoctorSelect = () => {
 }
 
 .form-grid {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px 14px;
+  padding: 0 6px 4px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.form-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.form-grid::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(104, 132, 166, 0.28);
+}
+
+.form-grid::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .form-stack {

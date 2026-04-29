@@ -46,15 +46,6 @@
 
             <div class="preview-row">
               <consult-participant-card
-                :user-name="aidePreviewParticipant.userName"
-                :track="aidePreviewParticipant.track"
-                :muted="aidePreviewParticipant.muted"
-                :speaking="aidePreviewParticipant.speaking"
-                :badge="aidePreviewParticipant.track ? '' : aidePreviewParticipant.placeholderBadge"
-                :show-status="false"
-                compact
-              />
-              <consult-participant-card
                 :user-name="patientName"
                 :track="session.localPreviewTrack.value"
                 :muted="!session.micEnabled.value"
@@ -71,6 +62,7 @@
               :muted="doctorStageParticipant.muted"
               :speaking="doctorStageParticipant.speaking"
               :badge="doctorStageParticipant.track ? '' : doctorStageParticipant.placeholderBadge"
+              :placeholder-mode="doctorPlaceholderMode"
             />
           </div>
 
@@ -109,6 +101,7 @@
               :on-leave="handleLeave"
               :camera-switching="session.cameraSwitching.value"
               show-camera
+              :show-leave="false"
             />
           </footer>
         </section>
@@ -259,10 +252,15 @@ const findRemoteParticipant = (userId: string) => {
   return session.remoteParticipants.value.find((participant) => participant.userId === normalizedUserId) || null
 }
 
+const doctorRoomParticipant = computed(() => {
+  const doctorId = takeOptionalText(consultationDoctorId.value)
+  return doctorId ? findRemoteParticipant(doctorId) : null
+})
+
 const doctorStageParticipant = computed(() => {
   const doctorId = takeOptionalText(consultationDoctorId.value)
   return (
-    findRemoteParticipant(doctorId) ||
+    doctorRoomParticipant.value ||
     (!doctorId ? session.remoteParticipants.value.find((participant) => participant.track) : null) ||
     buildPlaceholderParticipant(
       doctorId || 'doctor-placeholder',
@@ -272,16 +270,8 @@ const doctorStageParticipant = computed(() => {
   )
 })
 
-const aidePreviewParticipant = computed(() => {
-  const doctorId = takeOptionalText(consultationDoctorId.value)
-  return (
-    session.remoteParticipants.value.find((participant) => participant.userId !== doctorId) ||
-    buildPlaceholderParticipant(
-      'aide-placeholder',
-      t('assistant.aideVideo.consultation.aideFallbackName'),
-      t('assistant.aideVideo.consultation.aideFallbackName')
-    )
-  )
+const doctorPlaceholderMode = computed<'waiting' | 'avatar'>(() => {
+  return doctorRoomParticipant.value && !doctorStageParticipant.value.track ? 'avatar' : 'waiting'
 })
 
 const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
@@ -837,7 +827,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   flex: 1;
-  padding: 18px;
+  padding: 12px;
   box-sizing: border-box;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(240, 245, 251, 0.84) 0%, rgba(250, 252, 255, 0.98) 100%);
@@ -846,7 +836,7 @@ onBeforeUnmount(async () => {
 .consultation-layout {
   display: grid;
   grid-template-columns: 470px minmax(0, 1fr);
-  gap: 14px;
+  gap: 10px;
   height: 100%;
   min-height: 0;
 }
@@ -855,9 +845,9 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   max-height: 100%;
-  border-radius: 20px;
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: 0 14px 36px rgba(77, 103, 154, 0.08);
+  box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
 }
 
 .video-column {
@@ -866,7 +856,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  gap: 12px;
+  gap: 10px;
   overflow: hidden;
 }
 
@@ -874,46 +864,46 @@ onBeforeUnmount(async () => {
   position: relative;
   flex: 1;
   min-height: 0;
-  border: 2px solid rgba(53, 118, 242, 0.94);
-  border-radius: 18px;
-  padding: 18px;
+  border: 1.5px solid rgba(53, 118, 242, 0.94);
+  border-radius: 10px;
+  padding: 12px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  box-shadow: 0 14px 36px rgba(80, 104, 150, 0.08);
+  box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
 .stage-pill {
   position: absolute;
-  top: 16px;
-  left: 18px;
+  top: 12px;
+  left: 12px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: rgba(255, 255, 255, 0.96);
   color: #233a64;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  box-shadow: 0 8px 24px rgba(76, 100, 145, 0.12);
+  box-shadow: 0 4px 12px rgba(76, 100, 145, 0.12);
 }
 
 .stage-dot {
-  width: 9px;
-  height: 9px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: #2fca68;
-  box-shadow: 0 0 0 4px rgba(47, 202, 104, 0.14);
+  box-shadow: 0 0 0 3px rgba(47, 202, 104, 0.14);
 }
 
 .connection-banner {
   position: absolute;
-  top: 18px;
+  top: 12px;
   right: 194px;
   z-index: 6;
   max-width: calc(100% - 280px);
   border-radius: 999px;
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: rgba(255, 241, 241, 0.96);
   color: #c54949;
   font-size: 12px;
@@ -922,13 +912,13 @@ onBeforeUnmount(async () => {
 
 .preview-row {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 12px;
+  right: 12px;
   z-index: 6;
   display: grid;
-  grid-template-columns: repeat(2, minmax(132px, 170px));
-  gap: 12px;
-  width: min(360px, calc(100% - 220px));
+  grid-template-columns: minmax(120px, 160px);
+  gap: 8px;
+  width: min(160px, calc(100% - 200px));
 }
 
 .preview-row :deep(.consult-participant-card) {
@@ -943,17 +933,17 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   border: 1px solid #d7e4f7;
-  border-radius: 16px;
-  padding: 14px 18px;
+  border-radius: 10px;
+  padding: 10px 14px;
   background: linear-gradient(180deg, #edf4ff 0%, #eef6ff 100%);
 }
 
 .doctor-panel {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -961,32 +951,32 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 54px;
-  height: 54px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
   color: #ffffff;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
 }
 
 .doctor-copy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 3px;
   min-width: 0;
 }
 
 .doctor-heading {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .doctor-heading strong {
   color: #22365d;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
 }
 
@@ -1019,12 +1009,12 @@ onBeforeUnmount(async () => {
 .doctor-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .doctor-meta span {
   border-radius: 999px;
-  padding: 5px 10px;
+  padding: 3px 8px;
   background: rgba(61, 117, 226, 0.1);
   color: #3a63b8;
   font-size: 12px;
@@ -1042,24 +1032,24 @@ onBeforeUnmount(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
-  padding: 36px 28px;
-  border-radius: 24px;
+  gap: 10px;
+  padding: 28px 20px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid rgba(233, 214, 214, 0.98);
-  box-shadow: 0 18px 48px rgba(60, 86, 117, 0.08);
+  box-shadow: 0 8px 24px rgba(60, 86, 117, 0.08);
   text-align: center;
 }
 
 .error-icon {
-  font-size: 42px;
+  font-size: 36px;
   color: #de5a56;
 }
 
 .error-card h2 {
   margin: 0;
   color: #213659;
-  font-size: 24px;
+  font-size: 20px;
 }
 
 .error-card p {
@@ -1081,29 +1071,30 @@ onBeforeUnmount(async () => {
 
 @media (max-width: 900px) {
   .patient-consultation-page {
-    padding: 12px;
+    padding: 8px;
   }
 
   .consultation-layout {
+    gap: 8px;
     grid-template-rows: minmax(240px, 34%) minmax(0, 1fr);
   }
 
   .featured-stage {
     min-height: 0;
-    padding: 12px;
+    padding: 10px;
   }
 
   .preview-row {
     position: static;
     width: 100%;
-    margin-top: 12px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 8px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .connection-banner {
     position: static;
     max-width: none;
-    margin: 50px 0 12px;
+    margin: 40px 0 8px;
   }
 
   .consultation-footer {
