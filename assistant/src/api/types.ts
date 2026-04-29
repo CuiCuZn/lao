@@ -141,7 +141,7 @@ export interface DepartmentTranslateResponse {
 
 export interface WrittenAddParams {
   caseId: string | number;
-  isDoctor: 0 | 1;
+  isDoctor: 0 | 1 | 2;
   contentCn: string;
   contentLo: string;
 }

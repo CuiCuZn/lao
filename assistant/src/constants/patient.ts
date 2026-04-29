@@ -5,5 +5,6 @@ export const PATIENT_CHANNEL_MESSAGE_TYPES = {
   contextSync: 'PATIENT_CONTEXT_SYNC',
   videoRoomCreated: 'VIDEO_ROOM_CREATED',
   reconnectFailed: 'RECONNECT_FAILED',
-  consultationEnded: 'CONSULTATION_ENDED'
+  consultationEnded: 'CONSULTATION_ENDED',
+  consultationRejected: 'CONSULTATION_REJECTED'
 } as const

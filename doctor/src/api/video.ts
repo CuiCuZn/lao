@@ -6,6 +6,7 @@ import type {
   VideoCloseSubtitleResponse,
   VideoConversationHistoryResponse,
   VideoGetChannelIdResponse,
+  VideoRejectResponse,
   VideoGetVideoIdResponse,
   VideoGetTokenParams,
   VideoGetTokenResponse,
@@ -21,6 +22,22 @@ export function getBasicInfo(caseId: string | number) {
 
 export function getVideoChannelId(caseId: string | number): Promise<VideoGetChannelIdResponse> {
   return request.get(`/video/getChannelId/${caseId}`)
+}
+
+export function rejectVideo(
+  caseId: string | number,
+  channelId: string | number,
+  doctorAideId: string | number
+): Promise<VideoRejectResponse> {
+  return request.post(
+    `/video/rejectVideo/${encodeURIComponent(String(caseId))}/${encodeURIComponent(String(channelId))}/${encodeURIComponent(String(doctorAideId))}`,
+    undefined,
+    {
+      headers: {
+        successCodes: '0,200'
+      }
+    }
+  )
 }
 
 export function getVideoId(caseId: string | number): Promise<VideoGetVideoIdResponse> {

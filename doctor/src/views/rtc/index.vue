@@ -44,6 +44,15 @@
 
           <div class="preview-row">
             <consult-participant-card
+              :user-name="aidePreviewParticipant.userName"
+              :track="aidePreviewParticipant.track"
+              :muted="aidePreviewParticipant.muted"
+              :speaking="aidePreviewParticipant.speaking"
+              :badge="aidePreviewParticipant.track ? '' : aidePreviewParticipant.placeholderBadge"
+              :show-status="false"
+              compact
+            />
+            <consult-participant-card
               :user-name="doctorName"
               :track="session.localPreviewTrack.value"
               :muted="!session.micEnabled.value"
@@ -55,11 +64,11 @@
 
           <consult-participant-card
             class="featured-card"
-            :user-name="patientName"
-            :track="session.featuredParticipant.value.track"
-            :muted="session.featuredParticipant.value.muted"
-            :speaking="session.featuredParticipant.value.speaking"
-            :badge="session.featuredParticipant.value.track ? '' : waitingPatientBadge"
+            :user-name="patientStageParticipant.userName"
+            :track="patientStageParticipant.track"
+            :muted="patientStageParticipant.muted"
+            :speaking="patientStageParticipant.speaking"
+            :badge="patientStageParticipant.track ? '' : patientStageParticipant.placeholderBadge"
           />
 
           <div class="featured-caption">
@@ -78,19 +87,6 @@
               show-camera
             />
           </div>
-        </div>
-
-        <div v-if="session.extraParticipants.value.length" class="participant-strip">
-          <consult-participant-card
-            v-for="participant in session.extraParticipants.value"
-            :key="participant.userId"
-            :user-name="participant.userName"
-            :track="participant.track"
-            :muted="participant.muted"
-            :speaking="participant.speaking"
-            :badge="participant.track ? '' : waitingPatientBadge"
-            compact
-          />
         </div>
 
         <footer class="session-summary">
@@ -461,6 +457,50 @@ const patientName = computed(() => {
 
 const doctorPreviewBadge = computed(() => t('doctorVideo.consultation.selfBadge'))
 const waitingPatientBadge = computed(() => t('doctorVideo.consultation.waitingPatient'))
+const aidePreviewName = computed(() => doctorAideId.value || t('doctorVideo.consultation.aideFallbackName'))
+
+const buildPlaceholderParticipant = (userId: string, userName: string, placeholderBadge: string) => ({
+  userId,
+  userName,
+  track: null,
+  muted: true,
+  speaking: false,
+  placeholderBadge
+})
+
+const findRemoteParticipant = (userId: string) => {
+  const normalizedUserId = userId?.trim()
+  if (!normalizedUserId) {
+    return null
+  }
+
+  return session.remoteParticipants.value.find((participant) => participant.userId === normalizedUserId) || null
+}
+
+const patientStageParticipant = computed(() => {
+  const expectedPatientId = patientId.value
+  return (
+    findRemoteParticipant(expectedPatientId) ||
+    (!expectedPatientId ? session.remoteParticipants.value.find((participant) => participant.track) : null) ||
+    buildPlaceholderParticipant(
+      expectedPatientId || 'patient-placeholder',
+      patientName.value,
+      waitingPatientBadge.value
+    )
+  )
+})
+
+const aidePreviewParticipant = computed(() => {
+  return (
+    findRemoteParticipant(doctorAideId.value) ||
+    session.remoteParticipants.value.find((participant) => participant.userId !== patientStageParticipant.value.userId) ||
+    buildPlaceholderParticipant(
+      doctorAideId.value || 'aide-placeholder',
+      aidePreviewName.value,
+      t('doctorVideo.consultation.aideFallbackName')
+    )
+  )
+})
 
 const resolveInputPlaceholder = (label: string) => {
   return t('doctorVideo.consultation.inputPlaceholder', { label })
@@ -1585,7 +1625,10 @@ onBeforeUnmount(async () => {
   top: 18px;
   right: 18px;
   z-index: 5;
-  width: min(176px, 22%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(132px, 176px));
+  gap: 12px;
+  width: min(376px, calc(100% - 220px));
 }
 
 .preview-row :deep(.consult-participant-card) {
@@ -1616,12 +1659,6 @@ onBeforeUnmount(async () => {
   bottom: 18px;
   z-index: 5;
   transform: translateX(-50%);
-}
-
-.participant-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
 }
 
 .session-summary {
@@ -1956,6 +1993,7 @@ onBeforeUnmount(async () => {
     width: 100%;
     margin-top: 46px;
     margin-bottom: 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .featured-stage {

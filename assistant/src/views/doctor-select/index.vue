@@ -133,7 +133,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
@@ -142,9 +142,9 @@ import AppPage from '@/components/AppPage.vue'
 import { listDepartment, listDepartmentDoctors } from '@/api/department'
 import { getPatientDetail } from '@/api/patient'
 import { createVideoRoom } from '@/api/video'
-import { getToken } from '@/utils/auth'
-import { broadcastConsultationEnded, broadcastPatientContextSync, broadcastVideoRoomCreated } from '@/utils/patient-channel'
-import { connectSse, type SseMessage } from '@/utils/sse'
+import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
+import { startAssistantConsultationSse, stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
+import { broadcastPatientContextSync, broadcastVideoRoomCreated } from '@/utils/patient-channel'
 
 interface DepartmentOption {
   id: string
@@ -185,13 +185,6 @@ const patientSummary = reactive({
   complaint: t('common.notAvailable'),
   caseId: '' as string | number
 })
-
-let reconnectTimer: ReturnType<typeof setTimeout> | undefined
-let sseConnection: ReturnType<typeof connectSse> | undefined
-let manualClose = false
-let activeStreamId = 0
-let reconnectAttempts = 0
-let activeConsultationContext: { patientId: string; caseId: string } | null = null
 
 const pickText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!source) {
@@ -494,13 +487,31 @@ const handleCreateRoom = async () => {
 
   creatingRoom.value = true
 
+  let sseReady = false
+  let consultationStarted = false
+
   try {
+    const caseId = normalizeCaseId(patientSummary.caseId)
+    if (!caseId) {
+      throw new Error(t('assistant.doctorSelect.sseConnectFailed'))
+    }
+
+    try {
+      await startAssistantConsultationSse({
+        patientId,
+        caseId,
+        doctorName: selectedDoctor.value?.name || ''
+      }, router)
+      sseReady = true
+    } catch {
+      throw new Error(t('assistant.doctorSelect.sseConnectFailed'))
+    }
+
     const response = await createVideoRoom({
       patientId,
       userId: selectedDoctorId.value,
-      ...(patientSummary.caseId ? { caseId: patientSummary.caseId } : {})
+      caseId
     })
-    const caseId = normalizeCaseId(patientSummary.caseId)
     broadcastVideoRoomCreated({
       patientId,
       doctorId: selectedDoctorId.value,
@@ -509,20 +520,39 @@ const handleCreateRoom = async () => {
       ...(caseId ? { caseId } : {}),
       roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : ''
     })
-    if (caseId) {
-      reconnectAttempts = 0
-      startSse({
-        patientId,
-        caseId
-      })
-    }
+    await navigateToAideConsultationRoom(router, {
+      patientId,
+      doctorId: selectedDoctorId.value,
+      doctorName: selectedDoctor.value?.name || '',
+      goodAt: selectedDoctor.value?.goodAt || '',
+      roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : '',
+      ...(caseId ? { caseId } : {})
+    })
+    consultationStarted = true
     ElMessage.success(t('assistant.doctorSelect.createRoomSuccess'))
+  } catch (error) {
+    if (sseReady && !consultationStarted) {
+      stopAssistantConsultationSse()
+    }
+
+    const message =
+      error instanceof Error && error.message === 'missingParams'
+        ? t('assistant.aideVideo.consultation.missingParams')
+        : error instanceof Error && error.message.trim()
+          ? error.message
+          : t('assistant.aideVideo.consultation.joinFailed')
+    ElMessage.error(message)
   } finally {
     creatingRoom.value = false
   }
 }
 
 const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+
   const patientId = getRoutePatientId()
   router.push({
     path: '/assistant/intake',
@@ -537,132 +567,6 @@ const normalizeCaseId = (value: unknown) => {
 
   const normalizedValue = String(value).trim()
   return normalizedValue || ''
-}
-
-const parseSsePayload = (raw: string): unknown => {
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return raw
-  }
-}
-
-const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null
-}
-
-const isConsultationFinishedPayload = (payload: unknown, expectedCaseId: string) => {
-  if (!isObjectRecord(payload)) {
-    return false
-  }
-
-  const payloadCaseId = normalizeCaseId(payload.caseId)
-  const status = Number(payload.status)
-  return Boolean(expectedCaseId) && payloadCaseId === expectedCaseId && status === 0
-}
-
-const handleConsultationCompleted = async (context: { patientId: string; caseId: string }) => {
-  if (!activeConsultationContext || activeConsultationContext.caseId !== context.caseId) {
-    return
-  }
-
-  closeSse(false)
-  activeConsultationContext = null
-  broadcastConsultationEnded({
-    patientId: context.patientId,
-    caseId: context.caseId
-  })
-  await router.push({
-    path: '/assistant/case-result',
-    query: {
-      caseId: context.caseId
-    }
-  })
-}
-
-const handleSseMessage = (message: SseMessage) => {
-  if (!activeConsultationContext) {
-    return
-  }
-
-  const payload = parseSsePayload(message.data)
-  if (!isConsultationFinishedPayload(payload, activeConsultationContext.caseId)) {
-    return
-  }
-
-  void handleConsultationCompleted(activeConsultationContext)
-}
-
-const scheduleReconnect = () => {
-  if (manualClose || !activeConsultationContext) {
-    return
-  }
-
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-  }
-
-  reconnectAttempts += 1
-  reconnectTimer = setTimeout(() => {
-    if (activeConsultationContext) {
-      startSse(activeConsultationContext)
-    }
-  }, Math.min(3000 + reconnectAttempts * 1000, 10000))
-}
-
-function closeSse(isUnmount: boolean) {
-  manualClose = true
-  activeStreamId += 1
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = undefined
-  }
-  sseConnection?.close()
-  sseConnection = undefined
-  if (isUnmount) {
-    manualClose = true
-  }
-}
-
-function startSse(context: { patientId: string; caseId: string }) {
-  closeSse(false)
-  activeConsultationContext = context
-  manualClose = false
-  activeStreamId += 1
-  const streamId = activeStreamId
-
-  const token = getToken()
-  const langMap: Record<string, string> = {
-    'zh-cn': 'zh_CN',
-    lo: 'lo_LA',
-    en: 'en_US'
-  }
-  const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
-  const streamUrl = `${baseUrl}/resource/sse`
-
-  sseConnection = connectSse(streamUrl, {
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      clientid: import.meta.env.VITE_APP_CLIENT_ID || '',
-      'content-language': langMap[localStorage.getItem('lang') || 'zh-cn'] || 'zh_CN'
-    },
-    onOpen: () => {
-      if (streamId !== activeStreamId) return
-      reconnectAttempts = 0
-    },
-    onMessage: (message) => {
-      if (streamId !== activeStreamId) return
-      handleSseMessage(message)
-    },
-    onError: () => {
-      if (streamId !== activeStreamId) return
-    },
-    onClose: () => {
-      if (streamId === activeStreamId && !manualClose) {
-        scheduleReconnect()
-      }
-    }
-  })
 }
 
 watch(
@@ -682,10 +586,6 @@ onMounted(() => {
   void loadDepartments()
 })
 
-onBeforeUnmount(() => {
-  activeConsultationContext = null
-  closeSse(true)
-})
 </script>
 
 <style scoped lang="scss">

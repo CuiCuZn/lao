@@ -86,6 +86,15 @@ const assistantRoutes: Array<RouteRecordRaw> = [
     }
   },
   {
+    path: '/assistant/aide/consultation',
+    name: 'AssistantAideConsultation',
+    component: () => import('@/views/aide/consultation.vue'),
+    meta: {
+      title: 'route.assistantConsultation',
+      descriptionKey: 'assistant.aideVideo.consultation.description'
+    }
+  },
+  {
     path: '/assistant/doctor-select',
     name: 'AssistantDoctorSelect',
     component: () => import('@/views/doctor-select/index.vue'),

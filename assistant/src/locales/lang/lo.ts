@@ -293,6 +293,7 @@ export default {
       footerAction: 'ເລີ່ມການປຶກສາວິດີໂອ',
       footerLoading: 'ກຳລັງເລີ່ມ...',
       createRoomSuccess: 'ສ້າງຫ້ອງວິດີໂອສຳເລັດແລ້ວ',
+      sseConnectFailed: 'ບໍ່ສາມາດເຊື່ອມຊ່ອງທາງການປຶກສາແບບທັນທີໄດ້ ກະລຸນາລອງໃໝ່.',
       ageSuffix: 'ປີ',
       specialties: 'ຄວາມຊ່ຽວຊານ',
       metrics: {
@@ -356,6 +357,7 @@ export default {
         selfBadge: 'ທ່ານ',
         doctorPrefix: 'ແພດ: ',
         waitingDoctor: 'ກຳລັງລໍຖ້າແພດ',
+        waitingDoctorJoin: 'ກຳລັງລໍຖ້າແພດເຂົ້າຮ່ວມ...',
         connected: 'ເຊື່ອມຕໍ່ແບບທັນທີ',
         footerSubtitle: 'ສູນການແພດພາກພື້ນ · ການປຶກສາສອງພາສາ',
         goodAt: 'ຄວາມຊ່ຽວຊານ',
@@ -380,6 +382,26 @@ export default {
           chatSendFailed: 'ຂໍ້ຄວາມຖືກສະແດງແລ້ວ ແຕ່ການສົ່ງ websocket ລົ້ມເຫຼວ.',
           chatSaveFailed: 'ຂໍ້ຄວາມຖືກສະແດງແລ້ວ ແຕ່ບັນທຶກປະຫວັດການສົນທະນາບໍ່ສຳເລັດ.'
         }
+    },
+    aideVideo: {
+      consultation: {
+        description: 'ໜ້າຜູ້ຊ່ວຍແພດສໍາລັບເບິ່ງການປຶກສາວິດີໂອ.',
+        inCall: 'ຜູ້ຊ່ວຍແພດກໍາລັງເບິ່ງ',
+        connected: 'ເຊື່ອມຕໍ່ຊ່ອງທາງເບິ່ງແລ້ວ',
+        errorTitle: 'ບໍ່ສາມາດເຂົ້າໜ້າເບິ່ງວິດີໂອໄດ້',
+        backToWorkbench: 'ກັບໄປໜ້າວຽກ',
+        missingParams: 'ພາຣາມິເຕີເຂົ້າຫ້ອງບໍ່ຄົບ ກະລຸນາເລີ່ມການປຶກສາວິດີໂອໃໝ່.',
+        joinFailed: 'ເຂົ້າຫ້ອງເບິ່ງຂອງຜູ້ຊ່ວຍແພດບໍ່ສໍາເລັດ ກະລຸນາລອງໃໝ່.',
+        aideFallbackName: 'ຜູ້ຊ່ວຍແພດ',
+        doctorRejectedMessage: 'ທ່ານໝໍ {doctorName} ໄດ້ປະຕິເສດການປຶກສາວິດີໂອຄັ້ງນີ້.',
+        rejectedTitle: 'ການປຶກສາວິດີໂອບໍ່ສາມາດເຊື່ອມຕໍ່',
+        rejectedDescription: '{doctorName} ໄດ້ປະຕິເສດຄໍາຂໍປຶກສາວິດີໂອ.',
+        resendRequest: 'ສົ່ງຄໍາຂໍອີກຄັ້ງ',
+        resendingRequest: 'ກໍາລັງສົ່ງ...',
+        resendRequestSuccess: 'ສົ່ງຄໍາຂໍປຶກສາວິດີໂອອີກຄັ້ງແລ້ວ.',
+        resendRequestFailed: 'ສົ່ງຄໍາຂໍອີກຄັ້ງບໍ່ສໍາເລັດ ກະລຸນາຈັດການພາຍຫຼັງ.',
+        handleLater: 'ຈັດການພາຍຫຼັງ'
+      }
     },
     videoGuide: {
       description: 'ໜ້າການນໍາທາງວິດີໂອຖືກລ້າງເປັນແມ່ແບບພື້ນຖານ ເພື່ອພັດທະນາໃໝ່ຕາມແຜນໃໝ່.'
@@ -409,6 +431,7 @@ export default {
     doctorSelect: 'ເລືອກແພດຮັບການກວດ',
     videoGuide: 'ການນໍາທາງວິດີໂອ',
     patientWaiting: 'ໜ້າລໍຖ້າຄົນໄຂ້',
-    patientConsultation: 'ການກວດວິດີໂອຄົນໄຂ້'
+    patientConsultation: 'ການກວດວິດີໂອຄົນໄຂ້',
+    assistantConsultation: 'ຜູ້ຊ່ວຍແພດເບິ່ງວິດີໂອ'
   }
 }

@@ -95,7 +95,7 @@
       <p>{{ t('assistant.patientVideo.consultation.subtitleEmptyDescription') }}</p>
     </div>
 
-    <div class="composer-panel">
+    <div v-if="showChatComposer" class="composer-panel">
       <textarea
         class="composer-input"
         :value="chatDraft || ''"
@@ -148,11 +148,14 @@ interface Props {
   chatInputDisabled?: boolean
   chatSendDisabled?: boolean
   chatStatusText?: string
+  showChatComposer?: boolean
   onChatInput?: (value: string) => void
   onChatSend?: () => void | Promise<void>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showChatComposer: true
+})
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
 const showBilingual = ref(false)

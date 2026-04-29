@@ -36,11 +36,20 @@ export type ConsultationEndedMessage = {
   }
 }
 
+export type ConsultationRejectedMessage = {
+  type: typeof PATIENT_CHANNEL_MESSAGE_TYPES.consultationRejected
+  payload: {
+    patientId: string
+    caseId: string
+  }
+}
+
 export type PatientChannelMessage =
   | PatientContextSyncMessage
   | VideoRoomCreatedMessage
   | ReconnectFailedMessage
   | ConsultationEndedMessage
+  | ConsultationRejectedMessage
 
 const isBroadcastChannelSupported = () => {
   return typeof window !== 'undefined' && typeof window.BroadcastChannel !== 'undefined'
@@ -89,6 +98,10 @@ const isPatientChannelMessage = (value: unknown): value is PatientChannelMessage
     return typeof value.payload.patientId === 'string' && typeof value.payload.caseId === 'string'
   }
 
+  if (value.type === PATIENT_CHANNEL_MESSAGE_TYPES.consultationRejected) {
+    return typeof value.payload.patientId === 'string' && typeof value.payload.caseId === 'string'
+  }
+
   return false
 }
 
@@ -126,6 +139,13 @@ export const broadcastReconnectFailed = (payload: ReconnectFailedMessage['payloa
 export const broadcastConsultationEnded = (payload: ConsultationEndedMessage['payload']) => {
   postPatientChannelMessage({
     type: PATIENT_CHANNEL_MESSAGE_TYPES.consultationEnded,
+    payload
+  })
+}
+
+export const broadcastConsultationRejected = (payload: ConsultationRejectedMessage['payload']) => {
+  postPatientChannelMessage({
+    type: PATIENT_CHANNEL_MESSAGE_TYPES.consultationRejected,
     payload
   })
 }

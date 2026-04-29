@@ -760,7 +760,9 @@ export const usePatientConsultationSession = () => {
       primaryAsr.value = asrRegistrationResult.primaryAsr
       secondaryAsr.value = asrRegistrationResult.secondaryAsr
 
-      await ensureLocalTracks()
+      if (params.publishLocalMedia !== false) {
+        await ensureLocalTracks()
+      }
       joined.value = true
       subtitleError.value = ''
       updateTrackStats()
@@ -1039,7 +1041,7 @@ export const usePatientConsultationSession = () => {
         track: resolveRenderableTrack(user),
         muted: !trackStatsMap.value.get(user.userId)?.mic,
         speaking: speakers.value.includes(user.userId),
-        placeholderBadge: '等待开启视频'
+        placeholderBadge: ''
       }))
   })
 

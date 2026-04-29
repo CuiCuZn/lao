@@ -10,22 +10,62 @@
   >
     <div v-if="!hasTrack" class="placeholder-pattern" />
 
-    <div class="participant-overlay">
+    <div v-if="showStatus && (badge || muted)" class="participant-overlay">
       <span v-if="badge" class="participant-badge">{{ badge }}</span>
       <span v-if="muted" class="participant-muted">{{ t('assistant.patientVideo.consultation.muted') }}</span>
     </div>
 
     <div v-if="!hasTrack" class="avatar-shell">
       <div class="avatar-text">{{ avatarText }}</div>
-      <p class="avatar-name">{{ userName }}</p>
+      <p v-if="showWaitingAnimation" class="waiting-message">
+        {{ t('assistant.patientVideo.consultation.waitingDoctorJoin') }}
+      </p>
+      <div v-if="showWaitingAnimation" class="waiting-animation">
+        <img
+          v-for="(frame, index) in waitingFrames"
+          :key="frame"
+          :src="frame"
+          :class="{ 'is-active': index === waitingFrameIndex }"
+          alt=""
+          aria-hidden="true"
+        />
+      </div>
+      <p v-else class="avatar-name">{{ userName }}</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { CameraVideoTrack, LocalVideoTrack, RemoteVideoTrack } from 'dingrtc'
+import waitingFrame01 from '@/assets/waiting/01.png'
+import waitingFrame02 from '@/assets/waiting/02.png'
+import waitingFrame03 from '@/assets/waiting/03.png'
+import waitingFrame04 from '@/assets/waiting/04.png'
+import waitingFrame05 from '@/assets/waiting/05.png'
+import waitingFrame06 from '@/assets/waiting/06.png'
+import waitingFrame07 from '@/assets/waiting/07.png'
+import waitingFrame08 from '@/assets/waiting/08.png'
+import waitingFrame09 from '@/assets/waiting/09.png'
+import waitingFrame10 from '@/assets/waiting/10.png'
+import waitingFrame11 from '@/assets/waiting/11.png'
+import waitingFrame12 from '@/assets/waiting/12.png'
+
+const waitingFrames = [
+  waitingFrame01,
+  waitingFrame02,
+  waitingFrame03,
+  waitingFrame04,
+  waitingFrame05,
+  waitingFrame06,
+  waitingFrame07,
+  waitingFrame08,
+  waitingFrame09,
+  waitingFrame10,
+  waitingFrame11,
+  waitingFrame12
+]
 
 interface Props {
   userName: string
@@ -35,6 +75,7 @@ interface Props {
   speaking?: boolean
   badge?: string
   mirror?: boolean
+  showStatus?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,12 +84,32 @@ const props = withDefaults(defineProps<Props>(), {
   compact: false,
   speaking: false,
   badge: '',
-  mirror: false
+  mirror: false,
+  showStatus: true
 })
 
 const { t } = useI18n()
 const containerRef = ref<HTMLDivElement | null>(null)
+const waitingFrameIndex = ref(0)
+const waitingTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const hasTrack = computed(() => Boolean(props.track))
+const showWaitingAnimation = computed(() => !props.compact && !hasTrack.value)
+const stopWaitingAnimation = () => {
+  if (waitingTimer.value) {
+    clearInterval(waitingTimer.value)
+    waitingTimer.value = null
+  }
+}
+
+const startWaitingAnimation = () => {
+  if (!showWaitingAnimation.value || waitingTimer.value) {
+    return
+  }
+
+  waitingTimer.value = setInterval(() => {
+    waitingFrameIndex.value = (waitingFrameIndex.value + 1) % waitingFrames.length
+  }, 80)
+}
 
 const clearRenderedVideos = (container: HTMLDivElement | null) => {
   if (!container) {
@@ -95,7 +156,22 @@ watch(
   { immediate: true }
 )
 
+watch(showWaitingAnimation, (visible) => {
+  if (visible) {
+    startWaitingAnimation()
+  } else {
+    stopWaitingAnimation()
+    waitingFrameIndex.value = 0
+  }
+}, { immediate: true })
+
+onMounted(() => {
+  startWaitingAnimation()
+})
+
 onBeforeUnmount(() => {
+  stopWaitingAnimation()
+
   if (containerRef.value && props.track) {
     // @ts-ignore
     if (typeof props.track.stopPlay === 'function') {
@@ -234,6 +310,8 @@ onBeforeUnmount(() => {
 }
 
 .avatar-name {
+  position: relative;
+  z-index: 1;
   margin: 0;
   border-radius: 999px;
   padding: 10px 16px;
@@ -241,6 +319,40 @@ onBeforeUnmount(() => {
   color: #ffffff;
   font-size: 15px;
   font-weight: 600;
+}
+
+.waiting-message {
+  margin: -4px 0 -10px;
+  color: #2f5bb7;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-align: center;
+  text-shadow: 0 8px 20px rgba(67, 111, 214, 0.18);
+}
+
+.waiting-animation {
+  position: relative;
+  width: min(360px, 72vw);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waiting-animation img {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 100%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 8px 16px rgba(45, 103, 224, 0.18));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.waiting-animation img.is-active {
+  opacity: 0.92;
 }
 
 .is-compact .avatar-shell {

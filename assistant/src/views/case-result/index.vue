@@ -221,7 +221,6 @@ import {
   Plus,
   Printer,
   Tickets,
-  Timer,
   UserFilled
 } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
@@ -453,14 +452,6 @@ const heroMetaItems = computed(() => [
     value: formatDate(pickText(['visitTime', 'visitDate', 'createTime', 'registerTime', 'updateTime']))
   },
   {
-    icon: Timer,
-    label: t('assistant.caseResult.visitDuration'),
-    value: formatDuration(
-      pickText(['duration', 'consultationDuration', 'visitDuration', 'timeLength']) ||
-        pickNumber(['durationSeconds', 'consultationDurationSeconds'])
-    )
-  },
-  {
     icon: Document,
     label: t('assistant.caseResult.visitId'),
     value: resolveDisplayText(resolvePatientId())
@@ -511,13 +502,6 @@ const consultationInfoItems = computed<DetailItem[]>(() => [
   {
     label: t('assistant.caseResult.visitDate'),
     value: formatDate(pickText(['visitTime', 'visitDate', 'createTime', 'registerTime', 'updateTime']))
-  },
-  {
-    label: t('assistant.caseResult.visitDuration'),
-    value: formatDuration(
-      pickText(['duration', 'consultationDuration', 'visitDuration', 'timeLength']) ||
-        pickNumber(['durationSeconds', 'consultationDurationSeconds'])
-    )
   },
   {
     label: t('assistant.caseResult.department'),

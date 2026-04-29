@@ -25,6 +25,7 @@ export interface PatientConsultationJoinParams {
   secondaryToken?: string
   language: ConsultationLanguage
   gslb?: string
+  publishLocalMedia?: boolean
 }
 
 export interface RtcChannelTokenResult {

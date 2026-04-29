@@ -28,6 +28,7 @@
     </button>
 
     <button
+      v-if="showMic"
       type="button"
       class="control-button"
       :class="micEnabled ? 'is-active' : 'is-inactive'"
@@ -70,11 +71,13 @@ interface Props {
   onLeave: () => void | Promise<void>
   cameraSwitching?: boolean
   showCamera?: boolean
+  showMic?: boolean
 }
 
 withDefaults(defineProps<Props>(), {
   cameraSwitching: false,
-  showCamera: false
+  showCamera: false,
+  showMic: true
 })
 
 const { t } = useI18n()

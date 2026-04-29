@@ -61,7 +61,14 @@
 
               <label class="field field-half">
                 <span class="field-label">{{ t('assistant.intake.fields.age') }}</span>
-                <input v-model="form.patientAge" :placeholder="t('assistant.intake.placeholders.age')" @blur="triggerImmediateSave" />
+                <input
+                  v-model="form.patientAge"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  :placeholder="t('assistant.intake.placeholders.age')"
+                  @input="handleAgeInput"
+                  @blur="handleAgeBlur"
+                />
               </label>
 
               <label class="field field-half">
@@ -261,6 +268,30 @@ const calculateAge = (birthday?: string) => {
   }
 
   return age >= 0 ? String(age) : ''
+}
+
+const normalizeAge = (value: string, clampMin = false) => {
+  const digits = value.replace(/\D/g, '')
+
+  if (!digits) {
+    return ''
+  }
+
+  const age = Number(digits)
+
+  if (!Number.isFinite(age)) {
+    return ''
+  }
+
+  if (age > 120) {
+    return '120'
+  }
+
+  if (clampMin && age < 1) {
+    return '1'
+  }
+
+  return String(age)
 }
 
 const toNumber = (value: unknown) => {
@@ -476,10 +507,19 @@ const triggerImmediateSave = () => {
   void submitSave()
 }
 
+const handleAgeInput = () => {
+  form.patientAge = normalizeAge(form.patientAge)
+}
+
+const handleAgeBlur = () => {
+  form.patientAge = normalizeAge(form.patientAge, true)
+  triggerImmediateSave()
+}
+
 watch(
   () => form.patientBirthday,
   (value) => {
-    form.patientAge = calculateAge(value)
+    form.patientAge = normalizeAge(calculateAge(value))
   }
 )
 

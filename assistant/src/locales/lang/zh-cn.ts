@@ -118,7 +118,7 @@ export default {
       totalSuffix: '项',
       visitDate: '就诊日期',
       visitId: '就诊ID',
-      patientInfo: '患者基本信息',
+      patientInfo: '患者',
       doctorInfo: '接诊医生',
       action: '操作',
       reconnect: '重新连接',
@@ -274,7 +274,7 @@ export default {
     },
     doctorSelect: {
       pageTitle: '选择接诊医生',
-      pageSubtitle: '请选择在线当值的医师资源，随后即刻发起会诊',
+      pageSubtitle: '请选择当前在线的医师资源，随后即刻发起会诊',
       description: '请为本次新建的会诊选择一名专家池中的接诊医生。',
       allDepartments: '全部科室',
       patientVisitNo: '就诊ID',
@@ -282,10 +282,10 @@ export default {
       loadingDepartments: '正在获取科室列表...',
       noDepartments: '暂无配置相关科室',
       loadingDoctors: '正在获取在线医师排班...',
-      refreshDoctors: '刷新可用排班',
+      refreshDoctors: '刷新',
       refreshingDoctors: '检索中...',
       noDoctors: '当前时段该科室下暂无在线医师',
-      online: '当值',
+      online: '在线',
       offline: '离线',
       selectDoctor: '选定医师',
       selectedDoctor: '已选择',
@@ -293,6 +293,7 @@ export default {
       footerAction: '启动远程诊疗',
       footerLoading: '引擎启动中...',
       createRoomSuccess: '安全会诊房间已分配',
+      sseConnectFailed: '实时诊疗通道连接失败，请稍后重试。',
       ageSuffix: '岁',
       specialties: '擅长',
       metrics: {
@@ -356,6 +357,7 @@ export default {
         selfBadge: '您',
         doctorPrefix: '医生：',
         waitingDoctor: '等待医生接入',
+        waitingDoctorJoin: '等待医生接入……',
         connected: '实时连接已建立',
         footerSubtitle: '区域医疗中心 · 双语实时会诊',
         goodAt: '擅长',
@@ -379,6 +381,26 @@ export default {
         chatTranslateFailed: '消息翻译失败，请稍后重试。',
         chatSendFailed: '消息已发送，但网络传输失败。',
         chatSaveFailed: '消息已发送，但聊天记录保存失败。'
+      }
+    },
+    aideVideo: {
+      consultation: {
+        description: '医助端视频诊疗旁听页面，仅用于观看医生与患者通话。',
+        inCall: '医助旁听中',
+        connected: '旁听连接已建立',
+        errorTitle: '无法加入医助视频旁听',
+        backToWorkbench: '返回工作台',
+        missingParams: '入会参数不完整，请重新启动远程诊疗。',
+        joinFailed: '加入医助旁听房间失败，请稍后重试。',
+        aideFallbackName: '医助',
+        doctorRejectedMessage: '{doctorName}医生拒绝此次视频诊疗',
+        rejectedTitle: '视频问诊未接通',
+        rejectedDescription: '{doctorName}当前拒绝了视频问诊请求',
+        resendRequest: '重新发起请求',
+        resendingRequest: '正在发起...',
+        resendRequestSuccess: '已重新发起视频问诊请求。',
+        resendRequestFailed: '重新发起请求失败，请稍后处理。',
+        handleLater: '稍后处理'
       }
     },
     videoGuide: {
@@ -409,6 +431,7 @@ export default {
     doctorSelect: '挂号分诊',
     videoGuide: '远程导诊',
     patientWaiting: '视频候诊室',
-    patientConsultation: '视频诊疗室'
+    patientConsultation: '视频诊疗室',
+    assistantConsultation: '医助视频旁听'
   }
 }

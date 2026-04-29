@@ -10,7 +10,7 @@
   >
     <div v-if="!hasTrack" class="placeholder-pattern" />
 
-    <div class="participant-overlay">
+    <div v-if="showStatus && (badge || muted)" class="participant-overlay">
       <span v-if="badge" class="participant-badge">{{ badge }}</span>
       <span v-if="muted" class="participant-muted">{{ t('doctorVideo.consultation.muted') }}</span>
     </div>
@@ -35,6 +35,7 @@ interface Props {
   speaking?: boolean
   badge?: string
   mirror?: boolean
+  showStatus?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,7 +44,8 @@ const props = withDefaults(defineProps<Props>(), {
   compact: false,
   speaking: false,
   badge: '',
-  mirror: false
+  mirror: false,
+  showStatus: true
 })
 
 const { t } = useI18n()

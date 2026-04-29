@@ -222,10 +222,10 @@ import {
   Delete,
   VideoCamera
 } from '@element-plus/icons-vue'
-import { ElMessage, ElNotification } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { switchWorkbenchOnlineStatus, getDepartmentList, getDiagnosisStats, getCurrentReceptionList } from '@/api/workbench'
 import { getPatientDetail } from '@/api/patient'
-import { getBasicInfo, getVideoChannelId } from '@/api/video'
+import { getBasicInfo, getVideoChannelId, rejectVideo } from '@/api/video'
 import type {
   ConsultationMode,
   ConsultationNavigationContext,
@@ -307,9 +307,46 @@ const openIncomingAcceptDialog = (item: PendingConsultation) => {
   openAcceptDialog(item)
 }
 
-const handleReject = () => {
-  acceptDialogVisible.value = false
-  activePatient.value = null
+const handleReject = async () => {
+  if (!activePatient.value || acceptingConsultation.value) {
+    return
+  }
+
+  acceptingConsultation.value = true
+
+  try {
+    const currentPatient = activePatient.value
+    const caseId = currentPatient.caseId?.trim()
+    const doctorAideId = currentPatient.doctorAideId?.trim()
+
+    if (!caseId) {
+      throw new Error(t('workbench.missingCaseId'))
+    }
+
+    if (!doctorAideId) {
+      throw new Error(t('workbench.missingDoctorAideId'))
+    }
+
+    const channelId = currentPatient.roomId?.trim() || resolveChannelId((await getVideoChannelId(caseId))?.data)
+
+    if (!channelId) {
+      throw new Error(t('workbench.roomIdLoadFailed'))
+    }
+
+    await rejectVideo(caseId, channelId, doctorAideId)
+
+    pendingPatients.value = []
+    diagnosisStats.value.pendingReceptionCount = 0
+    acceptDialogVisible.value = false
+    activePatient.value = null
+    void loadDiagnosisStats().catch((error) => {
+      console.error('Failed to refresh diagnosis stats after rejecting video:', error)
+    })
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : t('workbench.rejectFailed'))
+  } finally {
+    acceptingConsultation.value = false
+  }
 }
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
@@ -860,18 +897,12 @@ function notifyIncomingConsultation(item: PendingConsultation) {
   const message = t('workbench.incomingConsultationNotification', {
     patientName: item.patientName || t('workbench.unknownPatient')
   })
-
-  ElNotification({
-    title,
-    message,
-    type: 'success',
-    duration: 5000
-  })
+  const notificationTag = [item.id, item.roomId || item.caseId].filter(Boolean).join('-')
 
   showDesktopNotification({
     title,
     body: message,
-    tag: `pending-consultation-${item.id}`,
+    tag: `pending-consultation-${notificationTag || item.id}`,
     onClick: (_event, notification) => {
       window.focus()
       notification.close()
@@ -901,8 +932,9 @@ async function handleSseMessage(message: SseMessage) {
 
     const incomingItem = normalizePendingItem({ ...record, ...basicInfo, ...detail }, message, 0)
 
-    // Check if the item is newly arrived
-    const isNew = !pendingPatients.value.some(p => p.id === incomingItem.id)
+    const isNew = !pendingPatients.value.some(
+      (item) => item.id === incomingItem.id && item.roomId === incomingItem.roomId
+    )
 
     pendingPatients.value = mergePendingItems(pendingPatients.value, [incomingItem]).slice(0, 8)
 
@@ -984,6 +1016,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
   const patientId = pickString(item, ['patientId', 'patId'])
   const caseId = pickString(item, ['caseId', 'caseID', 'medicalCaseId'])
   const doctorAideId = pickString(item, ['doctorAideId', 'doctorAidId'])
+  const roomId = pickString(item, ['roomId', 'channelId'])
   const queueNo = pickString(item, ['queueNo', 'queueNumber', 'serialNo', 'number', 'code']) || '--'
   const complaint =
     pickString(item, ['mainSuit', 'chiefComplaint', 'complaint', 'summary', 'reason', 'purpose']) ||
@@ -1018,6 +1051,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
     patientId,
     caseId,
     doctorAideId,
+    roomId,
     historyIllness,
     previousHistory,
     allergichistory,
@@ -1972,6 +2006,7 @@ function getAvatarGradient(name: string): string {
   overflow: hidden;
   background: #ffffff;
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.15);
+  animation: accept-dialog-pop 0.34s cubic-bezier(0.18, 0.89, 0.32, 1.18) both;
 }
 
 :deep(.accept-request-dialog .el-dialog__header) {
@@ -1989,6 +2024,7 @@ function getAvatarGradient(name: string): string {
 }
 
 .accept-avatar {
+  position: relative;
   width: 90px;
   height: 90px;
   border-radius: 50%;
@@ -2001,6 +2037,21 @@ function getAvatarGradient(name: string): string {
   justify-content: center;
   box-shadow: 0 8px 24px rgba(255, 82, 127, 0.3);
   margin-bottom: 24px;
+  animation: accept-avatar-pulse 1.8s ease-in-out infinite;
+}
+
+.accept-avatar::before,
+.accept-avatar::after {
+  position: absolute;
+  inset: -10px;
+  content: '';
+  border-radius: inherit;
+  border: 2px solid rgba(255, 82, 127, 0.34);
+  animation: accept-avatar-ring 1.8s ease-out infinite;
+}
+
+.accept-avatar::after {
+  animation-delay: 0.55s;
 }
 
 .accept-title {
@@ -2038,18 +2089,114 @@ function getAvatarGradient(name: string): string {
 }
 
 .resolve-btn {
+  position: relative;
+  overflow: hidden;
+  transform: scale(1.04);
   background: #10b981;
   border: none;
   color: #ffffff;
+  box-shadow:
+    0 0 0 0 rgba(16, 185, 129, 0.42),
+    0 14px 28px rgba(16, 185, 129, 0.38);
+  animation: accept-btn-pulse 1.25s ease-in-out infinite;
 }
 
 .resolve-btn:hover {
   background: #0ca372;
+  transform: translateY(-1px) scale(1.06);
+  box-shadow:
+    0 0 0 8px rgba(16, 185, 129, 0.14),
+    0 18px 34px rgba(16, 185, 129, 0.46);
+}
+
+.resolve-btn::after {
+  position: absolute;
+  inset: -55% auto -55% -80%;
+  width: 58%;
+  content: '';
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: skewX(-18deg);
+  animation: accept-btn-shine 1.35s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .resolve-btn .el-icon,
 .reject-btn .el-icon {
   margin-right: 6px;
   font-size: 18px;
+}
+
+@keyframes accept-dialog-pop {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes accept-avatar-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 8px 24px rgba(255, 82, 127, 0.3);
+  }
+
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 14px 34px rgba(255, 82, 127, 0.42);
+  }
+}
+
+@keyframes accept-avatar-ring {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.92);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.34);
+  }
+}
+
+@keyframes accept-btn-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(16, 185, 129, 0.44),
+      0 14px 28px rgba(16, 185, 129, 0.38);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 10px rgba(16, 185, 129, 0.12),
+      0 22px 40px rgba(16, 185, 129, 0.48);
+  }
+}
+
+@keyframes accept-btn-shine {
+  0% {
+    left: -65%;
+  }
+
+  52%,
+  100% {
+    left: 124%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :deep(.accept-request-dialog),
+  .accept-avatar,
+  .accept-avatar::before,
+  .accept-avatar::after,
+  .resolve-btn,
+  .resolve-btn::after {
+    animation: none;
+  }
 }
 </style>

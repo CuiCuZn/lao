@@ -1030,7 +1030,7 @@ export const useDoctorConsultationSession = () => {
         track: resolveRenderableTrack(user),
         muted: !trackStatsMap.value.get(user.userId)?.mic,
         speaking: speakers.value.includes(user.userId),
-        placeholderBadge: '等待开启视频'
+        placeholderBadge: ''
       }))
   })
 

@@ -293,6 +293,7 @@ export default {
       footerAction: 'Initiate Telehealth Consult',
       footerLoading: 'Initiating...',
       createRoomSuccess: 'The telehealth virtual room has been provisioned',
+      sseConnectFailed: 'Failed to connect the real-time consultation channel. Please try again later.',
       ageSuffix: ' years',
       specialties: 'Specialties',
       metrics: {
@@ -356,6 +357,7 @@ export default {
         selfBadge: 'You',
         doctorPrefix: 'Physician: ',
         waitingDoctor: 'Awaiting physician arrival in the virtual room',
+        waitingDoctorJoin: 'Waiting for the doctor to join...',
         connected: 'Live Telemetry Connected',
         footerSubtitle: 'Regional Medical Center · Bilingual Telehealth Consult',
         goodAt: 'Specialty',
@@ -379,6 +381,26 @@ export default {
         chatTranslateFailed: 'Message interpretation failed. Please try again.',
         chatSendFailed: 'Message rendered locally, but upstream WebSocket transmission failed.',
         chatSaveFailed: 'Message rendered locally, but transcript archiving failed.'
+      }
+    },
+    aideVideo: {
+      consultation: {
+        description: 'Medical assistant observation page for the active telehealth consultation.',
+        inCall: 'Assistant Observing',
+        connected: 'Observation channel connected',
+        errorTitle: 'Unable to join assistant observation',
+        backToWorkbench: 'Return to Workbench',
+        missingParams: 'Session parameters are incomplete. Please restart the telehealth consultation.',
+        joinFailed: 'Failed to join the assistant observation room. Please try again later.',
+        aideFallbackName: 'Medical Assistant',
+        doctorRejectedMessage: 'Dr. {doctorName} declined this video consultation.',
+        rejectedTitle: 'Video Consultation Not Connected',
+        rejectedDescription: '{doctorName} declined the video consultation request.',
+        resendRequest: 'Request Again',
+        resendingRequest: 'Requesting...',
+        resendRequestSuccess: 'The video consultation request has been sent again.',
+        resendRequestFailed: 'Failed to request again. Please handle it later.',
+        handleLater: 'Handle Later'
       }
     },
     videoGuide: {
@@ -409,6 +431,7 @@ export default {
     doctorSelect: 'Select Physician',
     videoGuide: 'Telehealth Guidance',
     patientWaiting: 'Patient Staging',
-    patientConsultation: 'Telehealth Consult Room'
+    patientConsultation: 'Telehealth Consult Room',
+    assistantConsultation: 'Assistant Observation'
   }
 }

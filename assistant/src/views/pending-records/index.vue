@@ -124,6 +124,8 @@ import { getCaseDetail, getUndoneCaseList } from '@/api/record'
 import { createVideoRoom } from '@/api/video'
 import type { CaseRecordItem } from '@/api/types'
 import AppPage from '@/components/AppPage.vue'
+import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
+import { startAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
 import { broadcastPatientContextSync, broadcastReconnectFailed, broadcastVideoRoomCreated } from '@/utils/patient-channel'
 
 type FilterKey = 'all' | 'recent7' | 'recent30'
@@ -357,7 +359,7 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
   }
 
   if (!row.caseId) {
-    return patientId && originalDoctorId
+    return patientId
       ? {
           caseId: row.caseId,
           patientId,
@@ -379,7 +381,7 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
     originalDoctorName ||
     pickTextFromRecords(records, ['doctorName', 'nickName', 'userName', 'name'])
 
-  return patientId && originalDoctorId
+  return patientId
     ? {
         caseId: row.caseId || pickTextFromRecords(records, ['caseId', 'caseID', 'medicalCaseId']),
         patientId,
@@ -408,6 +410,16 @@ const handleReconnect = async (row: PendingRecordRow) => {
 
   try {
     const reconnectTargets = await resolveReconnectTargets(row)
+
+    if (reconnectTargets?.patientId && !reconnectTargets.originalDoctorId) {
+      await router.push({
+        path: '/assistant/doctor-select',
+        query: {
+          patientId: reconnectTargets.patientId
+        }
+      })
+      return
+    }
 
     if (!reconnectTargets?.patientId || !reconnectTargets.originalDoctorId) {
       const failureMessage = t('assistant.pendingRecords.reconnectMissingTargets')
@@ -445,6 +457,35 @@ const handleReconnect = async (row: PendingRecordRow) => {
       roomId,
       ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
     })
+
+    if (resolvedCaseId) {
+      void startAssistantConsultationSse({
+        patientId: resolvedPatientId,
+        caseId: resolvedCaseId,
+        doctorName: reconnectTargets.originalDoctorName
+      }, router).catch((error) => {
+        console.warn('Failed to connect assistant consultation SSE during reconnect.', error)
+      })
+    }
+
+    try {
+      await navigateToAideConsultationRoom(router, {
+        patientId: resolvedPatientId,
+        doctorId: reconnectTargets.originalDoctorId,
+        doctorName: reconnectTargets.originalDoctorName,
+        roomId,
+        ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === 'missingParams'
+          ? t('assistant.aideVideo.consultation.missingParams')
+          : error instanceof Error && error.message.trim()
+            ? error.message
+            : t('assistant.aideVideo.consultation.joinFailed')
+      ElMessage.error(message)
+      return
+    }
 
     ElMessage.success(t('assistant.pendingRecords.reconnectSuccess'))
   } catch (error) {

@@ -182,6 +182,13 @@ export interface VideoGetChannelIdResponse {
   [key: string]: unknown;
 }
 
+export interface VideoRejectResponse {
+  code?: number;
+  msg?: string;
+  data?: Record<string, unknown> | string | number | null;
+  [key: string]: unknown;
+}
+
 export interface VideoGetVideoIdResponse {
   code?: number;
   msg?: string;
