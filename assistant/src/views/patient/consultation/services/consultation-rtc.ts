@@ -198,6 +198,7 @@ export const subscribeConsultationStreams = async (
   secondaryClient: DingRTCClient,
   options: ConsultationStreamSubscriptionOptions
 ) => {
+  const playRemoteAudio = options.playRemoteAudio !== false
   const primarySubParams: SubscribeParam[] = [{ uid: 'mcu', mediaType: 'audio', auxiliary: false }]
   const secondarySubParams: SubscribeParam[] = [{ uid: 'mcu', mediaType: 'audio', auxiliary: false }]
 
@@ -231,7 +232,9 @@ export const subscribeConsultationStreams = async (
         if (track && track.trackMediaType === 'audio') {
           const audioTrack = track as RemoteAudioTrack
           options.onPrimaryAudioTrack(audioTrack)
-          audioTrack.play()
+          if (playRemoteAudio) {
+            audioTrack.play()
+          }
           return
         }
 
@@ -248,7 +251,9 @@ export const subscribeConsultationStreams = async (
         if (track && track.trackMediaType === 'audio') {
           const audioTrack = track as RemoteAudioTrack
           options.onSecondaryAudioTrack(audioTrack)
-          audioTrack.play()
+          if (playRemoteAudio) {
+            audioTrack.play()
+          }
           return
         }
 

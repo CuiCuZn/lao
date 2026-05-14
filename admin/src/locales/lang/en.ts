@@ -22,6 +22,8 @@ export default {
       ageGender: 'Age / Gender',
       ageSuffix: 'years',
       marriage: 'Marital Status',
+      unmarried: 'Unmarried',
+      married: 'Married',
       patientId: 'Medical Record Number (MRN)',
       idCard: 'ID Number',
       phone: 'Mobile Number',

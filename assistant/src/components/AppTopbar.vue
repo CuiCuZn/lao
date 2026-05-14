@@ -32,9 +32,9 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ElMessageBox } from 'element-plus'
 import { SwitchButton, User } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { showConfirmDialog } from '@/utils/confirm-dialog'
 import brandLogo from '@/assets/logo.png'
 
 withDefaults(
@@ -58,15 +58,17 @@ const displayName = computed(() => {
   return userStore.nickname || userStore.name || t('menu.assistantPortal')
 })
 
-const handleLogout = () => {
-  ElMessageBox.confirm(t('logout.confirmText'), t('common.tip'), {
-    confirmButtonText: t('common.confirm'),
-    cancelButtonText: t('common.cancel'),
-    type: 'warning'
-  }).then(async () => {
+const handleLogout = async () => {
+  const confirmed = await showConfirmDialog({
+    message: t('logout.confirmText'),
+    confirmText: t('common.confirm'),
+    cancelText: t('common.cancel')
+  })
+
+  if (confirmed) {
     await userStore.logout()
     window.location.replace(router.resolve({ path: '/login' }).href)
-  })
+  }
 }
 </script>
 
@@ -118,7 +120,7 @@ const handleLogout = () => {
 
 .brand-title {
   color: #222b38;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
@@ -140,7 +142,7 @@ const handleLogout = () => {
   border: 1px solid #e6edf4;
   background: #ffffff;
   color: #4d5d70;
-  font-size: 12px;
+  font-size: 17px;
   transition: all 0.2s ease;
 }
 
@@ -169,12 +171,12 @@ const handleLogout = () => {
   border-radius: 50%;
   background: #e8f4ff;
   color: #1790dc;
-  font-size: 12px;
+  font-size: 17px;
 }
 
 .user-name {
   color: #5b6a7c;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 500;
   line-height: 1;
 }
@@ -183,7 +185,7 @@ const handleLogout = () => {
   width: 32px;
   padding: 0;
   color: #1fb05c;
-  font-size: 16px;
+  font-size: 21px;
 }
 
 .app-topbar.is-plain .topbar-actions {

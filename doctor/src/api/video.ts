@@ -8,6 +8,7 @@ import type {
   VideoGetChannelIdResponse,
   VideoRejectResponse,
   VideoGetVideoIdResponse,
+  VideoTimeResponse,
   VideoGetTokenParams,
   VideoGetTokenResponse,
   VideoOpenSubtitleParams,
@@ -50,6 +51,14 @@ export function getVideoId(caseId: string | number): Promise<VideoGetVideoIdResp
 
 export function getVideoConversation(videoId: string | number): Promise<VideoConversationHistoryResponse> {
   return request.get(`/video/conversation/${videoId}`, undefined, {
+    headers: {
+      silentError: true
+    }
+  })
+}
+
+export function getVideoTime(videoId: string | number): Promise<VideoTimeResponse> {
+  return request.get(`/video/getVideoTime/${videoId}`, undefined, {
     headers: {
       silentError: true
     }

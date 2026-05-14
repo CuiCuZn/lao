@@ -3,6 +3,7 @@ import { getPatientWsToken } from '@/api/patient'
 import type {
   ConsultationChatConnectionStatus,
   ConsultationChatIncomingMessage,
+  ConsultationChatRole,
   ConsultationChatSendParams
 } from '../types'
 
@@ -53,11 +54,37 @@ const parseJsonIfPossible = (value: unknown) => {
   }
 }
 
+const resolveChatRole = (value: unknown): ConsultationChatRole | undefined => {
+  if (value === 0 || value === 1 || value === 2) {
+    return value
+  }
+
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const normalizedValue = value.trim().toLowerCase()
+  if (normalizedValue === '0' || normalizedValue === 'doctor') {
+    return 0
+  }
+
+  if (normalizedValue === '1' || normalizedValue === 'patient') {
+    return 1
+  }
+
+  if (normalizedValue === '2' || normalizedValue === 'aide' || normalizedValue === 'assistant') {
+    return 2
+  }
+
+  return undefined
+}
+
 const resolveChatPayload = (
   envelope: unknown
 ): {
   contentLo: string
   contentCn: string
+  role?: ConsultationChatRole
   sessionKeys?: string[]
   senderKey?: string
 } | null => {
@@ -91,6 +118,7 @@ const resolveChatPayload = (
   return {
     contentLo,
     contentCn,
+    role: resolveChatRole(payloadRecord?.role ?? outerRecord?.role),
     sessionKeys,
     senderKey
   }
@@ -211,6 +239,7 @@ export const createPatientConsultationChatService = (options: ConsultationChatSe
                 await options.onMessage?.({
                   contentLo: parsedPayload.contentLo,
                   contentCn: parsedPayload.contentCn,
+                  role: parsedPayload.role,
                   senderKey: parsedPayload.senderKey,
                   sessionKeys: parsedPayload.sessionKeys,
                   rawEnvelope: rawData
@@ -271,6 +300,8 @@ export const createPatientConsultationChatService = (options: ConsultationChatSe
 
   const sendTranslatedMessage = async ({
     doctorId,
+    patientId,
+    role,
     contentLo,
     contentCn
   }: ConsultationChatSendParams) => {
@@ -281,16 +312,24 @@ export const createPatientConsultationChatService = (options: ConsultationChatSe
     }
 
     const normalizedDoctorId = takeOptionalText(doctorId)
+    const normalizedPatientId = takeOptionalText(patientId)
+    const normalizedRole = resolveChatRole(role)
     const normalizedContentLo = takeOptionalText(contentLo)
     const normalizedContentCn = takeOptionalText(contentCn)
 
-    if (!normalizedDoctorId || !normalizedContentLo || !normalizedContentCn) {
+    if (!normalizedDoctorId || normalizedRole === undefined || !normalizedContentLo || !normalizedContentCn) {
       throw new Error('Consultation chat payload is incomplete.')
     }
 
+    const sessionKeys = [`doctor:${normalizedDoctorId}`]
+    if (normalizedPatientId) {
+      sessionKeys.push(`patient:${normalizedPatientId}`)
+    }
+
     const payload = {
-      sessionKeys: [`doctor:${normalizedDoctorId}`],
+      sessionKeys,
       message: JSON.stringify({
+        role: normalizedRole,
         contentLo: normalizedContentLo,
         contentCn: normalizedContentCn
       })

@@ -154,6 +154,8 @@ export default {
       ageGender: 'Age / Gender',
       ageSuffix: 'years',
       marriage: 'Marital Status',
+      unmarried: 'Unmarried',
+      married: 'Married',
       patientId: 'Medical Record Number (MRN)',
       idCard: 'ID Number',
       phone: 'Mobile Number',
@@ -400,7 +402,12 @@ export default {
         resendingRequest: 'Requesting...',
         resendRequestSuccess: 'The video consultation request has been sent again.',
         resendRequestFailed: 'Failed to request again. Please handle it later.',
-        handleLater: 'Handle Later'
+        handleLater: 'Handle Later',
+        cameraLabels: {
+          sideScanner: 'Side Document Camera',
+          patientCamera: 'Patient Camera',
+          doctorCamera: 'Doctor Camera'
+        }
       }
     },
     videoGuide: {

@@ -7,8 +7,8 @@
         </div>
 
         <div>
-          <p class="eyebrow">{{ t('assistant.patientVideo.consultation.subtitleTitle') }}</p>
           <h2 class="title">{{ t('assistant.patientVideo.consultation.subtitleRecord') }}</h2>
+          <p class="eyebrow">{{ t('assistant.patientVideo.consultation.subtitleTitle') }}</p>
         </div>
       </div>
 
@@ -193,20 +193,32 @@ const hasSourceText = (item: SubtitleTimelineItem) => {
   return Boolean(item.sourceText?.trim())
 }
 
+const isLaoLanguage = (languageCode: string) => {
+  const normalizedCode = languageCode?.trim().toLowerCase()
+  return normalizedCode === 'lo' || normalizedCode === 'lao'
+}
+
+const resolveLaoDisplayText = (item: SubtitleTimelineItem) => {
+  const sourceText = item.sourceText?.trim() || ''
+  const translatedText = item.translatedText?.trim() || ''
+
+  if (isLaoLanguage(item.sourceLanguage)) {
+    return sourceText
+  }
+
+  if (isLaoLanguage(item.targetLanguage)) {
+    return translatedText
+  }
+
+  return ''
+}
+
 const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
-  return item.side === 'remote' && !hasTranslatedText(item)
+  return !resolveLaoDisplayText(item)
 }
 
 const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
-  if (item.side === 'self') {
-    return item.sourceText?.trim() || item.translatedText?.trim() || ''
-  }
-
-  if (hasTranslatedText(item)) {
-    return item.translatedText
-  }
-
-  return t('assistant.patientVideo.consultation.translationPending')
+  return resolveLaoDisplayText(item) || t('assistant.patientVideo.consultation.translationPending')
 }
 
 const resolveDisplayText = (item: SubtitleTimelineItem) => {
@@ -218,7 +230,7 @@ const resolveDisplayText = (item: SubtitleTimelineItem) => {
     return resolveSingleLanguageDisplayText(item)
   }
 
-  return item.side === 'remote' ? t('assistant.patientVideo.consultation.translationPending') : ''
+  return t('assistant.patientVideo.consultation.translationPending')
 }
 
 const formatTime = (timestamp: number) => {
@@ -278,15 +290,15 @@ onMounted(async () => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px 10px;
+  gap: 6px;
+  padding: 8px 10px 6px;
   border-bottom: 1px solid #dce7f8;
 }
 
 .title-group {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .icon-box {
@@ -296,23 +308,23 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  margin-top: 2px;
+  margin-top: 1px;
   background: linear-gradient(180deg, #4f86ef 0%, #2f68dd 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 20px;
 }
 
 .eyebrow {
-  margin: 0 0 3px;
+  margin: 0 0 2px;
   color: #355aa2;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
 }
 
 .title {
   margin: 0;
   color: #16294c;
-  font-size: 17px;
+  font-size: 25px;
   line-height: 1.2;
   font-weight: 700;
 }
@@ -322,13 +334,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
 }
 
 .status-tag {
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 11px;
+  padding: 3px 8px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -350,7 +362,7 @@ onMounted(async () => {
 .language-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 34px;
   border: 1px solid rgba(141, 168, 214, 0.58);
   border-radius: 8px;
@@ -387,14 +399,14 @@ onMounted(async () => {
 
 .language-toggle-label {
   color: #5f769d;
-  font-size: 11px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .language-toggle-value {
   color: #214171;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -433,31 +445,31 @@ onMounted(async () => {
 .retry-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   border: none;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   background: rgba(47, 104, 221, 0.12);
   color: #2f68dd;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
   cursor: pointer;
 }
 
 .panel-notice {
-  margin: 10px 14px 0;
+  margin: 6px 8px 0;
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 6px 8px;
   background: rgba(255, 242, 242, 0.9);
   color: #b94d4d;
-  font-size: 13px;
+  font-size: 20px;
 }
 
 .timeline-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 12px 10px 12px 14px;
+  padding: 8px 6px 8px 8px;
   scrollbar-gutter: stable;
 }
 
@@ -472,7 +484,7 @@ onMounted(async () => {
 
 .timeline-row {
   display: flex;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .is-remote {
@@ -487,18 +499,18 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   min-width: 160px;
-  max-width: 88%;
+  max-width: 90%;
 }
 
 .message-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 4px;
-  padding: 0 4px;
-  color: #6f82a1;
-  font-size: 12px;
+  gap: 6px;
+  margin-bottom: 3px;
+  padding: 0 2px;
+  color: #666;
+  font-size: 21px;
 }
 
 .is-self .message-meta {
@@ -506,19 +518,19 @@ onMounted(async () => {
 }
 
 .speaker-name {
-  color: #29426f;
+  color: #000;
   font-weight: 700;
 }
 
 .message-bubble {
   position: relative;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 8px 10px;
   box-shadow: 0 4px 12px rgba(80, 104, 150, 0.08);
 }
 
 .message-bubble--translated-only {
-  padding: 10px 14px;
+  padding: 8px 10px;
 }
 
 .bubble-remote {
@@ -534,22 +546,22 @@ onMounted(async () => {
 .message-section {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.message-section--translated-only {
   gap: 3px;
 }
 
+.message-section--translated-only {
+  gap: 2px;
+}
+
 .message-divider {
-  margin: 8px 0;
+  margin: 6px 0;
   border-top: 1px dashed rgba(180, 138, 218, 0.35);
 }
 
 .section-title {
   margin: 0;
   color: #8d49ce;
-  font-size: 13px;
+  font-size: 21px;
   font-weight: 700;
 }
 
@@ -559,30 +571,30 @@ onMounted(async () => {
 
 .message-text {
   margin: 0;
-  color: #26395f;
-  font-size: 14px;
+  color: #000;
+  font-size: 23px;
   line-height: 1.6;
   word-break: break-word;
 }
 
 .translated-text {
-  color: #414a72;
+  color: #000;
 }
 
 .message-text--pending {
-  color: #7b8cad;
+  color: #666;
 }
 
 .draft-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-top: 6px;
+  margin-top: 4px;
   border-radius: 999px;
-  padding: 2px 8px;
+  padding: 2px 6px;
   background: rgba(255, 255, 255, 0.62);
   color: #6b80a8;
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 700;
 }
 
@@ -592,13 +604,13 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin: 12px;
+  gap: 4px;
+  margin: 8px;
   border: 1px dashed rgba(74, 123, 209, 0.35);
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(242, 247, 255, 0.84), rgba(252, 254, 255, 0.98));
   color: #647b9f;
-  font-size: 14px;
+  font-size: 21px;
   text-align: center;
 }
 
@@ -609,23 +621,23 @@ onMounted(async () => {
 .composer-panel {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   border-top: 1px solid #dce7f8;
-  padding: 12px 14px 14px;
+  padding: 8px 10px 10px;
   background: linear-gradient(180deg, rgba(251, 253, 255, 0.98) 0%, rgba(244, 248, 255, 0.98) 100%);
 }
 
 .composer-input {
   width: 100%;
-  min-height: 72px;
+  min-height: 60px;
   resize: none;
   border: 1px solid rgba(149, 177, 224, 0.7);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   box-sizing: border-box;
   background: #ffffff;
   color: #22365d;
-  font-size: 14px;
+  font-size: 23px;
   line-height: 1.6;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -650,13 +662,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 6px;
 }
 
 .composer-status {
   margin: 0;
   color: #6981a8;
-  font-size: 12px;
+  font-size: 20px;
   line-height: 1.5;
 }
 
@@ -664,14 +676,14 @@ onMounted(async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   align-self: flex-end;
   border: none;
   border-radius: 8px;
-  padding: 8px 14px;
+  padding: 6px 12px;
   background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
   color: #ffffff;
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(47, 106, 236, 0.22);

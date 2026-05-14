@@ -22,6 +22,8 @@ export default {
       ageGender: 'ອາຍຸ/ເພດ',
       ageSuffix: 'ປີ',
       marriage: 'ສະຖານະສົມລົດ',
+      unmarried: 'ຍັງບໍ່ແຕ່ງງານ',
+      married: 'ແຕ່ງງານແລ້ວ',
       patientId: 'ID ຄົນໄຂ້',
       idCard: 'ເລກບັດປະຈຳຕົວ',
       phone: 'ເບີໂທ',

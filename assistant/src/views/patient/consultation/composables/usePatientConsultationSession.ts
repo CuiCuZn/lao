@@ -6,10 +6,10 @@ import DingRTC, {
   type RemoteAudioTrack,
   type RemoteUser
 } from 'dingrtc'
-import { ElMessageBox } from 'element-plus'
 import { computed, ref, shallowRef, triggerRef } from 'vue'
 import { closeVideoSubtitle, openVideoSubtitle } from '@/api/video'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import { showConfirmDialog } from '@/utils/confirm-dialog'
 import {
   closeLocalTrack,
   createConsultationClients,
@@ -25,6 +25,8 @@ import type {
   ConsultationChannelContext,
   ConsultationLeaveOptions,
   ConsultationParticipantView,
+  ConsultationSubtitleBootstrapOptions,
+  ConsultationSubtitleTaskPolicy,
   ConsultationSubtitleBinding,
   ConsultationTrackStats,
   PatientConsultationJoinParams
@@ -45,7 +47,7 @@ interface StoredCameraSelection {
 }
 
 const buildSubtitleTaskId = (channelId: string, sourceLanguage: string) => {
-  return `rtc_${sourceLanguage}_${channelId}_${Date.now()}`
+  return `rtc_${sourceLanguage}_${channelId}`
 }
 
 const readStoredCameraSelection = (): StoredCameraSelection | null => {
@@ -86,6 +88,10 @@ const saveStoredCameraSelection = (device: MediaDeviceInfo) => {
   } catch {
     undefined
   }
+}
+
+const logSelectedCameraDevice = (device: MediaDeviceInfo) => {
+  console.log('[Camera] Selected camera device:', device)
 }
 
 const buildCameraVideoConfig = (deviceId?: string): CameraVideoTrackConfig => {
@@ -148,6 +154,7 @@ export const usePatientConsultationSession = () => {
   const secondaryAsr = shallowRef<ConsultationSubtitleBinding['asr']>(null)
   const primaryTaskId = ref('')
   const secondaryTaskId = ref('')
+  const activeSubtitleTaskPolicy = ref<ConsultationSubtitleTaskPolicy>('skip')
   const channelContext = ref<ConsultationChannelContext | null>(null)
   const teardownInProgress = ref(false)
 
@@ -158,16 +165,20 @@ export const usePatientConsultationSession = () => {
 
     autoplayFailedHandlerBound = true
 
-    DingRTC.on('autoplay-failed', (track: any) => {
-      ElMessageBox.confirm('由于浏览器自动播放限制，请点击确认后开始播放音频。', '提示', {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'warning'
+    DingRTC.on('autoplay-failed', async (track: any) => {
+      const confirmed = await showConfirmDialog({
+        message: '由于浏览器自动播放限制，请点击确认后开始播放音频。',
+        confirmText: '确认',
+        cancelText: '取消'
       })
-        .then(() => {
+
+      if (confirmed) {
+        try {
           track.play()
-        })
-        .catch(() => undefined)
+        } catch {
+          undefined
+        }
+      }
     })
   }
 
@@ -316,35 +327,52 @@ export const usePatientConsultationSession = () => {
     return mergeRemoteUsers(primaryRemoteUsers.value, secondaryRemoteUsers.value).length === 0
   }
 
-  const stopSubtitleTasks = async () => {
+  const shouldUseSubtitleTaskPolicy = (policy: ConsultationSubtitleTaskPolicy = 'auto') => {
+    if (policy === 'force') {
+      return true
+    }
+
+    if (policy === 'skip') {
+      return false
+    }
+
+    return shouldManageSubtitleTasks()
+  }
+
+  const stopSubtitleTasks = async (policy: ConsultationSubtitleTaskPolicy = 'auto') => {
     const localChannelContext = channelContext.value
 
     if (!localChannelContext) {
       return
     }
 
-    if (!shouldManageSubtitleTasks()) {
+    if (!shouldUseSubtitleTaskPolicy(policy)) {
       primaryTaskId.value = ''
       secondaryTaskId.value = ''
       return
     }
 
     const tasks: Promise<unknown>[] = []
+    const resolvedPrimaryTaskId =
+      primaryTaskId.value || buildSubtitleTaskId(localChannelContext.primaryChannelId, localChannelContext.language)
+    const resolvedSecondaryTaskId =
+      secondaryTaskId.value ||
+      buildSubtitleTaskId(localChannelContext.secondaryChannelId, localChannelContext.secondaryLanguage)
 
-    if (primaryTaskId.value && localChannelContext.primaryChannelId) {
+    if (resolvedPrimaryTaskId && localChannelContext.primaryChannelId) {
       tasks.push(
         closeVideoSubtitle({
           channelId: localChannelContext.primaryChannelId,
-          taskId: primaryTaskId.value
+          taskId: resolvedPrimaryTaskId
         }).catch(() => undefined)
       )
     }
 
-    if (secondaryTaskId.value && localChannelContext.secondaryChannelId) {
+    if (resolvedSecondaryTaskId && localChannelContext.secondaryChannelId) {
       tasks.push(
         closeVideoSubtitle({
           channelId: localChannelContext.secondaryChannelId,
-          taskId: secondaryTaskId.value
+          taskId: resolvedSecondaryTaskId
         }).catch(() => undefined)
       )
     }
@@ -392,6 +420,7 @@ export const usePatientConsultationSession = () => {
     trackStatsMap.value = new Map()
     primaryAsr.value = null
     secondaryAsr.value = null
+    activeSubtitleTaskPolicy.value = 'skip'
     channelContext.value = null
     subtitleError.value = ''
     subtitleLoading.value = false
@@ -441,6 +470,7 @@ export const usePatientConsultationSession = () => {
 
     const selectedDevice = cameraDevices.value.find((device) => device.deviceId === deviceId)
     if (selectedDevice) {
+      logSelectedCameraDevice(selectedDevice)
       saveStoredCameraSelection(selectedDevice)
     }
   }
@@ -453,7 +483,7 @@ export const usePatientConsultationSession = () => {
     teardownInProgress.value = true
 
     await cleanupSubtitle()
-    await stopSubtitleTasks()
+    await stopSubtitleTasks(options.taskPolicy || activeSubtitleTaskPolicy.value)
 
     primaryClient.value?.removeAllListeners()
     secondaryClient.value?.removeAllListeners()
@@ -731,6 +761,7 @@ export const usePatientConsultationSession = () => {
       await subscribeConsultationStreams(clients.primaryClient, clients.secondaryClient, {
         primaryResult: joinResult.primaryResult,
         secondaryResult: joinResult.secondaryResult,
+        playRemoteAudio: params.playRemoteAudio !== false,
         onPrimaryAudioTrack: (track) => {
           primaryMcuAudioTrack.value = track
         },
@@ -774,7 +805,8 @@ export const usePatientConsultationSession = () => {
     }
   }
 
-  const bootstrapSubtitle = async () => {
+  const bootstrapSubtitle = async (options: ConsultationSubtitleBootstrapOptions = {}) => {
+    activeSubtitleTaskPolicy.value = options.taskPolicy || 'auto'
     const localChannelContext = channelContext.value
 
     if (!localChannelContext || !primaryAsr.value || !secondaryAsr.value) {
@@ -791,7 +823,9 @@ export const usePatientConsultationSession = () => {
 
       const startTasks: Promise<unknown>[] = []
 
-      if (shouldManageSubtitleTasks() && !primaryTaskId.value) {
+      const shouldStartSubtitleTasks = shouldUseSubtitleTaskPolicy(options.taskPolicy)
+
+      if (shouldStartSubtitleTasks && (options.taskPolicy === 'force' || !primaryTaskId.value)) {
         const nextPrimaryTaskId = buildSubtitleTaskId(
           localChannelContext.primaryChannelId,
           localChannelContext.language
@@ -807,7 +841,7 @@ export const usePatientConsultationSession = () => {
         )
       }
 
-      if (shouldManageSubtitleTasks() && !secondaryTaskId.value) {
+      if (shouldStartSubtitleTasks && (options.taskPolicy === 'force' || !secondaryTaskId.value)) {
         const nextSecondaryTaskId = buildSubtitleTaskId(
           localChannelContext.secondaryChannelId,
           localChannelContext.secondaryLanguage

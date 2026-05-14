@@ -17,6 +17,12 @@
   --assistant-radius-xl: 28px;
   --assistant-radius-lg: 22px;
   --assistant-radius-md: 16px;
+  --el-font-size-extra-large: 25px;
+  --el-font-size-large: 23px;
+  --el-font-size-medium: 21px;
+  --el-font-size-base: 19px;
+  --el-font-size-small: 18px;
+  --el-font-size-extra-small: 17px;
 }
 
 *,
@@ -35,6 +41,7 @@ body {
   min-width: 320px;
   background: var(--assistant-bg);
   color: var(--assistant-text);
+  font-size: 21px;
   font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans Lao", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -62,4 +69,98 @@ select {
 
 [lang='lo'] {
   line-height: 1.6;
+}
+
+.assistant-confirm-dialog__mask {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.assistant-confirm-dialog {
+  width: min(420px, calc(100vw - 100px));
+  // min-height: 235px;
+  border-radius: 14px;
+  padding: 30px;
+  box-sizing: border-box;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+}
+
+.assistant-confirm-dialog__message {
+  margin: 0;
+  color: #2b2f36;
+  font-size: 27px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+.assistant-confirm-dialog__actions {
+  display: grid;
+  grid-template-columns: repeat(2, 132px);
+  justify-content: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.assistant-confirm-dialog__actions--single {
+  grid-template-columns: 132px;
+}
+
+.assistant-confirm-dialog__button {
+  height: 52px;
+  border: none;
+  border-radius: 8px;
+  padding: 0 24px;
+  font-size: 21px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.assistant-confirm-dialog__button:hover {
+  transform: translateY(-1px);
+}
+
+.assistant-confirm-dialog__button--ghost {
+  background: #eeeeee;
+  color: #6d6d6d;
+}
+
+.assistant-confirm-dialog__button--primary {
+  background: #409eff;
+  color: #ffffff;
+}
+
+@media (max-width: 640px) {
+  .assistant-confirm-dialog {
+    min-height: 230px;
+    padding: 44px 24px 36px;
+  }
+
+  .assistant-confirm-dialog__message {
+    font-size: 26px;
+  }
+
+  .assistant-confirm-dialog__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 34px;
+  }
+
+  .assistant-confirm-dialog__actions--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .assistant-confirm-dialog__button {
+    height: 58px;
+    font-size: 23px;
+  }
 }

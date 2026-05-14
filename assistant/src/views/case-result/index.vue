@@ -18,7 +18,6 @@
 
           <div class="page-hero">
             <h1>{{ t('assistant.caseResult.pageTitle') }}</h1>
-            <p>{{ t('assistant.caseResult.pageSubtitle') }}</p>
           </div>
         </header>
 
@@ -87,70 +86,82 @@
               <span>{{ t('assistant.caseResult.diagnosisData') }}</span>
             </header>
 
-            <div v-if="hasDiagnosisData" class="diagnosis-content">
-              <section class="constitution-panel">
-                <div class="bar-chart">
-                  <div v-for="item in constitutionItems" :key="item.label" class="bar-column">
-                    <span class="bar-value">{{ item.value }}</span>
-                    <div class="bar-track">
-                      <span class="bar-fill" :style="{ height: `${item.percent}%` }" />
-                    </div>
-                    <span class="bar-label">{{ item.label }}</span>
-                  </div>
-                </div>
-
-                <div class="constitution-summary">{{ constitutionSummary }}</div>
-              </section>
-
-              <div class="result-table-stack">
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.tongueResult') }}</div>
-                  <table class="result-table">
-                    <tbody>
-                      <tr v-for="row in tongueRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.value }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.faceResult') }}</div>
-                  <table class="result-table">
-                    <tbody>
-                      <tr v-for="row in faceRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.value }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.pulseResult') }}</div>
-                  <table class="result-table result-table--pulse">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>{{ t('assistant.caseResult.leftHand') }}</th>
-                        <th>{{ t('assistant.caseResult.rightHand') }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="row in pulseRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.left }}</td>
-                        <td>{{ row.right }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
+            <div class="diagnosis-device-content">
+              <div class="diagnosis-image-panel">
+                <img class="diagnosis-image diagnosis-image-zhu" :src="zhuImage" alt="" />
               </div>
-            </div>
 
-            <div v-else class="empty-block">
-              {{ t('assistant.caseResult.noDiagnosisData') }}
+              <table class="diagnosis-table diagnosis-table--tongue">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="6">舌象诊断结果</th>
+                  </tr>
+                  <tr>
+                    <th>舌色</th>
+                    <td>淡白色</td>
+                    <th>舌形</th>
+                    <td>点次舌，齿痕舌</td>
+                    <th>舌态</th>
+                    <td>正常</td>
+                  </tr>
+                  <tr>
+                    <th>苔色</th>
+                    <td>黄白相间苔</td>
+                    <th>苔质</th>
+                    <td>厚苔</td>
+                    <th>舌下络脉</th>
+                    <td>正常</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table class="diagnosis-table diagnosis-table--face">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="4">面相诊断结果</th>
+                  </tr>
+                  <tr>
+                    <th>面色</th>
+                    <td>面色淡黄</td>
+                    <th>面部光泽</th>
+                    <td>少量光泽</td>
+                  </tr>
+                  <tr>
+                    <th>唇色</th>
+                    <td>青紫</td>
+                    <th>局部特征</th>
+                    <td>-</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table class="diagnosis-table diagnosis-table--pulse">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="3">脉象诊断结果</th>
+                  </tr>
+                  <tr>
+                    <th></th>
+                    <td>左手</td>
+                    <td>右手</td>
+                  </tr>
+                  <tr>
+                    <th>寸</th>
+                    <td>虚</td>
+                    <td>缓</td>
+                  </tr>
+                  <tr>
+                    <th>关</th>
+                    <td>缓</td>
+                    <td>虚</td>
+                  </tr>
+                  <tr>
+                    <th>尺</th>
+                    <td>虚</td>
+                    <td>虚</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </section>
 
@@ -213,24 +224,13 @@ import {
 } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { getCaseDetail } from '@/api/record'
+import zhuImage from '@/assets/zhu.png'
 
 type DetailRecord = Record<string, unknown>
 
 interface DetailItem {
   label: string
   value: string
-}
-
-interface ChartItem {
-  label: string
-  value: number
-  percent: number
-}
-
-interface PulseRow {
-  label: string
-  left: string
-  right: string
 }
 
 interface PrescriptionRow {
@@ -283,21 +283,6 @@ const takeOptionalText = (value: unknown) => {
   return text || ''
 }
 
-const takeOptionalNumber = (value: unknown) => {
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed)) {
-      return parsed
-    }
-  }
-
-  return 0
-}
-
 const formatDate = (value: unknown) => {
   const text = takeOptionalText(value)
   if (!text) {
@@ -336,6 +321,20 @@ const formatGender = (value: unknown) => {
 
   if (text === '0' || text === '女' || text === 'female' || text === 'f') {
     return t('assistant.caseResult.female')
+  }
+
+  return takeOptionalText(value)
+}
+
+const formatMarriage = (value: unknown) => {
+  const text = takeOptionalText(value).toLowerCase()
+
+  if (text === '0') {
+    return t('assistant.caseResult.unmarried')
+  }
+
+  if (text === '1') {
+    return t('assistant.caseResult.married')
   }
 
   return takeOptionalText(value)
@@ -395,36 +394,6 @@ const pickText = (keys: string[], fallback = '') => {
   return fallback
 }
 
-const pickNumber = (keys: string[]) => {
-  const records = getCandidateRecords()
-
-  for (const record of records) {
-    for (const key of keys) {
-      const value = takeOptionalNumber(record[key])
-      if (value > 0) {
-        return value
-      }
-    }
-  }
-
-  return 0
-}
-
-const pickNestedRecord = (keys: string[]) => {
-  const records = getCandidateRecords()
-
-  for (const record of records) {
-    for (const key of keys) {
-      const value = record[key]
-      if (isRecord(value)) {
-        return value
-      }
-    }
-  }
-
-  return null
-}
-
 const resolveDisplayText = (value: string) => {
   return value || t('assistant.caseResult.notAvailable')
 }
@@ -466,7 +435,7 @@ const patientInfoItems = computed<DetailItem[]>(() => [
   })(),
   {
     label: t('assistant.caseResult.marriage'),
-    value: resolveDisplayText(pickText(['marriage', 'maritalStatus']))
+    value: resolveDisplayText(formatMarriage(pickText(['marriage', 'maritalStatus'])))
   },
   {
     label: t('assistant.caseResult.patientId'),
@@ -523,127 +492,6 @@ const recordNarratives = computed<DetailItem[]>(() => [
     value: resolveDisplayText(pickText(['familyhistoryCn', 'familyhistory', 'familyHistory']))
   }
 ])
-
-const constitutionItems = computed<ChartItem[]>(() => {
-  const definitions = [
-    { label: t('assistant.caseResult.balancedType'), keys: ['balancedScore', 'pingheScore', 'constitutionBalanced'] },
-    { label: t('assistant.caseResult.qiDeficiencyType'), keys: ['qiDeficiencyScore', 'qixuScore'] },
-    { label: t('assistant.caseResult.yangDeficiencyType'), keys: ['yangDeficiencyScore', 'yangxuScore'] },
-    { label: t('assistant.caseResult.yinDeficiencyType'), keys: ['yinDeficiencyScore', 'yinxuScore'] },
-    { label: t('assistant.caseResult.bloodStasisType'), keys: ['bloodStasisScore', 'xueyuScore'] }
-  ]
-
-  const rawValues = definitions.map((item) => ({
-    label: item.label,
-    value: pickNumber(item.keys)
-  }))
-  const maxValue = Math.max(...rawValues.map((item) => item.value), 100)
-
-  return rawValues.map((item) => ({
-    ...item,
-    percent: item.value > 0 ? Math.max(10, Math.round((item.value / maxValue) * 100)) : 0
-  }))
-})
-
-const constitutionSummary = computed(() => {
-  return resolveDisplayText(
-    pickText(['constitutionConclusion', 'constitutionResultText', 'constitutionSummary'], '')
-  )
-})
-
-const tongueRows = computed<DetailItem[]>(() => {
-  const source = pickNestedRecord(['tongueResult']) || {}
-
-  return [
-    {
-      label: t('assistant.caseResult.tongueColor'),
-      value: resolveDisplayText(
-        takeOptionalText(source.tongueColor) || pickText(['tongueColor', 'sheSe', 'tongueBodyColor'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.tongueShape'),
-      value: resolveDisplayText(
-        takeOptionalText(source.tongueShape) || pickText(['tongueShape', 'sheXing'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.tongueCoatingColor'),
-      value: resolveDisplayText(
-        takeOptionalText(source.coatingColor) || pickText(['coatingColor', 'furColor', 'taiSe'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.tongueCoatingQuality'),
-      value: resolveDisplayText(
-        takeOptionalText(source.coatingQuality) || pickText(['coatingQuality', 'furQuality', 'taiZhi'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.sublingualVein'),
-      value: resolveDisplayText(
-        takeOptionalText(source.sublingualVein) || pickText(['sublingualVein', 'subLingualVein'])
-      )
-    }
-  ]
-})
-
-const faceRows = computed<DetailItem[]>(() => {
-  const source = pickNestedRecord(['faceResult']) || {}
-
-  return [
-    {
-      label: t('assistant.caseResult.complexion'),
-      value: resolveDisplayText(takeOptionalText(source.complexion) || pickText(['complexion', 'faceColor']))
-    },
-    {
-      label: t('assistant.caseResult.faceLuster'),
-      value: resolveDisplayText(takeOptionalText(source.faceLuster) || pickText(['faceLuster', 'luster']))
-    },
-    {
-      label: t('assistant.caseResult.lipColor'),
-      value: resolveDisplayText(takeOptionalText(source.lipColor) || pickText(['lipColor']))
-    },
-    {
-      label: t('assistant.caseResult.localFeature'),
-      value: resolveDisplayText(takeOptionalText(source.localFeature) || pickText(['localFeature', 'faceFeature']))
-    }
-  ]
-})
-
-const pulseRows = computed<PulseRow[]>(() => {
-  const source = pickNestedRecord(['pulseResult']) || {}
-
-  return [
-    {
-      label: t('assistant.caseResult.cun'),
-      left: resolveDisplayText(
-        takeOptionalText(source.leftCun) || pickText(['leftCun', 'pulseLeftCun'])
-      ),
-      right: resolveDisplayText(
-        takeOptionalText(source.rightCun) || pickText(['rightCun', 'pulseRightCun'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.guan'),
-      left: resolveDisplayText(
-        takeOptionalText(source.leftGuan) || pickText(['leftGuan', 'pulseLeftGuan'])
-      ),
-      right: resolveDisplayText(
-        takeOptionalText(source.rightGuan) || pickText(['rightGuan', 'pulseRightGuan'])
-      )
-    },
-    {
-      label: t('assistant.caseResult.chi'),
-      left: resolveDisplayText(
-        takeOptionalText(source.leftChi) || pickText(['leftChi', 'pulseLeftChi'])
-      ),
-      right: resolveDisplayText(
-        takeOptionalText(source.rightChi) || pickText(['rightChi', 'pulseRightChi'])
-      )
-    }
-  ]
-})
 
 const diagnosisPlanItems = computed<DetailItem[]>(() => [
   {
@@ -719,26 +567,6 @@ const prescriptionRows = computed<PrescriptionRow[]>(() => {
       name: item,
       dosage: t('assistant.caseResult.notAvailable')
     }))
-})
-
-const hasDiagnosisData = computed(() => {
-  if (constitutionItems.value.some((item) => item.value > 0)) {
-    return true
-  }
-
-  if (constitutionSummary.value !== t('assistant.caseResult.notAvailable')) {
-    return true
-  }
-
-  const rows = [...tongueRows.value, ...faceRows.value]
-  if (rows.some((item) => item.value !== t('assistant.caseResult.notAvailable'))) {
-    return true
-  }
-
-  return pulseRows.value.some(
-    (item) =>
-      item.left !== t('assistant.caseResult.notAvailable') || item.right !== t('assistant.caseResult.notAvailable')
-  )
 })
 
 const goBack = () => {
@@ -818,14 +646,14 @@ onMounted(() => {
 .page-hero h1 {
   margin: 0;
   color: #18263e;
-  font-size: clamp(24px, 3vw, 34px);
+  font-size: clamp(29px, 3vw, 39px);
   font-weight: 800;
 }
 
 .page-hero p {
   margin: 0;
   color: #6d7c95;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -863,20 +691,20 @@ onMounted(() => {
   border-radius: 50%;
   background: #2daa72;
   color: #ffffff;
-  font-size: 42px;
+  font-size: 47px;
 }
 
 .hero-card h2 {
   margin: 0;
   color: #131d30;
-  font-size: clamp(32px, 4vw, 48px);
+  font-size: clamp(37px, 4vw, 53px);
   font-weight: 800;
 }
 
 .hero-card p {
   margin: 0;
   color: #6f7b8f;
-  font-size: 15px;
+  font-size: 20px;
 }
 
 .hero-meta {
@@ -895,7 +723,7 @@ onMounted(() => {
   border-radius: 14px;
   background: #f2f4f8;
   color: #5e6c83;
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .hero-chip strong {
@@ -918,7 +746,7 @@ onMounted(() => {
   gap: 10px;
   margin-bottom: 18px;
   color: #10213d;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
 }
 
@@ -931,7 +759,7 @@ onMounted(() => {
   justify-content: center;
   background: linear-gradient(180deg, #1f6fff 0%, #1759d5 100%);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 23px;
 }
 
 .detail-grid {
@@ -951,12 +779,12 @@ onMounted(() => {
   display: block;
   margin-bottom: 10px;
   color: #737f93;
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .detail-value {
   color: #18243c;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 700;
   line-height: 1.6;
   word-break: break-all;
@@ -971,91 +799,15 @@ onMounted(() => {
 .narrative-item h3 {
   margin: 0 0 8px;
   color: #3d4f69;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 700;
 }
 
 .narrative-item p {
   margin: 0;
   color: #273551;
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.9;
-}
-
-.diagnosis-content {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.constitution-panel {
-  padding: 14px 18px 20px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #fbfcff 0%, #f4f8ff 100%);
-  border: 1px solid #e8eef9;
-}
-
-.bar-chart {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  min-height: 260px;
-  align-items: end;
-}
-
-.bar-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.bar-value {
-  color: #758299;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.bar-track {
-  width: 52px;
-  height: 180px;
-  display: flex;
-  align-items: flex-end;
-  border-radius: 16px 16px 10px 10px;
-  background: linear-gradient(180deg, #eef3fb 0%, #f7f9fd 100%);
-  overflow: hidden;
-}
-
-.bar-fill {
-  width: 100%;
-  border-radius: 16px 16px 10px 10px;
-  background: linear-gradient(180deg, #2d7cff 0%, #1d58cf 100%);
-  box-shadow: 0 10px 24px rgba(35, 95, 208, 0.22);
-}
-
-.bar-label {
-  color: #35445f;
-  font-size: 14px;
-  font-weight: 700;
-  text-align: center;
-  line-height: 1.5;
-}
-
-.constitution-summary {
-  width: fit-content;
-  margin: 18px auto 0;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: #fff1e7;
-  color: #ef7c2f;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.result-table-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
 }
 
 .result-table-card__title {
@@ -1065,7 +817,7 @@ onMounted(() => {
   padding: 14px 16px;
   background: #f0f2f6;
   color: #1d2a44;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 800;
 }
 
@@ -1080,7 +832,7 @@ onMounted(() => {
   padding: 16px 14px;
   border: 1px solid #e6ebf3;
   text-align: center;
-  font-size: 15px;
+  font-size: 20px;
 }
 
 .result-table th {
@@ -1094,8 +846,77 @@ onMounted(() => {
   background: #ffffff;
 }
 
-.result-table--pulse thead th {
-  background: #f0f2f6;
+.diagnosis-device-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+  padding: 16px;
+  border: 1px solid #e7eef8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfcff 0%, #f5f8fd 100%);
+  overflow-x: auto;
+}
+
+.diagnosis-image-panel {
+  min-width: 0;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #e6ebf3;
+}
+
+.diagnosis-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.diagnosis-image-zhu {
+  max-height: 230px;
+}
+
+.diagnosis-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.diagnosis-table th,
+.diagnosis-table td {
+  height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #e5e9f0;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.diagnosis-table th {
+  background: #f0f2ff;
+  font-weight: 700;
+}
+
+.diagnosis-table td {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.diagnosis-table .table-title {
+  height: 36px;
+  background: #f5f5f5;
+  color: #1d2a44;
+  font-size: 18px;
 }
 
 .plan-grid {
@@ -1115,7 +936,7 @@ onMounted(() => {
   background: #fbfcff;
   border: 1px solid #e5ebf5;
   color: #23324f;
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.8;
   white-space: pre-wrap;
 }
@@ -1137,7 +958,7 @@ onMounted(() => {
   border: 1px dashed #d7e1f0;
   background: #fbfcff;
   color: #8490a5;
-  font-size: 14px;
+  font-size: 19px;
   text-align: center;
 }
 
@@ -1174,12 +995,9 @@ onMounted(() => {
   }
 
   .hero-card h2 {
-    font-size: 30px;
+    font-size: 35px;
   }
 
-  .bar-chart {
-    min-height: 220px;
-  }
 }
 
 @media (max-width: 720px) {
@@ -1211,23 +1029,15 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .constitution-panel {
-    padding-inline: 10px;
-  }
-
-  .bar-chart {
-    gap: 8px;
-  }
-
-  .bar-track {
-    width: 40px;
-    height: 150px;
+  .diagnosis-device-content {
+    grid-template-columns: 1fr;
+    padding: 12px;
   }
 
   .result-table th,
   .result-table td {
     padding: 12px 10px;
-    font-size: 13px;
+    font-size: 18px;
   }
 }
 </style>

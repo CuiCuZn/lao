@@ -453,6 +453,7 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     speakerId,
     speakerName,
     side,
+    messageType = 'manual',
     sourceText,
     translatedText,
     sourceLanguage = 'lo',
@@ -471,11 +472,11 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     const anchorTimestamp = normalizePositiveNumber(timestamp) || Date.now()
 
     const created: SubtitleTimelineItem = {
-      id: `manual_${speakerId}_${anchorTimestamp}_${sequence}`,
+      id: `${messageType}_${speakerId}_${anchorTimestamp}_${sequence}`,
       speakerId,
       speakerName: speakerName.trim() || resolveSpeakerName(speakerId),
       side,
-      messageType: 'manual',
+      messageType,
       sourceText: normalizedSourceText,
       translatedText: normalizedTranslatedText,
       sourceLanguage,
@@ -510,6 +511,10 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     sortTimelineItems()
     scrollVersion.value++
     return created
+  }
+
+  const appendHistoryMessage = (payload: ManualTimelineMessageParams) => {
+    return appendManualMessage(payload)
   }
 
   const ensureTimelineItem = ({
@@ -752,6 +757,7 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     shouldAutoFollowLatest,
     scrollVersion,
     appendManualMessage,
+    appendHistoryMessage,
     bindAsrStreams,
     upsertDraftMessage,
     finalizeSentence,

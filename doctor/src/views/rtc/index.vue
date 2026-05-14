@@ -35,7 +35,7 @@
           <div class="stage-pill">
             <span class="stage-dot" />
             <span>{{ t('doctorVideo.consultation.inCall') }}</span>
-            <span>{{ currentDate }}</span>
+            <span>{{ consultationDuration }}</span>
           </div>
 
           <div v-if="session.connectionError.value" class="connection-banner">
@@ -44,27 +44,28 @@
 
           <div class="preview-row">
             <consult-participant-card
-              :user-name="doctorName"
-              :track="session.localPreviewTrack.value"
-              :muted="!session.micEnabled.value"
-              :badge="doctorPreviewBadge"
+              :user-name="previewParticipant.userName"
+              :track="previewParticipant.track"
+              :muted="previewParticipant.muted"
+              :speaking="previewParticipant.speaking"
+              :badge="previewParticipant.track ? '' : previewParticipant.placeholderBadge"
+              :mirror="previewParticipantRole === 'doctor'"
               compact
-              mirror
+              @click="toggleFeaturedParticipant"
             />
           </div>
 
           <consult-participant-card
             class="featured-card"
-            :user-name="patientStageParticipant.userName"
-            :track="patientStageParticipant.track"
-            :muted="patientStageParticipant.muted"
-            :speaking="patientStageParticipant.speaking"
-            :badge="patientStageParticipant.track ? '' : patientStageParticipant.placeholderBadge"
+            :user-name="featuredParticipant.userName"
+            :track="featuredParticipant.track"
+            :muted="featuredParticipant.muted"
+            :speaking="featuredParticipant.speaking"
+            :badge="featuredParticipant.track ? '' : featuredParticipant.placeholderBadge"
+            :mirror="featuredParticipantRole === 'doctor'"
+            :show-status="false"
           />
 
-          <div class="featured-caption">
-            {{ `${t('doctorVideo.consultation.patientPrefix')}${patientName}` }}
-          </div>
 
           <div class="stage-controls">
             <consult-room-controls
@@ -285,7 +286,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { addWrittenRecord, translateConsultationText } from '@/api/patient'
 import type { ConsultationMode, GenerateMedicalRecordData } from '@/api/types'
-import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
+import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
 import { useUserStore } from '@/stores/user'
 import ConsultCameraSelectDialog from './components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from './components/ConsultParticipantCard.vue'
@@ -328,7 +329,7 @@ const { locale, t } = useI18n()
 const session = useDoctorConsultationSession()
 const activeTab = ref('outpatient')
 const pageError = ref('')
-const currentDate = ref('')
+const consultationDuration = ref('00:00:00')
 const consultationContext = ref<DoctorRtcContext>({})
 const savedSubtitleKeys = new Set<string>()
 const chatDraft = ref('')
@@ -339,7 +340,10 @@ const historyCaseError = ref('')
 const generatingMedicalRecord = ref(false)
 const cameraDialogVisible = ref(false)
 const cameraDialogRequired = ref(false)
-let dateTimer = 0
+const featuredParticipantRole = ref<'doctor' | 'patient'>('patient')
+let durationTimer = 0
+let durationStartedAt = 0
+let durationRequestId = 0
 let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
 
 const normalizeConsultationMode = (value: unknown): ConsultationMode => {
@@ -366,14 +370,6 @@ const loadConsultationContext = () => {
   } catch {
     consultationContext.value = {}
   }
-}
-
-const syncCurrentDate = () => {
-  currentDate.value = new Intl.DateTimeFormat(resolveUiLocale(), {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date()).replace(/\//g, '-')
 }
 
 const doctorId = computed(() => {
@@ -480,6 +476,37 @@ const patientStageParticipant = computed(() => {
   )
 })
 
+const doctorSelfParticipant = computed(() => ({
+  userId: session.channelContext.value?.userId || doctorId.value || 'doctor',
+  userName: doctorName.value,
+  track: session.localPreviewTrack.value,
+  muted: !session.micEnabled.value,
+  speaking: false,
+  placeholderBadge: doctorPreviewBadge.value
+}))
+
+const featuredParticipant = computed(() => {
+  return featuredParticipantRole.value === 'patient' ? patientStageParticipant.value : doctorSelfParticipant.value
+})
+
+const previewParticipantRole = computed<'doctor' | 'patient'>(() => {
+  return featuredParticipantRole.value === 'patient' ? 'doctor' : 'patient'
+})
+
+const previewParticipant = computed(() => {
+  return previewParticipantRole.value === 'patient' ? patientStageParticipant.value : doctorSelfParticipant.value
+})
+
+const featuredCaptionText = computed(() => {
+  return featuredParticipantRole.value === 'patient'
+    ? `${t('doctorVideo.consultation.patientPrefix')}${patientName.value}`
+    : doctorName.value
+})
+
+const toggleFeaturedParticipant = () => {
+  featuredParticipantRole.value = previewParticipantRole.value
+}
+
 const resolveInputPlaceholder = (label: string) => {
   return t('doctorVideo.consultation.inputPlaceholder', { label })
 }
@@ -494,6 +521,20 @@ const resolveContextText = (value: unknown) => {
   }
 
   return String(value).trim()
+}
+
+const formatMarriage = (value: unknown) => {
+  const text = resolveContextText(value).toLowerCase()
+
+  if (text === '0') {
+    return t('assistant.caseResult.unmarried')
+  }
+
+  if (text === '1') {
+    return t('assistant.caseResult.married')
+  }
+
+  return resolveContextText(value)
 }
 
 const normalizeHistoryCaseList = (value: unknown): HistoryCaseRecord[] => {
@@ -557,7 +598,7 @@ const basicInfoFields = computed(() => [
   },
   {
     label: t('doctorVideo.consultation.marriage'),
-    value: resolveContextText(consultationContext.value.marriage) || t('doctorVideo.consultation.notFilled')
+    value: formatMarriage(consultationContext.value.marriage) || t('doctorVideo.consultation.notFilled')
   },
   {
     label: t('doctorVideo.consultation.occupation'),
@@ -785,6 +826,79 @@ const takeOptionalText = (value: unknown) => {
 
   const normalizedValue = String(value).trim()
   return normalizedValue || ''
+}
+
+const formatDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return [hours, minutes, seconds].map((item) => String(item).padStart(2, '0')).join(':')
+}
+
+const parseVideoTime = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return Number.NaN
+  }
+
+  return Date.parse(String(value))
+}
+
+const resolveVideoDurationMs = (value: unknown) => {
+  if (!isObjectRecord(value)) {
+    return 0
+  }
+
+  const startTime = parseVideoTime(value.videoStartTime)
+  const currentTime = parseVideoTime(value.newDate)
+  if (!Number.isFinite(startTime) || !Number.isFinite(currentTime)) {
+    return 0
+  }
+
+  return Math.max(0, currentTime - startTime)
+}
+
+const syncConsultationDuration = () => {
+  consultationDuration.value = formatDuration(Date.now() - durationStartedAt)
+}
+
+const clearConsultationDurationTimer = () => {
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = 0
+  }
+}
+
+const stopConsultationDuration = () => {
+  durationRequestId += 1
+  durationStartedAt = 0
+  consultationDuration.value = '00:00:00'
+  clearConsultationDurationTimer()
+}
+
+const startConsultationDuration = async (resolvedVideoId: string) => {
+  durationRequestId += 1
+  const currentRequestId = durationRequestId
+  clearConsultationDurationTimer()
+  durationStartedAt = Date.now()
+  consultationDuration.value = '00:00:00'
+  durationTimer = window.setInterval(syncConsultationDuration, 1000)
+
+  if (!resolvedVideoId) {
+    return
+  }
+
+  try {
+    const response = await getVideoTime(resolvedVideoId)
+    if (currentRequestId !== durationRequestId) {
+      return
+    }
+
+    durationStartedAt = Date.now() - resolveVideoDurationMs(response?.data)
+    syncConsultationDuration()
+  } catch (error) {
+    console.warn('Failed to load doctor consultation video duration.', error)
+  }
 }
 
 const takeOptionalTimestamp = (value: unknown) => {
@@ -1192,12 +1306,29 @@ const timeline = useDoctorSubtitleTimeline({
 })
 
 const chat = createDoctorConsultationChatService({
-  onMessage: ({ contentCn, contentLo }) => {
+  onMessage: ({ contentCn, contentLo, role }) => {
     const resolvedPatientId = patientId.value || 'patient'
+    const sender =
+      role === 0
+        ? {
+            speakerId: doctorId.value || 'doctor',
+            speakerName: doctorName.value,
+            side: 'self' as const
+          }
+        : role === 2
+          ? {
+              speakerId: `aide:${doctorAideId.value || 'aide'}`,
+              speakerName: t('doctorVideo.consultation.aideFallbackName'),
+              side: 'remote' as const
+            }
+          : {
+              speakerId: `patient:${resolvedPatientId}`,
+              speakerName: patientName.value,
+              side: 'remote' as const
+            }
+
     timeline.appendManualMessage({
-      speakerId: `patient:${resolvedPatientId}`,
-      speakerName: patientName.value,
-      side: 'remote',
+      ...sender,
       sourceText: contentLo,
       translatedText: contentCn,
       sourceLanguage: 'lo',
@@ -1215,6 +1346,7 @@ const chatSendDisabled = computed(() => {
     chatSending.value ||
     !chatDraft.value.trim() ||
     !patientId.value ||
+    !doctorAideId.value ||
     !caseId.value ||
     chat.connectionStatus.value !== 'connected'
   )
@@ -1223,6 +1355,10 @@ const chatSendDisabled = computed(() => {
 const chatStatusText = computed(() => {
   if (!patientId.value) {
     return t('doctorVideo.consultation.chatPatientUnavailable')
+  }
+
+  if (!doctorAideId.value) {
+    return t('doctorVideo.consultation.chatUnavailable')
   }
 
   if (!caseId.value) {
@@ -1329,6 +1465,11 @@ const handleChatSend = async () => {
     return
   }
 
+  if (!doctorAideId.value) {
+    ElMessage.warning(t('doctorVideo.consultation.chatUnavailable'))
+    return
+  }
+
   if (!caseId.value) {
     ElMessage.warning(t('doctorVideo.consultation.chatCaseUnavailable'))
     return
@@ -1359,6 +1500,8 @@ const handleChatSend = async () => {
     const [sendResult, saveResult] = await Promise.allSettled([
       chat.sendTranslatedMessage({
         patientId: patientId.value,
+        doctorAideId: doctorAideId.value,
+        role: 0,
         ...payload
       }),
       addWrittenRecord({
@@ -1387,12 +1530,7 @@ const handleChatSend = async () => {
 }
 
 const goBackToWorkbench = async () => {
-  if (window.history.length > 1) {
-    await router.back()
-    return
-  }
-
-  await router.replace('/')
+  await router.replace('/workbench')
 }
 
 const bootstrapConsultation = async () => {
@@ -1459,10 +1597,12 @@ const bootstrapConsultation = async () => {
       language: 'cn'
     })
 
-    await loadConversationHistory(takeOptionalText(resolvedVideoId) || videoId.value)
+    const resolvedConsultationVideoId = takeOptionalText(resolvedVideoId) || videoId.value
+    void startConsultationDuration(resolvedConsultationVideoId)
+    await loadConversationHistory(resolvedConsultationVideoId)
     await connectConsultationChat()
     timeline.bindAsrStreams(session.subtitleBindings.value)
-    await session.bootstrapSubtitle()
+    await session.bootstrapSubtitle({ taskPolicy: isContinueConsultation.value ? 'auto' : 'skip' })
   } catch (error) {
     pageError.value =
       error instanceof Error && error.message
@@ -1472,18 +1612,21 @@ const bootstrapConsultation = async () => {
 }
 
 const retrySubtitle = async () => {
+  const taskPolicy = isContinueConsultation.value ? 'auto' : 'skip'
+  await session.stopSubtitleTasks(taskPolicy)
   await session.cleanupSubtitle()
   timeline.bindAsrStreams(session.subtitleBindings.value)
-  await session.bootstrapSubtitle()
+  await session.bootstrapSubtitle({ taskPolicy })
 }
 
 const handleLeave = async () => {
   savedSubtitleKeys.clear()
+  stopConsultationDuration()
   chatDraft.value = ''
   pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
-  await session.leaveConsultationRoom()
+  await session.leaveConsultationRoom({ taskPolicy: isContinueConsultation.value ? 'auto' : 'skip' })
   await goBackToWorkbench()
 }
 
@@ -1491,8 +1634,6 @@ onMounted(async () => {
   loadConsultationContext()
   syncOutpatientRecordForm()
   void fetchHistoryCaseList()
-  syncCurrentDate()
-  dateTimer = window.setInterval(syncCurrentDate, 60_000)
   await bootstrapConsultation()
 })
 
@@ -1501,13 +1642,13 @@ watch([patientId, caseId], () => {
 })
 
 onBeforeUnmount(async () => {
-  window.clearInterval(dateTimer)
+  stopConsultationDuration()
   savedSubtitleKeys.clear()
   chatDraft.value = ''
   pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
-  await session.leaveConsultationRoom()
+  await session.leaveConsultationRoom({ taskPolicy: isContinueConsultation.value ? 'auto' : 'skip' })
 })
 </script>
 
@@ -1560,8 +1701,8 @@ onBeforeUnmount(async () => {
 
 .stage-pill {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 20px;
+  left: 20px;
   z-index: 5;
   display: inline-flex;
   align-items: center;
@@ -1589,7 +1730,7 @@ onBeforeUnmount(async () => {
   left: 50%;
   z-index: 6;
   transform: translateX(-50%);
-  max-width: calc(100% - 220px);
+  max-width: calc(100% - 314px);
   border-radius: 999px;
   padding: 5px 10px;
   background: rgba(255, 241, 241, 0.96);
@@ -1600,17 +1741,18 @@ onBeforeUnmount(async () => {
 
 .preview-row {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 20px;
+  right: 20px;
   z-index: 5;
   display: grid;
-  grid-template-columns: minmax(120px, 160px);
+  grid-template-columns: minmax(226px, 270px);
   gap: 8px;
-  width: min(160px, calc(100% - 200px));
+  width: min(270px, calc(100% - 314px));
 }
 
 .preview-row :deep(.consult-participant-card) {
   width: 100%;
+  cursor: pointer;
 }
 
 .featured-card {

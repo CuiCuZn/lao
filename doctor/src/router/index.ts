@@ -59,14 +59,9 @@ const router = createRouter({
   }
 })
 
-router.afterEach((to) => {
+router.afterEach(() => {
   const appTitle = import.meta.env.VITE_APP_TITLE || 'Doctor Workbench'
-  if (typeof to.meta.title === 'string' && to.meta.title.length > 0) {
-    const pageTitle = to.meta.title.includes('.') ? i18n.global.t(to.meta.title) : to.meta.title
-    document.title = `${pageTitle} - ${appTitle}`
-  } else {
-    document.title = appTitle
-  }
+  document.title = appTitle
 })
 
 export default router

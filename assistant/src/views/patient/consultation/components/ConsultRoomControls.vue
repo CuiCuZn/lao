@@ -5,7 +5,7 @@
       type="button"
       class="control-button control-button--secondary"
       :class="cameraEnabled ? 'is-active' : 'is-inactive'"
-      :disabled="cameraSwitching"
+      :disabled="controlsDisabled || cameraSwitching"
       @click="onToggleCamera"
     >
       <span class="icon-shell">
@@ -18,7 +18,7 @@
       v-if="showCamera && onSwitchCamera"
       type="button"
       class="control-button control-button--secondary is-active"
-      :disabled="cameraSwitching"
+      :disabled="controlsDisabled || cameraSwitching"
       @click="onSwitchCamera"
     >
       <span class="icon-shell">
@@ -32,6 +32,7 @@
       type="button"
       class="control-button"
       :class="micEnabled ? 'is-active' : 'is-inactive'"
+      :disabled="controlsDisabled"
       @click="onToggleMic"
     >
       <span class="icon-shell">
@@ -70,6 +71,7 @@ interface Props {
   onToggleMic: () => void | Promise<void>
   onLeave: () => void | Promise<void>
   cameraSwitching?: boolean
+  controlsDisabled?: boolean
   showCamera?: boolean
   showMic?: boolean
   showLeave?: boolean
@@ -77,6 +79,7 @@ interface Props {
 
 withDefaults(defineProps<Props>(), {
   cameraSwitching: false,
+  controlsDisabled: false,
   showCamera: false,
   showMic: true,
   showLeave: true
@@ -104,7 +107,7 @@ const { t } = useI18n()
   border: none;
   padding: 0;
   background: transparent;
-  color: #2d4268;
+  color: #27406d;
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -127,11 +130,11 @@ const { t } = useI18n()
   height: 46px;
   border-radius: 50%;
   box-shadow: 0 4px 14px rgba(66, 90, 136, 0.18);
-  font-size: 18px;
+  font-size: 25px;
 }
 
 .label {
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1.3;
 }
@@ -149,16 +152,15 @@ const { t } = useI18n()
   background: linear-gradient(180deg, #fff0f0 0%, #ffe0e0 100%);
 }
 
-.control-button--secondary {
-  opacity: 0.72;
-}
-
 .control-button--danger {
-  color: #2d4268;
+  color: #ffffff;
 }
 
 .control-button--danger .icon-shell {
   background: linear-gradient(180deg, #f86a6a 0%, #e94a4a 100%);
+}
+.control-button--danger .label {
+  color: #27406d;
 }
 
 @media (max-width: 900px) {
@@ -169,7 +171,7 @@ const { t } = useI18n()
   .icon-shell {
     width: 42px;
     height: 42px;
-    font-size: 16px;
+    font-size: 23px;
   }
 }
 </style>

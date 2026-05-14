@@ -122,6 +122,25 @@ const clearRenderedVideos = (container: HTMLDivElement | null) => {
   container.querySelectorAll('video').forEach((video) => video.remove())
 }
 
+const stopTrackPlayback = (
+  track: CameraVideoTrack | LocalVideoTrack | RemoteVideoTrack,
+  container: HTMLDivElement | null
+) => {
+  if (!container) {
+    return
+  }
+
+  try {
+    track.stopPlay(container)
+  } catch {
+    try {
+      track.stop(container)
+    } catch {
+      undefined
+    }
+  }
+}
+
 const avatarText = computed(() => {
   const trimmed = props.userName?.trim()
   return trimmed ? trimmed.slice(0, 1) : '?'
@@ -133,13 +152,7 @@ watch(
     const [previousContainer, previousTrack] = previous
 
     if (previousTrack && previousContainer && previousTrack !== track) {
-      // @ts-ignore
-      if (typeof previousTrack.stopPlay === 'function') {
-        // @ts-ignore
-        previousTrack.stopPlay()
-      } else {
-        previousTrack.stop(previousContainer)
-      }
+      stopTrackPlayback(previousTrack, previousContainer)
       clearRenderedVideos(previousContainer)
     }
 
@@ -152,7 +165,7 @@ watch(
     }
 
     track.play(container, {
-      fit: compact ? 'cover' : 'contain',
+      fit: 'cover',
       mirror
     })
   },
@@ -176,13 +189,7 @@ onBeforeUnmount(() => {
   stopWaitingAnimation()
 
   if (containerRef.value && props.track) {
-    // @ts-ignore
-    if (typeof props.track.stopPlay === 'function') {
-      // @ts-ignore
-      props.track.stopPlay()
-    } else {
-      props.track.stop(containerRef.value)
-    }
+    stopTrackPlayback(props.track, containerRef.value)
   }
 
   clearRenderedVideos(containerRef.value)
@@ -203,9 +210,10 @@ onBeforeUnmount(() => {
     position: absolute;
     inset: 0;
     z-index: 1;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
     background: #0d1728;
   }
 }
@@ -218,7 +226,7 @@ onBeforeUnmount(() => {
 
 .is-compact {
   width: 100%;
-  height: 110px;
+  height: 204px;
   border-radius: 8px;
 }
 
@@ -268,10 +276,11 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  border-radius: 999px;
+  height: 30px;
+  line-height: 30px;
+  border-radius: 14px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: 19px;
   font-weight: 700;
 }
 
@@ -281,6 +290,8 @@ onBeforeUnmount(() => {
 
 .participant-muted {
   background: rgba(213, 82, 90, 0.86);
+  color: #ffffff;
+  // padding: 0;
 }
 
 .is-placeholder .participant-badge {
@@ -307,7 +318,7 @@ onBeforeUnmount(() => {
   border: 4px solid #ffffff;
   background: #b3d1fb;
   color: #2f5bb7;
-  font-size: 42px;
+  font-size: 53px;
   font-weight: 700;
   box-shadow: 0 8px 24px rgba(71, 103, 164, 0.18);
 }
@@ -318,16 +329,15 @@ onBeforeUnmount(() => {
   margin: 0;
   border-radius: 999px;
   padding: 6px 12px;
-  background: rgba(74, 78, 89, 0.72);
-  color: #ffffff;
-  font-size: 14px;
+  color: #2f5bb7;
+  font-size: 21px;
   font-weight: 600;
 }
 
 .waiting-message {
   margin: -4px 0 -10px;
   color: #2f5bb7;
-  font-size: 16px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: 0;
   text-align: center;
@@ -363,15 +373,17 @@ onBeforeUnmount(() => {
 }
 
 .is-compact .avatar-text {
-  width: 56px;
-  height: 56px;
+  width: 70px;
+  height: 70px;
   border-width: 3px;
-  font-size: 22px;
+  font-size: 35px;
 }
 
 .is-compact .avatar-name {
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 0px 10px;
+  font-size: 19px;
+  min-height: 20px;
+  line-height: 20px;
 }
 
 .is-video-ready {

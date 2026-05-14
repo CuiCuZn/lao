@@ -1,5 +1,5 @@
 <template>
-  <div class="assistant-login">
+  <div class="assistant-login" :class="{ 'is-zh-cn': locale === 'zh-cn' }">
     <div class="login-shell">
       <section class="login-visual" :style="{ backgroundImage: visualBackground }">
         <div class="login-visual__content">
@@ -119,6 +119,7 @@ import type { FormInstance } from 'element-plus'
 import type { LoginData, TenantVO } from '@/api/types'
 import { getTenantList } from '@/api/login'
 import { useUserStore } from '@/stores/user'
+import { broadcastPatientLanguageChanged } from '@/utils/patient-channel'
 import loginMedicalVisual from '@/assets/login_bg.png'
 
 const router = useRouter()
@@ -188,6 +189,7 @@ const loginRef = ref<FormInstance>()
 const handleSetLanguage = (lang: string) => {
   locale.value = lang
   localStorage.setItem('lang', lang)
+  broadcastPatientLanguageChanged({ lang })
   location.reload()
 }
 
@@ -289,9 +291,9 @@ onMounted(() => {
 
 .login-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.98fr);
-  width: min(1120px, 100%);
-  min-height: 560px;
+  grid-template-columns: minmax(0, 1fr) minmax(462px, 0.98fr);
+  width: min(1232px, 100%);
+  min-height: 616px;
   border: 1px solid rgba(220, 230, 244, 0.96);
   border-radius: 14px;
   overflow: hidden;
@@ -302,7 +304,7 @@ onMounted(() => {
 .login-visual {
   position: relative;
   display: flex;
-  min-height: 560px;
+  min-height: 616px;
   flex-direction: column;
   justify-content: space-between;
   padding: 56px 42px 40px;
@@ -325,7 +327,7 @@ onMounted(() => {
 
 .login-visual__content h1 {
   margin: 0 0 18px;
-  font-size: 48px;
+  font-size: 53px;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: 0.02em;
@@ -334,7 +336,7 @@ onMounted(() => {
 .login-visual__content p {
   margin: 0;
   max-width: 440px;
-  font-size: 15px;
+  font-size: 20px;
   line-height: 1.85;
   word-break: break-word;
   color: rgba(255, 255, 255, 0.9);
@@ -343,15 +345,16 @@ onMounted(() => {
 .login-visual__features {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 12px;
+  gap: 14px 10px;
+  margin-inline: -22px;
 }
 
 .visual-feature {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-height: 50px;
-  padding: 10px 12px;
+  padding: 10px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -359,26 +362,30 @@ onMounted(() => {
 
 .visual-feature__icon {
   display: inline-flex;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.16);
-  font-size: 14px;
+  font-size: 19px;
   flex-shrink: 0;
 }
 
 .visual-feature__text {
-  font-size: 12px;
+  font-size: 17px;
   line-height: 1.5;
   color: rgba(255, 255, 255, 0.94);
+}
+
+.assistant-login.is-zh-cn .visual-feature__text {
+  white-space: nowrap;
 }
 
 .login-card {
   display: flex;
   flex-direction: column;
-  padding: 20px 56px 30px;
+  padding: 22px 62px 33px;
   background: #ffffff;
 }
 
@@ -393,7 +400,7 @@ onMounted(() => {
 .login-card__header h2 {
   margin: 0;
   color: #121212;
-  font-size: 32px;
+  font-size: 37px;
   font-weight: 700;
   line-height: 1.2;
 }
@@ -428,7 +435,7 @@ onMounted(() => {
   width: 38px;
   justify-content: center;
   padding: 0;
-  font-size: 16px;
+  font-size: 21px;
 }
 
 .language-button {
@@ -442,11 +449,11 @@ onMounted(() => {
   justify-content: center;
   width: 18px;
   height: 18px;
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .language-button__arrow {
-  font-size: 12px;
+  font-size: 17px;
   color: #9098a8;
 }
 
@@ -470,7 +477,7 @@ onMounted(() => {
   width: 100%;
   min-height: 48px;
   border-radius: 4px;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 600;
 }
 
@@ -483,20 +490,21 @@ onMounted(() => {
 .login-card__footer p {
   margin: 0;
   color: #a0a8b7;
-  font-size: 12px;
+  font-size: 17px;
   line-height: 1.8;
 }
 
 .login-form :deep(.el-form-item__label) {
   padding-bottom: 8px;
   color: #757f90;
-  font-size: 12px;
+  font-size: 22px;
   line-height: 1.2;
 }
 
 .login-form :deep(.el-input__wrapper),
 .login-form :deep(.el-select__wrapper) {
-  min-height: 44px;
+  height: 50px;
+  min-height: 50px;
   border-radius: 6px;
   box-shadow: 0 0 0 1px #dfe5ef inset;
 }
@@ -509,16 +517,20 @@ onMounted(() => {
 .login-form :deep(.el-input__inner),
 .login-form :deep(.el-select__selected-item) {
   color: #2d3648;
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .login-form :deep(.el-input__inner::placeholder) {
   color: #bcc3cf;
 }
 
+.login-form :deep(.el-form-item__error) {
+  font-size: 17px;
+}
+
 .remember-row :deep(.el-checkbox__label) {
   color: #9ca4b2;
-  font-size: 12px;
+  font-size: 20px;
 }
 
 @media (max-width: 1024px) {
@@ -531,7 +543,7 @@ onMounted(() => {
   }
 
   .login-visual__content h1 {
-    font-size: 40px;
+    font-size: 45px;
   }
 }
 
@@ -569,7 +581,7 @@ onMounted(() => {
   }
 
   .login-visual__content h1 {
-    font-size: 34px;
+    font-size: 39px;
   }
 
   .login-visual__features {
@@ -587,7 +599,7 @@ onMounted(() => {
   }
 
   .login-card__header h2 {
-    font-size: 28px;
+    font-size: 33px;
   }
 }
 </style>

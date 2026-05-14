@@ -14,6 +14,7 @@ import type {
 export type ConsultationLanguage = 'cn' | 'lo'
 export type ConsultationMessageType = 'subtitle' | 'manual'
 export type ConsultationChatConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | 'closed'
+export type ConsultationSubtitleTaskPolicy = 'auto' | 'force' | 'skip'
 
 export interface PatientConsultationJoinParams {
   appId: string
@@ -26,6 +27,7 @@ export interface PatientConsultationJoinParams {
   language: ConsultationLanguage
   gslb?: string
   publishLocalMedia?: boolean
+  playRemoteAudio?: boolean
 }
 
 export interface RtcChannelTokenResult {
@@ -82,6 +84,7 @@ export interface ConsultationStreamSubscriptionOptions {
   onSecondaryRemoteUsersChanged: (users: RemoteUser[]) => void
   onPrimaryTrackStatsNeeded: (uid: string) => void
   onSecondaryTrackStatsNeeded: (uid: string) => void
+  playRemoteAudio?: boolean
 }
 
 export interface ConsultationAsrRegistrationResult {
@@ -105,6 +108,11 @@ export interface ConsultationChannelContext {
 
 export interface ConsultationLeaveOptions {
   keepConnectionError?: boolean
+  taskPolicy?: ConsultationSubtitleTaskPolicy
+}
+
+export interface ConsultationSubtitleBootstrapOptions {
+  taskPolicy?: ConsultationSubtitleTaskPolicy
 }
 
 export interface SubtitleTimelineItem {
@@ -133,6 +141,7 @@ export interface ManualTimelineMessageParams {
   speakerId: string
   speakerName: string
   side: 'self' | 'remote'
+  messageType?: ConsultationMessageType
   sourceText: string
   translatedText: string
   sourceLanguage?: string
@@ -164,11 +173,16 @@ export interface ConsultationChatPayload {
   contentCn: string
 }
 
+export type ConsultationChatRole = 0 | 1 | 2
+
 export interface ConsultationChatSendParams extends ConsultationChatPayload {
   doctorId: string
+  patientId?: string
+  role: ConsultationChatRole
 }
 
 export interface ConsultationChatIncomingMessage extends ConsultationChatPayload {
+  role?: ConsultationChatRole
   senderKey?: string
   sessionKeys?: string[]
   rawEnvelope?: unknown

@@ -19,13 +19,81 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { useUserStore } from '@/stores/user'
+import { getToken } from '@/utils/auth'
 import Sidebar from './components/Sidebar.vue'
 import AppHeader from './components/Header.vue'
 
+const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
+
 const route = useRoute()
+const userStore = useUserStore()
+const { t } = useI18n()
 const isRtcPage = computed(() => route.path === '/doctor-rtc')
+let isUnloadOfflineRequestSent = false
+
+function isDoctorOnline() {
+  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
+  if (cachedOnlineStatus !== null) {
+    return cachedOnlineStatus === 'true'
+  }
+
+  const profileOnlineStatus = userStore.profile?.isOnLine
+  return profileOnlineStatus !== undefined && profileOnlineStatus !== null
+    ? String(profileOnlineStatus) === '1'
+    : false
+}
+
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isDoctorOnline()) {
+    return
+  }
+
+  const message = t('workbench.closeWhileOnlineTip')
+  event.preventDefault()
+  event.returnValue = message
+  return message
+}
+
+function handlePageHide() {
+  if (!isDoctorOnline() || isUnloadOfflineRequestSent) {
+    return
+  }
+
+  isUnloadOfflineRequestSent = true
+  localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, 'false')
+
+  const token = getToken()
+  const langMap: Record<string, string> = {
+    'zh-cn': 'zh_CN',
+    lo: 'lo_LA',
+    en: 'en_US'
+  }
+  const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
+
+  void fetch(`${baseUrl}/system/user/switch`, {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      clientid: import.meta.env.VITE_APP_CLIENT_ID || '',
+      'content-language': langMap[localStorage.getItem('lang') || 'zh-cn'] || 'zh_CN'
+    }
+  }).catch(() => undefined)
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  window.addEventListener('pagehide', handlePageHide)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  window.removeEventListener('pagehide', handlePageHide)
+})
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@ type SupportedLocale = typeof supportedLocales[number]
 
 const resolveLocale = () => {
   const storedLang = localStorage.getItem('lang')
-  const locale = supportedLocales.includes(storedLang as SupportedLocale) ? (storedLang as SupportedLocale) : 'zh-cn'
+  const locale = supportedLocales.includes(storedLang as SupportedLocale) ? (storedLang as SupportedLocale) : 'lo'
 
   if (storedLang !== locale) {
     localStorage.setItem('lang', locale)

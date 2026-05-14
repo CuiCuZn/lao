@@ -52,7 +52,7 @@
         </header>
 
         <div class="records-table-wrap">
-          <el-table :data="records" v-loading="loading" class="records-table">
+          <el-table :data="records" v-loading="loading" class="records-table" height="100%">
             <el-table-column :label="t('assistant.records.visitDate')" min-width="132">
               <template #default="{ row }">
                 <span>{{ row.visitDate }}</span>
@@ -115,7 +115,7 @@
           <el-pagination
             v-model:current-page="page"
             v-model:page-size="pageSize"
-            :page-sizes="[20, 50, 100]"
+            :page-sizes="[10, 20, 50, 100]"
             :total="total"
             background
             layout="sizes, prev, pager, next, jumper"
@@ -159,7 +159,7 @@ const { t, locale } = useI18n()
 const activeFilter = ref<FilterKey>('all')
 const keyword = ref('')
 const page = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const loading = ref(false)
 const total = ref(0)
 const records = ref<RecordRow[]>([])
@@ -415,7 +415,7 @@ const goToCaseResult = (caseId: string) => {
 .records-page__hero h1 {
   margin: 0;
   color: #1c2431;
-  font-size: clamp(24px, 3.2vw, 34px);
+  font-size: clamp(29px, 3.2vw, 39px);
   font-weight: 800;
   line-height: 1.15;
 }
@@ -423,7 +423,7 @@ const goToCaseResult = (caseId: string) => {
 .records-page__hero p {
   margin: 0;
   color: #66758b;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -452,7 +452,7 @@ const goToCaseResult = (caseId: string) => {
   border-radius: 999px;
   background: rgba(217, 228, 245, 0.95);
   color: #5f6f84;
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
@@ -482,7 +482,8 @@ const goToCaseResult = (caseId: string) => {
 }
 
 .records-search :deep(.el-input__wrapper) {
-  min-height: 34px;
+  height: 50px;
+  min-height: 50px;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 0 0 1px #e0e7f1 inset;
@@ -515,11 +516,11 @@ const goToCaseResult = (caseId: string) => {
   align-items: center;
   gap: 6px;
   color: #1f2a3d;
-  font-size: 13px;
+  font-size: 18px;
 }
 
 .records-panel__title strong {
-  font-size: 24px;
+  font-size: 29px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -533,28 +534,29 @@ const goToCaseResult = (caseId: string) => {
   border-radius: 4px;
   background: linear-gradient(180deg, #1f6fff 0%, #1557d7 100%);
   color: #ffffff;
-  font-size: 11px;
+  font-size: 16px;
 }
 
 .records-panel__count {
   color: #8d97a8;
-  font-size: 12px;
+  font-size: 17px;
 }
 
 .records-table-wrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .records-table {
   width: 100%;
+  height: 100%;
 }
 
 .records-table :deep(th.el-table__cell) {
   background: #ffffff;
   color: #a2aab7;
-  font-size: 12px;
+  font-size: 22px;
   font-weight: 600;
   border-bottom: 1px solid #edf1f6;
 }
@@ -571,7 +573,7 @@ const goToCaseResult = (caseId: string) => {
 .records-table :deep(.el-table__cell .cell) {
   color: #2d3748;
   padding-inline: 10px;
-  font-size: 12px;
+  font-size: 22px;
 }
 
 .records-meta {
@@ -582,13 +584,13 @@ const goToCaseResult = (caseId: string) => {
 
 .records-meta strong {
   color: #212a38;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 23px;
+  font-weight: 400;
 }
 
 .records-meta span {
   color: #8d97a8;
-  font-size: 11px;
+  font-size: 21px;
 }
 
 .status-tag {
@@ -597,7 +599,7 @@ const goToCaseResult = (caseId: string) => {
   border: none;
   border-radius: 4px;
   justify-content: center;
-  font-size: 11px;
+  font-size: 21px;
 }
 
 .status-tag.is-completed {
@@ -612,7 +614,7 @@ const goToCaseResult = (caseId: string) => {
 
 .detail-link {
   color: #1c6fff;
-  font-size: 12px;
+  font-size: 22px;
   font-weight: 600;
   padding: 0;
 }
@@ -625,6 +627,15 @@ const goToCaseResult = (caseId: string) => {
   flex-shrink: 0;
   border-top: 1px solid #edf1f6;
   background: #ffffff;
+}
+
+.records-panel__pagination :deep(.el-pagination),
+.records-panel__pagination :deep(.el-pagination button),
+.records-panel__pagination :deep(.el-pager li),
+.records-panel__pagination :deep(.el-pagination__jump),
+.records-panel__pagination :deep(.el-select__selected-item),
+.records-panel__pagination :deep(.el-input__inner) {
+  font-size: 19px;
 }
 
 @media (max-width: 960px) {
@@ -656,7 +667,7 @@ const goToCaseResult = (caseId: string) => {
   }
 
   .records-page__hero p {
-    font-size: 13px;
+    font-size: 18px;
   }
 
   .records-panel {
@@ -664,7 +675,7 @@ const goToCaseResult = (caseId: string) => {
   }
 
   .records-panel__title strong {
-    font-size: 20px;
+    font-size: 25px;
   }
 }
 </style>

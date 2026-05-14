@@ -44,6 +44,21 @@
           </div>
         </div>
       </div>
+
+      <div v-if="emptyDialogVisible" class="assistant-confirm-dialog__mask" role="presentation">
+        <section class="assistant-confirm-dialog" role="dialog" aria-modal="true" :aria-labelledby="emptyDialogTitleId">
+          <h2 :id="emptyDialogTitleId" class="assistant-confirm-dialog__message">{{ emptyDialogMessage }}</h2>
+
+          <div class="assistant-confirm-dialog__actions">
+            <button type="button" class="assistant-confirm-dialog__button assistant-confirm-dialog__button--ghost" @click="closeEmptyDialog">
+              {{ t('common.cancel') }}
+            </button>
+            <button type="button" class="assistant-confirm-dialog__button assistant-confirm-dialog__button--primary" @click="confirmEmptyDialog">
+              {{ t('common.confirm') }}
+            </button>
+          </div>
+        </section>
+      </div>
     </section>
   </app-page>
 </template>
@@ -52,7 +67,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { verifyPatient } from '@/api/patient'
 import type { PatientVerifyType } from '@/api/types'
@@ -64,6 +79,9 @@ const router = useRouter()
 const activeType = ref<PatientVerifyType>(0)
 const verifyCode = ref('')
 const loading = ref(false)
+const emptyDialogVisible = ref(false)
+const emptyDialogMessage = ref('')
+const emptyDialogTitleId = 'patient-identify-empty-dialog-title'
 
 const verifyTabs = computed(() => [
   { value: 0 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.visitNo') },
@@ -87,6 +105,15 @@ const changeType = (type: PatientVerifyType) => {
 
 const goHome = () => {
   router.push('/assistant/workbench')
+}
+
+const closeEmptyDialog = () => {
+  emptyDialogVisible.value = false
+}
+
+const confirmEmptyDialog = async () => {
+  emptyDialogVisible.value = false
+  await router.push('/assistant/intake')
 }
 
 const hasMeaningfulData = (value: unknown) => {
@@ -137,11 +164,8 @@ const handleVerify = async () => {
         ...(patientId ? { query: { patientId } } : {})
       })
     } else {
-      await ElMessageBox.alert(response?.msg || t('assistant.patientIdentify.emptyDataMessage'), t('common.tip'), {
-        confirmButtonText: t('common.confirm'),
-        type: 'warning'
-      })
-      await router.push('/assistant/intake')
+      emptyDialogMessage.value = response?.msg || t('assistant.patientIdentify.emptyDataMessage')
+      emptyDialogVisible.value = true
     }
   } finally {
     loading.value = false
@@ -213,7 +237,7 @@ const handleVerify = async () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1;
 }
 
@@ -236,7 +260,7 @@ const handleVerify = async () => {
 .identify-hero h1 {
   margin: 0;
   color: #161f2c;
-  font-size: clamp(34px, 4.4vw, 46px);
+  font-size: clamp(39px, 4.4vw, 51px);
   font-weight: 800;
   line-height: 1.14;
   letter-spacing: 0.02em;
@@ -246,7 +270,7 @@ const handleVerify = async () => {
   max-width: 680px;
   margin: 16px auto 0;
   color: #617283;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 600;
   line-height: 1.7;
 }
@@ -275,7 +299,7 @@ const handleVerify = async () => {
   border-radius: 16px;
   background: transparent;
   color: #7d8da0;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.22s ease;
@@ -304,7 +328,7 @@ const handleVerify = async () => {
   outline: none;
   background: rgba(255, 255, 255, 0.96);
   color: #243447;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 600;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -328,7 +352,7 @@ const handleVerify = async () => {
   border-radius: 16px;
   background: linear-gradient(135deg, #4d78f4 0%, #3c67ef 100%);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 18px 34px rgba(75, 121, 238, 0.24);
@@ -364,7 +388,7 @@ const handleVerify = async () => {
 
 @media (max-width: 640px) {
   .identify-hero p {
-    font-size: 14px;
+    font-size: 19px;
   }
 
   .verify-tabs {
@@ -377,7 +401,7 @@ const handleVerify = async () => {
 
   .verify-input {
     height: 88px;
-    font-size: 16px;
+    font-size: 21px;
   }
 }
 </style>

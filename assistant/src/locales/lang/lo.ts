@@ -154,6 +154,8 @@ export default {
       ageGender: 'ອາຍຸ/ເພດ',
       ageSuffix: 'ປີ',
       marriage: 'ສະຖານະສົມລົດ',
+      unmarried: 'ຍັງບໍ່ແຕ່ງງານ',
+      married: 'ແຕ່ງງານແລ້ວ',
       patientId: 'ID ຄົນໄຂ້',
       idCard: 'ເລກບັດປະຈຳຕົວ',
       phone: 'ເບີໂທ',
@@ -400,7 +402,12 @@ export default {
         resendingRequest: 'ກໍາລັງສົ່ງ...',
         resendRequestSuccess: 'ສົ່ງຄໍາຂໍປຶກສາວິດີໂອອີກຄັ້ງແລ້ວ.',
         resendRequestFailed: 'ສົ່ງຄໍາຂໍອີກຄັ້ງບໍ່ສໍາເລັດ ກະລຸນາຈັດການພາຍຫຼັງ.',
-        handleLater: 'ຈັດການພາຍຫຼັງ'
+        handleLater: 'ຈັດການພາຍຫຼັງ',
+        cameraLabels: {
+          sideScanner: 'ກ້ອງຖ່າຍເອກະສານດ້ານຂ້າງ',
+          patientCamera: 'ກ້ອງຄົນໄຂ້',
+          doctorCamera: 'ກ້ອງທ່ານໝໍ'
+        }
       }
     },
     videoGuide: {

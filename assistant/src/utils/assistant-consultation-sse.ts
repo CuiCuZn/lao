@@ -1,9 +1,8 @@
 import type { Router } from 'vue-router'
 import { getToken } from '@/utils/auth'
-import { broadcastConsultationEnded } from '@/utils/patient-channel'
 import { connectSse, type SseMessage } from '@/utils/sse'
 
-interface ConsultationSseContext {
+export interface ConsultationSseContext {
   patientId: string
   caseId: string
   doctorName?: string
@@ -16,15 +15,26 @@ export interface ConsultationRejectedEvent {
   payload: Record<string, unknown>
 }
 
+export interface ConsultationCompletedEvent {
+  patientId: string
+  caseId: string
+  payload: Record<string, unknown>
+}
+
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 let sseConnection: ReturnType<typeof connectSse> | undefined
+let openPromise: Promise<void> | undefined
+let rejectOpenPromise: ((error: Error) => void) | undefined
 let manualClose = false
 let activeStreamId = 0
 let reconnectAttempts = 0
+let sseOpened = false
 let activeConsultationContext: ConsultationSseContext | null = null
 let activeRouter: Router | null = null
 let lastRejectedEvent: ConsultationRejectedEvent | null = null
+let lastCompletedEvent: ConsultationCompletedEvent | null = null
 const rejectedListeners = new Set<(event: ConsultationRejectedEvent) => void>()
+const completedListeners = new Set<(event: ConsultationCompletedEvent) => void>()
 const SSE_OPEN_TIMEOUT = 10_000
 
 const normalizeText = (value: unknown) => {
@@ -51,7 +61,7 @@ const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null
 }
 
-const isConsultationFinishedPayload = (payload: unknown, expectedCaseId: string) => {
+const isConsultationFinishedPayload = (payload: unknown, expectedCaseId: string): payload is Record<string, unknown> => {
   if (!isObjectRecord(payload)) {
     return false
   }
@@ -81,23 +91,19 @@ const resolveRejectedDoctorName = (payload: Record<string, unknown>, context: Co
   )
 }
 
-const handleConsultationCompleted = async (context: ConsultationSseContext) => {
+const handleConsultationCompleted = (payload: Record<string, unknown>, context: ConsultationSseContext) => {
   if (!activeConsultationContext || activeConsultationContext.caseId !== context.caseId) {
     return
   }
 
-  stopAssistantConsultationSse()
-  broadcastConsultationEnded({
+  const event: ConsultationCompletedEvent = {
     patientId: context.patientId,
-    caseId: context.caseId
-  })
+    caseId: context.caseId,
+    payload
+  }
 
-  await activeRouter?.push({
-    path: '/assistant/case-result',
-    query: {
-      caseId: context.caseId
-    }
-  })
+  lastCompletedEvent = event
+  completedListeners.forEach((listener) => listener(event))
 }
 
 const handleConsultationRejected = (payload: Record<string, unknown>, context: ConsultationSseContext) => {
@@ -113,7 +119,6 @@ const handleConsultationRejected = (payload: Record<string, unknown>, context: C
   }
 
   lastRejectedEvent = event
-  stopAssistantConsultationSse()
   rejectedListeners.forEach((listener) => listener(event))
 }
 
@@ -129,51 +134,79 @@ const handleSseMessage = (message: SseMessage) => {
   }
 
   if (isConsultationFinishedPayload(payload, activeConsultationContext.caseId)) {
-    void handleConsultationCompleted(activeConsultationContext)
+    handleConsultationCompleted(payload, activeConsultationContext)
+  }
+}
+
+const clearReconnectTimer = () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = undefined
   }
 }
 
 const scheduleReconnect = () => {
-  if (manualClose || !activeConsultationContext) {
+  if (manualClose || !activeRouter || !getToken()) {
     return
   }
 
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-  }
-
+  clearReconnectTimer()
   reconnectAttempts += 1
   reconnectTimer = setTimeout(() => {
-    if (activeConsultationContext && activeRouter) {
-      void startAssistantConsultationSse(activeConsultationContext, activeRouter).catch(() => undefined)
+    if (!manualClose && activeRouter && getToken()) {
+      void startAssistantConsultationSse(activeRouter).catch(() => undefined)
     }
   }, Math.min(3000 + reconnectAttempts * 1000, 10000))
+}
+
+export function setAssistantConsultationSseContext(context: ConsultationSseContext, router: Router) {
+  activeConsultationContext = context
+  activeRouter = router
+  lastRejectedEvent = null
+  lastCompletedEvent = null
+}
+
+export function clearAssistantConsultationSseContext() {
+  activeConsultationContext = null
+  lastRejectedEvent = null
+  lastCompletedEvent = null
 }
 
 export function stopAssistantConsultationSse() {
   manualClose = true
   activeStreamId += 1
-  activeConsultationContext = null
-
-  if (reconnectTimer) {
-    clearTimeout(reconnectTimer)
-    reconnectTimer = undefined
-  }
-
+  sseOpened = false
+  openPromise = undefined
+  rejectOpenPromise?.(new Error('sseStopped'))
+  rejectOpenPromise = undefined
+  clearAssistantConsultationSseContext()
+  activeRouter = null
+  clearReconnectTimer()
   sseConnection?.close()
   sseConnection = undefined
 }
 
-export function startAssistantConsultationSse(context: ConsultationSseContext, router: Router) {
-  stopAssistantConsultationSse()
-  lastRejectedEvent = null
-  activeConsultationContext = context
+export function startAssistantConsultationSse(router: Router) {
   activeRouter = router
+
+  if (sseOpened) {
+    return Promise.resolve()
+  }
+
+  if (openPromise) {
+    return openPromise
+  }
+
+  const token = getToken()
+  if (!token) {
+    return Promise.reject(new Error('missingToken'))
+  }
+
   manualClose = false
+  clearReconnectTimer()
   activeStreamId += 1
   const streamId = activeStreamId
 
-  const token = getToken()
   const langMap: Record<string, string> = {
     'zh-cn': 'zh_CN',
     lo: 'lo_LA',
@@ -182,37 +215,53 @@ export function startAssistantConsultationSse(context: ConsultationSseContext, r
   const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
   const streamUrl = `${baseUrl}/resource/sse`
 
-  return new Promise<void>((resolve, reject) => {
+  openPromise = new Promise<void>((resolve, reject) => {
+    rejectOpenPromise = reject
     let openSettled = false
     const settleOpen = () => {
+      if (openSettled) {
+        return
+      }
+
       openSettled = true
+      sseOpened = true
+      openPromise = undefined
+      rejectOpenPromise = undefined
       window.clearTimeout(openTimer)
       resolve()
     }
-    const failOpen = (error: Error) => {
+    const failOpen = (error: Error, closeConnection = false) => {
+      if (openSettled) {
+        return
+      }
+
       openSettled = true
+      sseOpened = false
+      openPromise = undefined
+      rejectOpenPromise = undefined
       window.clearTimeout(openTimer)
-      stopAssistantConsultationSse()
       reject(error)
+
+      if (closeConnection) {
+        sseConnection?.close()
+      }
     }
     const openTimer = window.setTimeout(() => {
       if (streamId === activeStreamId && !openSettled) {
-        failOpen(new Error('sseOpenTimeout'))
+        failOpen(new Error('sseOpenTimeout'), true)
       }
     }, SSE_OPEN_TIMEOUT)
 
     sseConnection = connectSse(streamUrl, {
       headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        Authorization: `Bearer ${token}`,
         clientid: import.meta.env.VITE_APP_CLIENT_ID || '',
-        'content-language': langMap[localStorage.getItem('lang') || 'zh-cn'] || 'zh_CN'
+        'content-language': langMap[localStorage.getItem('lang') || 'lo'] || 'lo_LA'
       },
       onOpen: () => {
         if (streamId !== activeStreamId) return
         reconnectAttempts = 0
-        if (!openSettled) {
-          settleOpen()
-        }
+        settleOpen()
       },
       onMessage: (message) => {
         if (streamId !== activeStreamId) return
@@ -225,12 +274,20 @@ export function startAssistantConsultationSse(context: ConsultationSseContext, r
         }
       },
       onClose: () => {
-        if (streamId === activeStreamId && !manualClose) {
+        if (streamId !== activeStreamId) return
+        sseConnection = undefined
+        sseOpened = false
+        openPromise = undefined
+        rejectOpenPromise = undefined
+
+        if (!manualClose) {
           scheduleReconnect()
         }
       }
     })
   })
+
+  return openPromise
 }
 
 export function listenAssistantConsultationRejected(handler: (event: ConsultationRejectedEvent) => void) {
@@ -246,5 +303,21 @@ export function listenAssistantConsultationRejected(handler: (event: Consultatio
 
   return () => {
     rejectedListeners.delete(handler)
+  }
+}
+
+export function listenAssistantConsultationCompleted(handler: (event: ConsultationCompletedEvent) => void) {
+  completedListeners.add(handler)
+
+  if (lastCompletedEvent) {
+    window.setTimeout(() => {
+      if (completedListeners.has(handler) && lastCompletedEvent) {
+        handler(lastCompletedEvent)
+      }
+    }, 0)
+  }
+
+  return () => {
+    completedListeners.delete(handler)
   }
 }

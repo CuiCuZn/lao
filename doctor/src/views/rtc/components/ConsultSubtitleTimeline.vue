@@ -7,8 +7,8 @@
         </div>
 
         <div>
-          <p class="eyebrow">{{ t('doctorVideo.consultation.subtitleTitle') }}</p>
           <h2 class="title">{{ t('doctorVideo.consultation.subtitleRecord') }}</h2>
+          <p class="eyebrow">{{ t('doctorVideo.consultation.subtitleTitle') }}</p>
         </div>
       </div>
 

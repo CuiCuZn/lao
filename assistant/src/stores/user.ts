@@ -4,6 +4,7 @@ import { to } from 'await-to-js'
 import { getInfo as getUserInfo, login as loginApi, logout as logoutApi } from '@/api/login'
 import type { LoginData, UserProfile } from '@/api/types'
 import { getToken, removeToken, setToken } from '@/utils/auth'
+import { stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(getToken() || '')
@@ -15,6 +16,7 @@ export const useUserStore = defineStore('user', () => {
   const permissions = ref<string[]>([])
 
   const resetState = () => {
+    stopAssistantConsultationSse()
     token.value = ''
     profile.value = null
     name.value = ''

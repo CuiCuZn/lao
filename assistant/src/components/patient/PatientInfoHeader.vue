@@ -1,15 +1,21 @@
 <template>
   <header class="patient-info-header">
     <div class="header-main">
-      <div class="header-badge">患</div>
+      <div class="header-logo">
+        <img :src="brandLogo" alt="" />
+      </div>
 
       <div class="header-copy">
         <p>{{ t('assistant.patientVideo.header.title') }}</p>
-        <strong>{{ patientName }}</strong>
       </div>
     </div>
 
     <div class="header-meta">
+      <div class="meta-item meta-item--name">
+        <span>{{ t('assistant.intake.fields.name') }}</span>
+        <strong>{{ patientName }}</strong>
+      </div>
+
       <div class="meta-item">
         <span>{{ t('assistant.intake.fields.sex') }}</span>
         <strong>{{ patientSex }}</strong>
@@ -24,11 +30,6 @@
         <span>{{ t('assistant.doctorSelect.patientVisitNo') }}</span>
         <strong>{{ visitNo }}</strong>
       </div>
-
-      <div class="meta-item meta-item--status">
-        <span>{{ t('common.tip') }}</span>
-        <strong :class="{ error: Boolean(sessionStore.error) }">{{ statusText }}</strong>
-      </div>
     </div>
   </header>
 </template>
@@ -37,6 +38,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import brandLogo from '@/assets/logo.png'
 
 const { t } = useI18n()
 const sessionStore = usePatientSessionStore()
@@ -147,58 +149,66 @@ const statusText = computed(() => {
   gap: 14px;
 }
 
-.header-badge {
+.header-logo {
   width: 42px;
   height: 42px;
   flex: none;
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #4b8eff 0%, #316de8 100%);
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.header-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .header-copy {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .header-copy p,
 .meta-item span {
   margin: 0;
   color: #8b9ab0;
-  font-size: 12px;
+  font-size: 17px;
   line-height: 1;
 }
 
-.header-copy strong {
+.header-copy p {
   color: #243347;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .header-meta {
   display: grid;
   grid-template-columns: repeat(4, minmax(90px, auto));
-  gap: 14px;
+  gap: 14px 34px;
 }
 
 .meta-item {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: center;
+}
+
+.meta-item--name {
+  min-width: 128px;
 }
 
 .meta-item strong {
   color: #26364b;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 700;
   line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .meta-item--status strong.error {
@@ -213,7 +223,7 @@ const statusText = computed(() => {
 
   .header-meta {
     width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -222,7 +232,7 @@ const statusText = computed(() => {
     padding: 16px;
   }
 
-  .header-copy strong {
+  .header-copy p {
     font-size: 20px;
   }
 

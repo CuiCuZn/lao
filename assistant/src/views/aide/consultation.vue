@@ -36,7 +36,7 @@
             <div class="stage-pill">
               <span class="stage-dot" />
               <span>{{ t('assistant.aideVideo.consultation.inCall') }}</span>
-              <span>{{ currentDate }}</span>
+              <span>{{ consultationDuration }}</span>
             </div>
 
             <div v-if="session.connectionError.value" class="connection-banner">
@@ -45,23 +45,25 @@
 
             <div class="preview-row">
               <consult-participant-card
-                :user-name="patientPreviewParticipant.userName"
-                :track="patientPreviewParticipant.track"
-                :muted="patientPreviewParticipant.muted"
-                :speaking="patientPreviewParticipant.speaking"
-                :badge="patientPreviewParticipant.track ? '' : patientPreviewParticipant.placeholderBadge"
+                :user-name="previewParticipant.userName"
+                :track="previewParticipant.track"
+                :muted="previewParticipant.muted"
+                :speaking="previewParticipant.speaking"
+                :badge="previewParticipant.track ? '' : previewParticipant.placeholderBadge"
                 compact
+                @click="toggleFeaturedParticipant"
               />
             </div>
 
             <consult-participant-card
               class="featured-card"
-              :user-name="doctorStageParticipant.userName"
-              :track="doctorStageParticipant.track"
-              :muted="doctorStageParticipant.muted"
-              :speaking="doctorStageParticipant.speaking"
-              :badge="doctorStageParticipant.track ? '' : doctorStageParticipant.placeholderBadge"
-              :placeholder-mode="doctorPlaceholderMode"
+              :user-name="featuredParticipant.userName"
+              :track="featuredParticipant.track"
+              :muted="featuredParticipant.muted"
+              :speaking="featuredParticipant.speaking"
+              :badge="featuredParticipant.track ? '' : featuredParticipant.placeholderBadge"
+              :placeholder-mode="featuredPlaceholderMode"
+              :show-status="false"
             />
           </div>
 
@@ -72,67 +74,84 @@
               <div class="doctor-copy">
                 <div class="doctor-heading">
                   <strong>{{ doctorTitle }}</strong>
-                  <span v-if="session.joined.value" class="doctor-status">
-                    {{ t('assistant.aideVideo.consultation.connected') }}
-                  </span>
                 </div>
 
-                <p v-if="consultationDoctorGoodAt" class="doctor-good-at">
-                  <span>{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
-                  {{ consultationDoctorGoodAt }}
-                </p>
                 <p class="doctor-good-at">
-                  <span>{{ t('assistant.pendingRecords.patientInfo') }}:</span>
-                  {{ patientName }}
+                  <span>{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
+                  {{ consultationDoctorGoodAt || t('common.notAvailable') }}
                 </p>
               </div>
             </div>
 
             <consult-room-controls
-              :camera-enabled="false"
-              :mic-enabled="false"
-              :on-toggle-camera="noop"
-              :on-toggle-mic="noop"
+              :camera-enabled="patientMediaState.cameraEnabled"
+              :mic-enabled="patientMediaState.micEnabled"
+              :on-toggle-camera="handleTogglePatientCamera"
+              :on-switch-camera="openPatientCameraDialog"
+              :on-toggle-mic="handleTogglePatientMic"
               :on-leave="handleLeave"
-              :show-camera="false"
-              :show-mic="false"
+              :camera-switching="patientMediaState.cameraSwitching"
+              :controls-disabled="patientMediaControlsDisabled"
+              show-camera
             />
           </footer>
         </section>
       </div>
 
+      <consult-camera-select-dialog
+        v-model="patientCameraDialogVisible"
+        :devices="patientCameraDevices"
+        :selected-device-id="patientMediaState.selectedCameraId"
+        :loading="patientMediaState.cameraSwitching"
+        :switching="patientMediaState.cameraSwitching"
+        @confirm="handlePatientCameraSelectionConfirm"
+        @refresh="requestPatientMediaState"
+      />
+
       <div v-if="doctorRejectedDialogVisible" class="rejected-dialog-mask">
-        <section class="rejected-dialog" role="dialog" aria-modal="true">
-          <div class="rejected-icon" aria-hidden="true">
-            <svg viewBox="0 0 96 96" focusable="false">
-              <circle cx="48" cy="48" r="46" />
+        <section
+          class="rejected-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="doctor-rejected-title"
+          aria-describedby="doctor-rejected-description"
+        >
+          <div class="rejected-dialog-hero" aria-hidden="true">
+            <svg class="rejected-call-icon" viewBox="0 0 24 24" focusable="false">
               <path
-                d="M30.5 28.2c-3.7 1.4-7.4 4.3-10.7 8.2-2.5 3-2.7 7.3-.6 10.5l7.3 11.1c1.8 2.8 5.3 4 8.5 3l7.4-2.4c3.3 3.8 7.1 6.9 11.4 9.5l-1.9 7.6c-.8 3.2.8 6.5 3.8 8l11.9 6c3.5 1.8 7.8 1.1 10.4-1.9 3.6-4 6.1-8.1 7.2-12.1.7-2.4-.4-5-2.6-6.3l-10.2-6.1c-2.2-1.3-5-.9-6.7.9l-4.6 4.9c-13.5-5.3-23.2-14.6-29.2-27.8l4.7-4.9c1.8-1.9 2-4.7.5-6.9l-6.8-9.5c-1.5-2-4.1-2.8-6.4-1.9Z"
+                d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2Z"
+                fill="currentColor"
               />
-              <path d="M25 72 72 25" />
+              <line x1="4" y1="20" x2="20" y2="4" />
             </svg>
           </div>
 
-          <h2>{{ t('assistant.aideVideo.consultation.rejectedTitle') }}</h2>
-          <p>{{ t('assistant.aideVideo.consultation.rejectedDescription', { doctorName: rejectedDoctorName }) }}</p>
+          <div class="rejected-dialog-body">
+            <h2 id="doctor-rejected-title" class="rejected-dialog-title">
+              {{ t('assistant.aideVideo.consultation.rejectedTitle') }}
+            </h2>
+            <p id="doctor-rejected-description" class="rejected-dialog-message">
+              {{ t('assistant.aideVideo.consultation.rejectedDescription', { doctorName: rejectedDoctorName }) }}
+            </p>
 
-          <div class="rejected-actions">
-            <button
-              type="button"
-              class="rejected-action rejected-action--primary"
-              :disabled="resendRequestLoading || resendRequestUsed"
-              @click="handleResendRequest"
-            >
-              {{ resendRequestLoading ? t('assistant.aideVideo.consultation.resendingRequest') : t('assistant.aideVideo.consultation.resendRequest') }}
-            </button>
-            <button
-              type="button"
-              class="rejected-action rejected-action--ghost"
-              :disabled="resendRequestLoading"
-              @click="handleRejectLater"
-            >
-              {{ t('assistant.aideVideo.consultation.handleLater') }}
-            </button>
+            <div class="rejected-actions">
+              <button
+                type="button"
+                class="rejected-action rejected-action--primary"
+                :disabled="resendRequestLoading || resendRequestUsed"
+                @click="handleResendRequest"
+              >
+                {{ resendRequestLoading ? t('assistant.aideVideo.consultation.resendingRequest') : t('assistant.aideVideo.consultation.resendRequest') }}
+              </button>
+              <button
+                type="button"
+                class="rejected-action rejected-action--ghost"
+                :disabled="resendRequestLoading"
+                @click="handleRejectLater"
+              >
+                {{ t('assistant.aideVideo.consultation.handleLater') }}
+              </button>
+            </div>
           </div>
         </section>
       </div>
@@ -148,18 +167,37 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
-import { createVideoRoom } from '@/api/video'
+import { getVideoConversation, getVideoTime } from '@/api/video'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { useUserStore } from '@/stores/user'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
-import { listenAssistantConsultationRejected, startAssistantConsultationSse, stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
-import { broadcastConsultationEnded, broadcastConsultationRejected, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import {
+  clearAssistantConsultationSseContext,
+  listenAssistantConsultationCompleted,
+  listenAssistantConsultationRejected,
+  setAssistantConsultationSseContext,
+  startAssistantConsultationSse
+} from '@/utils/assistant-consultation-sse'
+import { createAideVideoRoom, notifyAideVideoRoomDoctor } from '@/utils/aide-video-room'
+import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
+import { showConfirmDialog } from '@/utils/confirm-dialog'
+import {
+  broadcastConsultationEnded,
+  broadcastConsultationRejected,
+  broadcastPatientMediaControlCommand,
+  broadcastVideoRoomCreated,
+  listenPatientChannelMessages,
+  type PatientMediaControlDevice,
+  type PatientMediaControlStateMessage
+} from '@/utils/patient-channel'
+import ConsultCameraSelectDialog from '@/views/patient/consultation/components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
 import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from '@/views/patient/consultation/components/ConsultSubtitleTimeline.vue'
 import { usePatientConsultationSession } from '@/views/patient/consultation/composables/usePatientConsultationSession'
 import { usePatientSubtitleTimeline } from '@/views/patient/consultation/composables/usePatientSubtitleTimeline'
 import { createPatientConsultationChatService } from '@/views/patient/consultation/services/consultation-chat'
+import { normalizeConversationHistory, type ConsultationHistoryItem } from '@/views/patient/consultation/services/consultation-history'
 import type { ConsultationChatPayload } from '@/views/patient/consultation/types'
 
 const RTC_APP_ID = 'bkbbxxzy'
@@ -172,20 +210,43 @@ const userStore = useUserStore()
 const sessionStore = usePatientSessionStore()
 const session = usePatientConsultationSession()
 let leavingInProgress = false
-let dateTimer = 0
+let durationTimer = 0
+let durationStartedAt = 0
+let durationRequestId = 0
 let roomCleanedUp = false
 let doctorRejectedHandled = false
+let consultationCompletedHandled = false
 let stopRejectedListening: (() => void) | null = null
+let stopCompletedListening: (() => void) | null = null
+let stopPatientChannelListening: (() => void) | null = null
 
 const pageError = ref('')
-const currentDate = ref('')
+const consultationDuration = ref('00:00:00')
 const chatDraft = ref('')
 const chatSending = ref(false)
+const patientCameraDialogVisible = ref(false)
 const doctorRejectedDialogVisible = ref(false)
 const rejectedDoctorName = ref('')
 const resendRequestLoading = ref(false)
 const resendRequestUsed = ref(false)
 const rejectedEventContext = ref<{ patientId: string; caseId: string; doctorName: string } | null>(null)
+const featuredParticipantRole = ref<'doctor' | 'patient'>('doctor')
+const patientMediaState = ref({
+  patientId: '',
+  caseId: '',
+  cameraEnabled: false,
+  micEnabled: false,
+  cameraSwitching: false,
+  selectedCameraId: '',
+  cameraDevices: [] as PatientMediaControlDevice[],
+  error: ''
+})
+
+const aideCameraDeviceLabelKeys: Record<string, string> = {
+  f85077a229286adbac6903ac768f68354ec19b8cdb294944bf969f0ff8a91aee: 'assistant.aideVideo.consultation.cameraLabels.sideScanner',
+  f5f2c0457a05f0af8d7d6e9aa9a434d04367c040f529cbc7e06a7925b5d9417c: 'assistant.aideVideo.consultation.cameraLabels.patientCamera',
+  '36d678e2e8dc5761d04198cdddb80df5244dc3dedff300a077c9e1c1cd0577ef': 'assistant.aideVideo.consultation.cameraLabels.doctorCamera'
+}
 
 const takeText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
   if (!source) {
@@ -210,6 +271,79 @@ const takeOptionalText = (value: unknown) => {
   return String(value).trim()
 }
 
+const formatDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return [hours, minutes, seconds].map((item) => String(item).padStart(2, '0')).join(':')
+}
+
+const parseVideoTime = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return Number.NaN
+  }
+
+  return Date.parse(String(value))
+}
+
+const resolveVideoDurationMs = (value: unknown) => {
+  if (!isObjectRecord(value)) {
+    return 0
+  }
+
+  const startTime = parseVideoTime(value.videoStartTime)
+  const currentTime = parseVideoTime(value.newDate)
+  if (!Number.isFinite(startTime) || !Number.isFinite(currentTime)) {
+    return 0
+  }
+
+  return Math.max(0, currentTime - startTime)
+}
+
+const syncConsultationDuration = () => {
+  consultationDuration.value = formatDuration(Date.now() - durationStartedAt)
+}
+
+const clearConsultationDurationTimer = () => {
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = 0
+  }
+}
+
+const stopConsultationDuration = () => {
+  durationRequestId += 1
+  durationStartedAt = 0
+  consultationDuration.value = '00:00:00'
+  clearConsultationDurationTimer()
+}
+
+const startConsultationDuration = async (resolvedVideoId: string) => {
+  durationRequestId += 1
+  const currentRequestId = durationRequestId
+  clearConsultationDurationTimer()
+  durationStartedAt = Date.now()
+  consultationDuration.value = '00:00:00'
+  durationTimer = window.setInterval(syncConsultationDuration, 1000)
+
+  if (!resolvedVideoId) {
+    return
+  }
+
+  try {
+    const response = await getVideoTime(resolvedVideoId)
+    if (currentRequestId !== durationRequestId) {
+      return
+    }
+
+    durationStartedAt = Date.now() - resolveVideoDurationMs(response?.data)
+    syncConsultationDuration()
+  } catch (error) {
+    console.warn('Failed to load aide consultation video duration.', error)
+  }
+}
+
 const queryValue = (key: string) => {
   const value = route.query[key]
   if (Array.isArray(value)) {
@@ -219,12 +353,27 @@ const queryValue = (key: string) => {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+const isCurrentPatientMediaContext = (payload: { patientId: string; caseId?: string | number }) => {
+  if (payload.patientId && consultationPatientId.value && payload.patientId !== consultationPatientId.value) {
+    return false
+  }
+
+  const currentCaseId = takeOptionalText(consultationCaseId.value)
+  const payloadCaseId = takeOptionalText(payload.caseId)
+  if (payloadCaseId && currentCaseId && payloadCaseId !== currentCaseId) {
+    return false
+  }
+
+  return true
+}
+
 const token = computed(() => queryValue('token'))
 const secondaryToken = computed(() => queryValue('secondaryToken'))
 const channelId = computed(() => queryValue('channelId'))
 const userId = computed(() => queryValue('userId'))
 const consultationPatientId = computed(() => queryValue('patientId') || takeOptionalText(sessionStore.patientId))
 const consultationCaseId = computed(() => takeOptionalText(sessionStore.caseId) || queryValue('caseId'))
+const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId) || queryValue('videoId'))
 const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
@@ -246,6 +395,21 @@ const patientName = computed(() => {
     consultationPatientId.value ||
     t('common.notAvailable')
   )
+})
+
+const patientMediaStateReady = computed(() => {
+  return patientMediaState.value.patientId === consultationPatientId.value
+})
+
+const patientMediaControlsDisabled = computed(() => {
+  return !patientMediaStateReady.value || patientMediaState.value.cameraSwitching
+})
+
+const patientCameraDevices = computed(() => {
+  return patientMediaState.value.cameraDevices.map((device) => ({
+    ...device,
+    label: aideCameraDeviceLabelKeys[device.deviceId] ? t(aideCameraDeviceLabelKeys[device.deviceId]) : device.label
+  })) as unknown as MediaDeviceInfo[]
 })
 
 const doctorTitle = computed(() => {
@@ -312,6 +476,26 @@ const patientPreviewParticipant = computed(() => {
     )
   )
 })
+
+const featuredParticipant = computed(() => {
+  return featuredParticipantRole.value === 'doctor' ? doctorStageParticipant.value : patientPreviewParticipant.value
+})
+
+const previewParticipantRole = computed<'doctor' | 'patient'>(() => {
+  return featuredParticipantRole.value === 'doctor' ? 'patient' : 'doctor'
+})
+
+const previewParticipant = computed(() => {
+  return previewParticipantRole.value === 'doctor' ? doctorStageParticipant.value : patientPreviewParticipant.value
+})
+
+const featuredPlaceholderMode = computed<'waiting' | 'avatar' | 'avatar-name'>(() => {
+  return featuredParticipantRole.value === 'doctor' ? doctorPlaceholderMode.value : 'avatar-name'
+})
+
+const toggleFeaturedParticipant = () => {
+  featuredParticipantRole.value = previewParticipantRole.value
+}
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null
@@ -385,13 +569,196 @@ const timeline = usePatientSubtitleTimeline({
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value)
 })
 
+const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
+  if (item.isDoctor === 2) {
+    return {
+      speakerId: session.channelContext.value?.userId || userId.value || 'aide',
+      speakerName: aideName.value,
+      side: 'self' as const
+    }
+  }
+
+  if (item.isDoctor === 1) {
+    return {
+      speakerId: `patient:${consultationPatientId.value || 'patient'}`,
+      speakerName: patientName.value,
+      side: 'remote' as const
+    }
+  }
+
+  const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
+  return {
+    speakerId: `doctor:${doctorId}`,
+    speakerName: doctorTitle.value,
+    side: 'remote' as const
+  }
+}
+
+const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
+  items.forEach((item) => {
+    const speaker = resolveHistorySpeaker(item)
+    timeline.appendHistoryMessage({
+      ...speaker,
+      messageType: item.messageType,
+      sourceText: item.contentLo,
+      translatedText: item.contentCn,
+      sourceLanguage: 'lo',
+      targetLanguage: 'cn',
+      timestamp: item.timestamp
+    })
+  })
+}
+
+const loadConversationHistory = async (resolvedVideoId: string) => {
+  if (!resolvedVideoId) {
+    return
+  }
+
+  try {
+    const historyResponse = await getVideoConversation(resolvedVideoId)
+    const historyItems = normalizeConversationHistory(historyResponse?.data)
+
+    if (!historyItems.length) {
+      return
+    }
+
+    appendConversationHistory(historyItems)
+  } catch (error) {
+    console.warn('Failed to load aide consultation conversation history.', error)
+  }
+}
+
+const notifyPatientVideoRoomCreated = () => {
+  const patientId = takeOptionalText(consultationPatientId.value)
+  const doctorId = takeOptionalText(consultationDoctorId.value)
+  const roomId = takeOptionalText(channelId.value)
+
+  if (!patientId || !doctorId || !roomId) {
+    return
+  }
+
+  broadcastVideoRoomCreated({
+    patientId,
+    doctorId,
+    doctorName: consultationDoctorName.value || doctorTitle.value,
+    goodAt: consultationDoctorGoodAt.value,
+    caseId: takeOptionalText(consultationCaseId.value),
+    roomId
+  })
+}
+
+const buildPatientMediaCommandId = () => {
+  return `${Date.now()}_${Math.random().toString(36).slice(2)}`
+}
+
+const sendPatientMediaControlCommand = (
+  action: 'set-camera-enabled' | 'set-mic-enabled' | 'switch-camera' | 'request-state',
+  options: { enabled?: boolean; deviceId?: string } = {}
+) => {
+  const patientId = takeOptionalText(consultationPatientId.value)
+  if (!patientId) {
+    return
+  }
+
+  broadcastPatientMediaControlCommand({
+    patientId,
+    caseId: takeOptionalText(consultationCaseId.value),
+    commandId: buildPatientMediaCommandId(),
+    action,
+    ...options
+  })
+}
+
+const requestPatientMediaState = () => {
+  sendPatientMediaControlCommand('request-state')
+}
+
+const handlePatientMediaState = (payload: PatientMediaControlStateMessage['payload']) => {
+  if (!isCurrentPatientMediaContext(payload)) {
+    return
+  }
+
+  patientMediaState.value = {
+    patientId: payload.patientId,
+    caseId: takeOptionalText(payload.caseId),
+    cameraEnabled: payload.cameraEnabled,
+    micEnabled: payload.micEnabled,
+    cameraSwitching: payload.cameraSwitching,
+    selectedCameraId: payload.selectedCameraId,
+    cameraDevices: payload.cameraDevices,
+    error: payload.error || ''
+  }
+
+  if (payload.error) {
+    ElMessage.warning(payload.error)
+  }
+}
+
+const handleTogglePatientCamera = () => {
+  if (patientMediaControlsDisabled.value) {
+    return
+  }
+
+  sendPatientMediaControlCommand('set-camera-enabled', {
+    enabled: !patientMediaState.value.cameraEnabled
+  })
+}
+
+const handleTogglePatientMic = () => {
+  if (patientMediaControlsDisabled.value) {
+    return
+  }
+
+  sendPatientMediaControlCommand('set-mic-enabled', {
+    enabled: !patientMediaState.value.micEnabled
+  })
+}
+
+const openPatientCameraDialog = () => {
+  if (!patientMediaStateReady.value) {
+    requestPatientMediaState()
+    return
+  }
+
+  patientCameraDialogVisible.value = true
+}
+
+const handlePatientCameraSelectionConfirm = (deviceId: string) => {
+  const normalizedDeviceId = takeOptionalText(deviceId)
+  if (!normalizedDeviceId) {
+    return
+  }
+
+  sendPatientMediaControlCommand('switch-camera', {
+    deviceId: normalizedDeviceId
+  })
+  patientCameraDialogVisible.value = false
+}
+
 const chat = createPatientConsultationChatService({
-  onMessage: ({ contentLo, contentCn }) => {
+  onMessage: ({ contentLo, contentCn, role }) => {
     const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
+    const sender =
+      role === 2
+        ? {
+            speakerId: session.channelContext.value?.userId || userId.value || 'aide',
+            speakerName: aideName.value,
+            side: 'self' as const
+          }
+        : role === 1
+          ? {
+              speakerId: `patient:${consultationPatientId.value || 'patient'}`,
+              speakerName: patientName.value,
+              side: 'remote' as const
+            }
+          : {
+              speakerId: `doctor:${doctorId}`,
+              speakerName: doctorTitle.value,
+              side: 'remote' as const
+            }
+
     timeline.appendManualMessage({
-      speakerId: `doctor:${doctorId}`,
-      speakerName: doctorTitle.value,
-      side: 'remote',
+      ...sender,
       sourceText: contentLo,
       translatedText: contentCn
     })
@@ -407,6 +774,7 @@ const chatSendDisabled = computed(() => {
     chatSending.value ||
     !chatDraft.value.trim() ||
     !takeOptionalText(consultationDoctorId.value) ||
+    !takeOptionalText(consultationPatientId.value) ||
     !takeOptionalText(consultationCaseId.value) ||
     chat.connectionStatus.value !== 'connected'
   )
@@ -502,6 +870,8 @@ const handleChatSend = async () => {
     const [sendResult, saveResult] = await Promise.allSettled([
       chat.sendTranslatedMessage({
         doctorId,
+        patientId: consultationPatientId.value,
+        role: 2,
         ...payload
       }),
       addWrittenRecord({
@@ -553,7 +923,15 @@ const ensurePatientProfile = async () => {
 }
 
 const bootstrapConsultation = async () => {
-  if (!token.value || !secondaryToken.value || !channelId.value || !userId.value || !consultationPatientId.value) {
+  if (
+    !token.value ||
+    !secondaryToken.value ||
+    !channelId.value ||
+    !userId.value ||
+    !consultationPatientId.value ||
+    !consultationCaseId.value ||
+    !consultationDoctorId.value
+  ) {
     pageError.value = t('assistant.aideVideo.consultation.missingParams')
     return
   }
@@ -578,13 +956,34 @@ const bootstrapConsultation = async () => {
       token: token.value,
       secondaryToken: secondaryToken.value,
       language: 'lo',
-      publishLocalMedia: false
+      publishLocalMedia: false,
+      playRemoteAudio: false
+    })
+    void startConsultationDuration(consultationVideoId.value)
+
+    setAssistantConsultationSseContext({
+      patientId: consultationPatientId.value,
+      caseId: consultationCaseId.value,
+      doctorName: consultationDoctorName.value || doctorTitle.value
+    }, router)
+    await startAssistantConsultationSse(router)
+
+    await notifyAideVideoRoomDoctor({
+      patientId: consultationPatientId.value,
+      caseId: consultationCaseId.value,
+      doctorId: consultationDoctorId.value
     })
 
+    await loadConversationHistory(consultationVideoId.value)
     await connectConsultationChat()
     timeline.bindAsrStreams(session.subtitleBindings.value)
-    await session.bootstrapSubtitle()
+    await session.bootstrapSubtitle({ taskPolicy: 'force' })
+    notifyPatientVideoRoomCreated()
+    requestPatientMediaState()
   } catch (error) {
+    await cleanupConsultationRoom().catch((cleanupError) => {
+      console.warn('Failed to cleanup aide consultation after bootstrap failure.', cleanupError)
+    })
     pageError.value =
       error instanceof Error && error.message
         ? error.message
@@ -595,11 +994,7 @@ const bootstrapConsultation = async () => {
 const retrySubtitle = async () => {
   await session.cleanupSubtitle()
   timeline.bindAsrStreams(session.subtitleBindings.value)
-  await session.bootstrapSubtitle()
-}
-
-const syncCurrentDate = () => {
-  currentDate.value = new Date().toLocaleDateString('zh-CN')
+  await session.bootstrapSubtitle({ taskPolicy: 'force' })
 }
 
 const goBackToWorkbench = async () => {
@@ -624,10 +1019,13 @@ const cleanupConsultationRoom = async () => {
   }
 
   roomCleanedUp = true
+  stopConsultationDuration()
   chatDraft.value = ''
+  patientCameraDialogVisible.value = false
+  clearAssistantConsultationSseContext()
   chat.disconnect()
   timeline.clearTimeline()
-  await session.leaveConsultationRoom()
+  await session.leaveConsultationRoom({ taskPolicy: 'force' })
 }
 
 const notifyPatientConsultationEnded = () => {
@@ -644,8 +1042,8 @@ const handleLeave = async () => {
 
   leavingInProgress = true
   try {
-    notifyPatientConsultationEnded()
     await cleanupConsultationRoom()
+    notifyPatientConsultationEnded()
     await goBackToWorkbench()
   } finally {
     leavingInProgress = false
@@ -673,6 +1071,42 @@ const handleDoctorRejected = (event: { patientId: string; caseId: string; doctor
   doctorRejectedDialogVisible.value = true
 }
 
+const handleConsultationCompleted = async (event: { patientId: string; caseId: string }) => {
+  if (consultationCompletedHandled) {
+    return
+  }
+
+  const currentCaseId = takeOptionalText(consultationCaseId.value)
+  if (currentCaseId && event.caseId && currentCaseId !== event.caseId) {
+    return
+  }
+
+  consultationCompletedHandled = true
+  doctorRejectedDialogVisible.value = false
+
+  await showConfirmDialog({
+    message: '本次诊疗已完成',
+    confirmText: '确定',
+    showCancel: false
+  })
+
+  const patientId = takeOptionalText(event.patientId) || takeOptionalText(consultationPatientId.value)
+  const caseId = takeOptionalText(event.caseId) || currentCaseId
+
+  clearAssistantConsultationSseContext()
+  broadcastConsultationEnded({
+    patientId,
+    caseId
+  })
+
+  await router.push({
+    path: '/assistant/case-result',
+    query: {
+      caseId
+    }
+  })
+}
+
 const buildRejectedContext = () => {
   return {
     patientId: rejectedEventContext.value?.patientId || consultationPatientId.value,
@@ -697,21 +1131,11 @@ const handleResendRequest = async () => {
   resendRequestUsed.value = true
 
   try {
-    await startAssistantConsultationSse({
+    const roomId = await createAideVideoRoom({
       patientId: context.patientId,
       caseId: context.caseId,
-      doctorName: context.doctorName
-    }, router)
-
-    const response = await createVideoRoom({
-      patientId: context.patientId,
-      userId: doctorId,
-      caseId: context.caseId
+      doctorId
     })
-    const roomId = takeOptionalText(response?.data)
-    if (!roomId) {
-      throw new Error('missingRoomId')
-    }
 
     await cleanupConsultationRoom()
     roomCleanedUp = false
@@ -730,19 +1154,11 @@ const handleResendRequest = async () => {
 
     pageError.value = ''
     await bootstrapConsultation()
-    broadcastVideoRoomCreated({
-      patientId: context.patientId,
-      doctorId,
-      doctorName: context.doctorName,
-      goodAt: consultationDoctorGoodAt.value,
-      caseId: context.caseId,
-      roomId
-    })
     doctorRejectedHandled = false
     rejectedEventContext.value = null
     ElMessage.success(t('assistant.aideVideo.consultation.resendRequestSuccess'))
   } catch (error) {
-    stopAssistantConsultationSse()
+    resendRequestUsed.value = false
     console.warn('Failed to resend aide consultation request.', error)
     ElMessage.error(t('assistant.aideVideo.consultation.resendRequestFailed'))
   } finally {
@@ -761,21 +1177,29 @@ const handleRejectLater = async () => {
   await goBackToPreviousRoute()
 }
 
-const noop = () => undefined
-
 onMounted(async () => {
+  stopPatientChannelListening = listenPatientChannelMessages((message) => {
+    if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.patientMediaControlState) {
+      handlePatientMediaState(message.payload)
+    }
+  })
   stopRejectedListening = listenAssistantConsultationRejected((event) => {
     void handleDoctorRejected(event)
   })
-  syncCurrentDate()
-  dateTimer = window.setInterval(syncCurrentDate, 60_000)
+  stopCompletedListening = listenAssistantConsultationCompleted((event) => {
+    void handleConsultationCompleted(event)
+  })
   await bootstrapConsultation()
 })
 
 onBeforeUnmount(async () => {
   stopRejectedListening?.()
   stopRejectedListening = null
-  window.clearInterval(dateTimer)
+  stopCompletedListening?.()
+  stopCompletedListening = null
+  stopPatientChannelListening?.()
+  stopPatientChannelListening = null
+  stopConsultationDuration()
   await cleanupConsultationRoom()
 })
 </script>
@@ -785,7 +1209,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   flex: 1;
-  padding: 12px;
+  padding: 8px;
   box-sizing: border-box;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(240, 245, 251, 0.84) 0%, rgba(250, 252, 255, 0.98) 100%);
@@ -793,8 +1217,8 @@ onBeforeUnmount(async () => {
 
 .consultation-layout {
   display: grid;
-  grid-template-columns: 470px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 2fr 3fr;
+  gap: 8px;
   height: 100%;
   min-height: 0;
 }
@@ -814,7 +1238,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -824,24 +1248,24 @@ onBeforeUnmount(async () => {
   min-height: 0;
   border: 1.5px solid rgba(53, 118, 242, 0.94);
   border-radius: 10px;
-  padding: 12px;
+  padding: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
 .stage-pill {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 20px;
+  left: 20px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 5px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #24416e;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(53, 83, 132, 0.14);
 }
@@ -864,7 +1288,7 @@ onBeforeUnmount(async () => {
   border-radius: 8px;
   background: rgba(255, 241, 229, 0.96);
   color: #a24a12;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
 }
 
@@ -874,13 +1298,14 @@ onBeforeUnmount(async () => {
   right: 12px;
   z-index: 6;
   display: grid;
-  grid-template-columns: minmax(120px, 160px);
-  gap: 8px;
-  width: min(160px, calc(100% - 200px));
+  grid-template-columns: minmax(226px, 270px);
+  gap: 6px;
+  width: min(270px, calc(100% - 314px));
 }
 
 .preview-row :deep(.consult-participant-card) {
   width: 100%;
+  cursor: pointer;
 }
 
 .featured-card {
@@ -891,8 +1316,8 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 10px;
   background: #ffffff;
   box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
@@ -902,7 +1327,7 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 10px;
+  gap: 8px;
 }
 
 .doctor-avatar {
@@ -910,12 +1335,12 @@ onBeforeUnmount(async () => {
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, #3576f2, #53b7ff);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
 }
 
@@ -927,12 +1352,12 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
 }
 
 .doctor-heading strong {
   color: #22395f;
-  font-size: 15px;
+  font-size: 22px;
 }
 
 .doctor-status {
@@ -940,14 +1365,14 @@ onBeforeUnmount(async () => {
   border-radius: 999px;
   background: rgba(24, 180, 123, 0.12);
   color: #139565;
-  font-size: 11px;
+  font-size: 18px;
   font-weight: 700;
 }
 
 .doctor-good-at {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: #6d7d96;
-  font-size: 13px;
+  font-size: 20px;
   line-height: 1.5;
 }
 
@@ -974,18 +1399,23 @@ onBeforeUnmount(async () => {
 
 .error-icon {
   color: #e45d5d;
-  font-size: 36px;
+  font-size: 45px;
 }
 
 .error-card h2 {
   margin: 10px 0 6px;
-  font-size: 20px;
+  font-size: 27px;
   color: #233d66;
 }
 
 .error-card p {
   margin: 0 0 16px;
   color: #71819b;
+  font-size: 21px;
+}
+
+.error-card :deep(.el-button) {
+  font-size: 21px;
 }
 
 .rejected-dialog-mask {
@@ -995,98 +1425,108 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background: rgba(20, 32, 54, 0.48);
-  backdrop-filter: blur(4px);
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .rejected-dialog {
-  width: min(400px, 100%);
-  border-radius: 12px;
-  padding: 24px 20px 20px;
+  width: min(534px, calc(100vw - 32px));
+  height: min(390px, calc(100vh - 28px));
+  min-height: 300px;
   box-sizing: border-box;
   background: #ffffff;
-  text-align: center;
-  box-shadow: 0 12px 36px rgba(25, 40, 70, 0.2);
+  border: 1px solid #14a4ea;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none;
 }
 
-.rejected-icon {
+.rejected-dialog-hero {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #fff1f1 0%, #ffe3e3 100%);
+  height: 120px;
+  background: #ff9f1c;
 }
 
-.rejected-icon svg {
-  width: 52px;
-  height: 52px;
+.rejected-call-icon {
+  width: 80px;
+  height: 80px;
+  color: #000000;
 }
 
-.rejected-icon circle {
-  fill: #fff7f7;
-  stroke: #ff5b5b;
-  stroke-width: 3;
-}
-
-.rejected-icon path {
-  fill: none;
-  stroke: #ef3f3f;
+.rejected-call-icon line {
+  stroke: #2f72ff;
+  stroke-width: 0.3;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 5;
 }
 
-.rejected-dialog h2 {
+.rejected-dialog-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: calc(100% - 120px);
+  padding: 46px 28px 26px;
+  box-sizing: border-box;
+  background: #ffffff;
+  text-align: center;
+}
+
+.rejected-dialog-title {
   margin: 0;
-  color: #17253f;
-  font-size: 20px;
+  color: #2b2f36;
+  font-size: 24px;
   font-weight: 800;
+  line-height: 1.25;
   letter-spacing: 0;
 }
 
-.rejected-dialog p {
-  margin: 8px 0 0;
-  color: #6e7d94;
+.rejected-dialog-message {
+  margin: 12px 0 0;
+  color: #2b2f36;
   font-size: 14px;
-  line-height: 1.7;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
 }
 
 .rejected-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 21px;
+  width: min(325px, 100%);
+  margin-top: 19px;
 }
 
 .rejected-action {
-  min-height: 38px;
-  border-radius: 8px;
-  padding: 0 12px;
-  border: 1px solid transparent;
-  font-size: 14px;
-  font-weight: 700;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #2b2f36;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .rejected-action:not(:disabled):hover {
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .rejected-action--primary {
-  background: #2563eb;
+  height: 50px;
+  border-radius: 3px;
+  background: #269fdb;
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.22);
 }
 
 .rejected-action--ghost {
-  border-color: #d6e0ef;
-  background: #ffffff;
-  color: #34445e;
+  width: auto;
+  height: auto;
+  padding: 0;
+  color: #2b2f36;
 }
 
 .rejected-action:disabled {
@@ -1118,14 +1558,14 @@ onBeforeUnmount(async () => {
     position: static;
     width: 100%;
     margin-top: 44px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
   .patient-consultation-page {
-    padding: 8px;
+    padding: 6px;
   }
 
   .consultation-footer {
@@ -1134,11 +1574,46 @@ onBeforeUnmount(async () => {
   }
 
   .rejected-dialog {
-    padding: 20px 16px 16px;
+    width: min(534px, calc(100vw - 24px));
+    height: auto;
+    min-height: 0;
+  }
+
+  .rejected-dialog-hero {
+    height: 90px;
+  }
+
+  .rejected-call-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .rejected-dialog-body {
+    height: auto;
+    padding: 29px 12px 22px;
+  }
+
+  .rejected-dialog-title {
+    font-size: 21px;
+  }
+
+  .rejected-dialog-message {
+    margin-top: 10px;
+    font-size: 14px;
   }
 
   .rejected-actions {
-    grid-template-columns: 1fr;
+    gap: 17px;
+    margin-top: 17px;
+  }
+
+  .rejected-action--primary {
+    height: 41px;
+    font-size: 16px;
+  }
+
+  .rejected-action--ghost {
+    font-size: 16px;
   }
 }
 </style>

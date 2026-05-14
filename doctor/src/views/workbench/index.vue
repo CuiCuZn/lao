@@ -186,12 +186,11 @@
         <h2 class="accept-title">{{ t('workbench.acceptRequestTitle') }}</h2>
 
         <div class="accept-actions">
-          <el-button class="action-btn reject-btn" :disabled="acceptingConsultation" @click="handleReject">
-            <el-icon>
-              <Delete />
-            </el-icon> {{ t('workbench.rejectAction') }}
+          <el-button class="action-btn reject-btn" :loading="rejectingConsultation" :disabled="acceptingConsultation" @click="handleReject">
+            <img class="reject-action-icon" :src="callNoIcon" alt="" />
+            {{ t('workbench.rejectAction') }}
           </el-button>
-          <el-button class="action-btn resolve-btn" type="success" :loading="acceptingConsultation"
+          <el-button class="action-btn resolve-btn" type="success" :loading="acceptingConsultation" :disabled="rejectingConsultation"
             @click="handleConfirmAccept">
             <el-icon>
               <VideoCamera />
@@ -219,10 +218,10 @@ import {
   Document,
   PhoneFilled,
   UserFilled,
-  Delete,
   VideoCamera
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import callNoIcon from '@/assets/call_no.svg'
 import { switchWorkbenchOnlineStatus, getDepartmentList, getDiagnosisStats, getCurrentReceptionList } from '@/api/workbench'
 import { getPatientDetail } from '@/api/patient'
 import { getBasicInfo, getVideoChannelId, rejectVideo } from '@/api/video'
@@ -280,6 +279,7 @@ const reconnectAttempts = ref(0)
 const acceptDialogVisible = ref(false)
 const activePatient = ref<PendingConsultation | null>(null)
 const acceptingConsultation = ref(false)
+const rejectingConsultation = ref(false)
 const continuingConsultationId = ref('')
 
 const drawerVisible = ref(false)
@@ -300,7 +300,7 @@ const openAcceptDialog = (item: PendingConsultation) => {
 }
 
 const openIncomingAcceptDialog = (item: PendingConsultation) => {
-  if (acceptDialogVisible.value || acceptingConsultation.value) {
+  if (acceptDialogVisible.value || acceptingConsultation.value || rejectingConsultation.value) {
     return
   }
 
@@ -308,11 +308,11 @@ const openIncomingAcceptDialog = (item: PendingConsultation) => {
 }
 
 const handleReject = async () => {
-  if (!activePatient.value || acceptingConsultation.value) {
+  if (!activePatient.value || acceptingConsultation.value || rejectingConsultation.value) {
     return
   }
 
-  acceptingConsultation.value = true
+  rejectingConsultation.value = true
 
   try {
     const currentPatient = activePatient.value
@@ -345,7 +345,7 @@ const handleReject = async () => {
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : t('workbench.rejectFailed'))
   } finally {
-    acceptingConsultation.value = false
+    rejectingConsultation.value = false
   }
 }
 
@@ -508,7 +508,7 @@ async function prepareConsultationNavigation(
 }
 
 const handleConfirmAccept = async () => {
-  if (!activePatient.value || acceptingConsultation.value) {
+  if (!activePatient.value || acceptingConsultation.value || rejectingConsultation.value) {
     return
   }
 
@@ -2124,6 +2124,12 @@ function getAvatarGradient(name: string): string {
 .reject-btn .el-icon {
   margin-right: 6px;
   font-size: 18px;
+}
+
+.reject-action-icon {
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
 }
 
 @keyframes accept-dialog-pop {

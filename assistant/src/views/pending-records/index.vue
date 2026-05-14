@@ -52,7 +52,7 @@
         </header>
 
         <div class="records-table-wrap">
-          <el-table :data="records" v-loading="loading" class="records-table">
+          <el-table :data="records" v-loading="loading" class="records-table" height="100%">
             <el-table-column :label="t('assistant.pendingRecords.visitDate')" min-width="132">
               <template #default="{ row }">
                 <span>{{ row.visitDate }}</span>
@@ -103,7 +103,7 @@
           <el-pagination
             v-model:current-page="page"
             v-model:page-size="pageSize"
-            :page-sizes="[20, 50, 100]"
+            :page-sizes="[10, 20, 50, 100]"
             :total="total"
             background
             layout="sizes, prev, pager, next, jumper"
@@ -121,12 +121,11 @@ import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Search, Tickets } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getCaseDetail, getUndoneCaseList } from '@/api/record'
-import { createVideoRoom } from '@/api/video'
 import type { CaseRecordItem } from '@/api/types'
 import AppPage from '@/components/AppPage.vue'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
-import { startAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
-import { broadcastPatientContextSync, broadcastReconnectFailed, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import { createAideVideoRoom } from '@/utils/aide-video-room'
+import { broadcastPatientContextSync, broadcastReconnectFailed } from '@/utils/patient-channel'
 
 type FilterKey = 'all' | 'recent7' | 'recent30'
 type DetailRecord = Record<string, unknown>
@@ -136,6 +135,7 @@ interface PendingRecordRow {
   caseId: string
   patientId: string
   originalDoctorId: string
+  originalDoctorGoodAt: string
   visitDate: string
   visitId: string
   patientName: string
@@ -150,7 +150,7 @@ const { t, locale } = useI18n()
 const activeFilter = ref<FilterKey>('all')
 const keyword = ref('')
 const page = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const loading = ref(false)
 const total = ref(0)
 const records = ref<PendingRecordRow[]>([])
@@ -283,6 +283,10 @@ const resolveOriginalDoctorId = (item: CaseRecordItem) => {
   return pickText(item, ['doctorId', 'userId', 'doctorUserId', 'receiveDoctorId', 'receptionDoctorId', 'attendingDoctorId'])
 }
 
+const resolveOriginalDoctorGoodAt = (item: CaseRecordItem) => {
+  return pickText(item, ['goodAt', 'specialty', 'speciality', 'expertise', 'description'])
+}
+
 const normalizePendingRecordRow = (item: CaseRecordItem, index: number): PendingRecordRow => {
   const genderKey = normalizeGenderKey(item.patientSex)
   const ageText = takeOptionalText(item.patientAge) || '--'
@@ -299,6 +303,7 @@ const normalizePendingRecordRow = (item: CaseRecordItem, index: number): Pending
     caseId: resolveCaseId(item),
     patientId: resolvePatientId(item),
     originalDoctorId: resolveOriginalDoctorId(item),
+    originalDoctorGoodAt: resolveOriginalDoctorGoodAt(item),
     visitDate: formatDate(item.visitDate || item.createTime || item.updateTime || item.registerTime),
     visitId: takeOptionalText(item.patientNumber) || resolveCaseId(item) || '--',
     patientName: takeOptionalText(item.patientName) || '--',
@@ -348,13 +353,15 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
   let patientId = row.patientId
   let originalDoctorId = row.originalDoctorId
   let originalDoctorName = takeDisplayText(row.doctorName)
+  let originalDoctorGoodAt = takeDisplayText(row.originalDoctorGoodAt)
 
   if (patientId && originalDoctorId && originalDoctorName) {
     return {
       caseId: row.caseId,
       patientId,
       originalDoctorId,
-      originalDoctorName
+      originalDoctorName,
+      originalDoctorGoodAt
     }
   }
 
@@ -364,7 +371,8 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
           caseId: row.caseId,
           patientId,
           originalDoctorId,
-          originalDoctorName
+          originalDoctorName,
+          originalDoctorGoodAt
         }
       : null
   }
@@ -380,13 +388,17 @@ const resolveReconnectTargets = async (row: PendingRecordRow) => {
   originalDoctorName =
     originalDoctorName ||
     pickTextFromRecords(records, ['doctorName', 'nickName', 'userName', 'name'])
+  originalDoctorGoodAt =
+    originalDoctorGoodAt ||
+    pickTextFromRecords(records, ['goodAt', 'specialty', 'speciality', 'expertise', 'description'])
 
   return patientId
     ? {
         caseId: row.caseId || pickTextFromRecords(records, ['caseId', 'caseID', 'medicalCaseId']),
         patientId,
         originalDoctorId,
-        originalDoctorName
+        originalDoctorName,
+        originalDoctorGoodAt
       }
     : null
 }
@@ -439,47 +451,31 @@ const handleReconnect = async (row: PendingRecordRow) => {
       patientId: resolvedPatientId
     })
 
-    const response = await createVideoRoom({
-      patientId: resolvedPatientId,
-      userId: reconnectTargets.originalDoctorId,
-      ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
-    })
-
-    const roomId = takeOptionalText(response?.data)
-    if (!roomId) {
+    if (!resolvedCaseId) {
       throw new Error(t('assistant.pendingRecords.reconnectFailed'))
     }
 
-    broadcastVideoRoomCreated({
+    const roomId = await createAideVideoRoom({
       patientId: resolvedPatientId,
-      doctorId: reconnectTargets.originalDoctorId,
-      doctorName: reconnectTargets.originalDoctorName,
-      roomId,
-      ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
+      caseId: resolvedCaseId,
+      doctorId: reconnectTargets.originalDoctorId
     })
-
-    if (resolvedCaseId) {
-      void startAssistantConsultationSse({
-        patientId: resolvedPatientId,
-        caseId: resolvedCaseId,
-        doctorName: reconnectTargets.originalDoctorName
-      }, router).catch((error) => {
-        console.warn('Failed to connect assistant consultation SSE during reconnect.', error)
-      })
-    }
 
     try {
       await navigateToAideConsultationRoom(router, {
         patientId: resolvedPatientId,
         doctorId: reconnectTargets.originalDoctorId,
         doctorName: reconnectTargets.originalDoctorName,
+        goodAt: reconnectTargets.originalDoctorGoodAt,
         roomId,
-        ...(resolvedCaseId ? { caseId: resolvedCaseId } : {})
+        caseId: resolvedCaseId
       })
     } catch (error) {
       const message =
         error instanceof Error && error.message === 'missingParams'
           ? t('assistant.aideVideo.consultation.missingParams')
+          : error instanceof Error && error.message === 'missingRoomId'
+            ? t('assistant.aideVideo.consultation.joinFailed')
           : error instanceof Error && error.message.trim()
             ? error.message
             : t('assistant.aideVideo.consultation.joinFailed')
@@ -490,7 +486,9 @@ const handleReconnect = async (row: PendingRecordRow) => {
     ElMessage.success(t('assistant.pendingRecords.reconnectSuccess'))
   } catch (error) {
     const failureMessage =
-      error instanceof Error && error.message.trim()
+      error instanceof Error && (error.message === 'missingParams' || error.message === 'missingRoomId')
+        ? t('assistant.pendingRecords.reconnectFailed')
+        : error instanceof Error && error.message.trim()
         ? error.message
         : t('assistant.pendingRecords.reconnectFailed')
 
@@ -596,7 +594,7 @@ const goBack = () => {
 .records-page__hero h1 {
   margin: 0;
   color: #1c2431;
-  font-size: clamp(24px, 3.2vw, 34px);
+  font-size: clamp(29px, 3.2vw, 39px);
   font-weight: 800;
   line-height: 1.15;
 }
@@ -604,7 +602,7 @@ const goBack = () => {
 .records-page__hero p {
   margin: 0;
   color: #66758b;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
   line-height: 1.5;
 }
@@ -633,7 +631,7 @@ const goBack = () => {
   border-radius: 999px;
   background: rgba(217, 228, 245, 0.95);
   color: #5f6f84;
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, background-color 0.2s ease, color 0.2s ease;
@@ -663,7 +661,8 @@ const goBack = () => {
 }
 
 .records-search :deep(.el-input__wrapper) {
-  min-height: 34px;
+  height: 50px;
+  min-height: 50px;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 0 0 1px #e0e7f1 inset;
@@ -696,11 +695,11 @@ const goBack = () => {
   align-items: center;
   gap: 6px;
   color: #1f2a3d;
-  font-size: 13px;
+  font-size: 18px;
 }
 
 .records-panel__title strong {
-  font-size: 24px;
+  font-size: 29px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -714,28 +713,29 @@ const goBack = () => {
   border-radius: 4px;
   background: linear-gradient(180deg, #1f6fff 0%, #1557d7 100%);
   color: #ffffff;
-  font-size: 11px;
+  font-size: 16px;
 }
 
 .records-panel__count {
   color: #8d97a8;
-  font-size: 12px;
+  font-size: 17px;
 }
 
 .records-table-wrap {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .records-table {
   width: 100%;
+  height: 100%;
 }
 
 .records-table :deep(th.el-table__cell) {
   background: #ffffff;
   color: #a2aab7;
-  font-size: 12px;
+  font-size: 22px;
   font-weight: 600;
   border-bottom: 1px solid #edf1f6;
 }
@@ -752,7 +752,7 @@ const goBack = () => {
 .records-table :deep(.el-table__cell .cell) {
   color: #2d3748;
   padding-inline: 10px;
-  font-size: 12px;
+  font-size: 22px;
 }
 
 .records-meta {
@@ -763,18 +763,18 @@ const goBack = () => {
 
 .records-meta strong {
   color: #212a38;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 23px;
+  font-weight: 400;
 }
 
 .records-meta span {
   color: #8d97a8;
-  font-size: 11px;
+  font-size: 21px;
 }
 
 .detail-link {
   color: #1c6fff;
-  font-size: 12px;
+  font-size: 22px;
   font-weight: 600;
   padding: 0;
 }
@@ -787,6 +787,15 @@ const goBack = () => {
   flex-shrink: 0;
   border-top: 1px solid #edf1f6;
   background: #ffffff;
+}
+
+.records-panel__pagination :deep(.el-pagination),
+.records-panel__pagination :deep(.el-pagination button),
+.records-panel__pagination :deep(.el-pager li),
+.records-panel__pagination :deep(.el-pagination__jump),
+.records-panel__pagination :deep(.el-select__selected-item),
+.records-panel__pagination :deep(.el-input__inner) {
+  font-size: 19px;
 }
 
 @media (max-width: 960px) {
@@ -814,7 +823,7 @@ const goBack = () => {
   }
 
   .records-page__hero p {
-    font-size: 13px;
+    font-size: 18px;
   }
 
   .records-panel {
@@ -822,7 +831,7 @@ const goBack = () => {
   }
 
   .records-panel__title strong {
-    font-size: 20px;
+    font-size: 25px;
   }
 }
 </style>

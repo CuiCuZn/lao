@@ -6,11 +6,11 @@ export default {
     confirm: '确认',
     cancel: '取消',
     tip: '提示',
-    backHome: '返回首页',
+    backHome: '返回',
     language: '语言',
     ready: '已就绪',
     upcoming: '待开发',
-    notAvailable: '暂无'
+    notAvailable: '-'
   },
   language: {
     zhCn: '中文',
@@ -79,8 +79,8 @@ export default {
     },
     records: {
       pageTitle: '就诊记录查询',
-      pageSubtitle: '请输入患者信息或选择筛选条件，检索历史就诊数据',
-      backToWorkbench: '返回工作台',
+      pageSubtitle: '请输入患者信息或选择筛选条件',
+      backToWorkbench: '返回',
       description: '病历记录查询页面，支持按条件检索临床历史数据。',
       allFilter: '全部',
       recentSevenDays: '近7天',
@@ -107,8 +107,8 @@ export default {
     },
     pendingRecords: {
       pageTitle: '未完成列表',
-      pageSubtitle: '请输入患者信息或选择筛选条件，查询待处理记录',
-      backToWorkbench: '返回工作台',
+      pageSubtitle: '请输入患者信息或选择筛选条件',
+      backToWorkbench: '返回',
       description: '待办诊疗查询页面，支持按条件检索需回访或处理的未完成数据。',
       allFilter: '全部',
       recentSevenDays: '近7天',
@@ -154,6 +154,8 @@ export default {
       ageGender: '年龄/性别',
       ageSuffix: '岁',
       marriage: '婚况',
+      unmarried: '未婚',
+      married: '已婚',
       patientId: '病历号',
       idCard: '身份证号',
       phone: '手机号',
@@ -205,8 +207,8 @@ export default {
     },
     patientIdentify: {
       pageTitle: '患者身份核验',
-      pageSubtitle: '请刷卡或输入患者就诊ID/身份证号/手机号',
-      submitText: '提交核对',
+      pageSubtitle: '请输入就诊ID/身份证号/手机号',
+      submitText: '提交',
       verifying: '系统比对中...',
       emptyDataMessage: '未匹配到该患者的建档信息，正在跳转信息录入流程。',
       verifySuccess: '核验通过',
@@ -217,7 +219,7 @@ export default {
         phone: '手机号'
       },
       placeholders: {
-        visitNo: '输入就诊编号',
+        visitNo: '输入就诊ID',
         idCard: '输入证件号',
         phone: '输入手机号'
       }
@@ -225,7 +227,7 @@ export default {
     intake: {
       pageTitle: '患者问诊建档',
       pageSubtitle: '请录入患者基本信息，并在右侧进行四诊仪数据采集。',
-      basicTitle: '患者基线信息',
+      basicTitle: '患者信息',
       fourDiagnosis: {
         displayTitle: '四诊仪采集区',
         placeholderLabel: '模块待接入',
@@ -239,12 +241,12 @@ export default {
       saveSaved: '已保存',
       saveError: '保存失败',
       fields: {
-        name: '受检人姓名',
+        name: '姓名',
         sex: '性别',
         birthday: '出生日期',
         age: '年龄',
-        idCard: '身份证件',
-        phone: '联系手机',
+        idCard: '身份证',
+        phone: '手机号',
         job: '职业',
         maritalStatus: '婚姻状况',
         medicalAccount: '医保账户',
@@ -274,7 +276,7 @@ export default {
     },
     doctorSelect: {
       pageTitle: '选择接诊医生',
-      pageSubtitle: '请选择当前在线的医师资源，随后即刻发起会诊',
+      pageSubtitle: '请选择在线医生发起视频诊疗',
       description: '请为本次新建的会诊选择一名专家池中的接诊医生。',
       allDepartments: '全部科室',
       patientVisitNo: '就诊ID',
@@ -290,8 +292,8 @@ export default {
       selectDoctor: '选定医师',
       selectedDoctor: '已选择',
       footerTip: '尚未选择接诊医生',
-      footerAction: '启动远程诊疗',
-      footerLoading: '引擎启动中...',
+      footerAction: '发起诊疗',
+      footerLoading: '启动中...',
       createRoomSuccess: '安全会诊房间已分配',
       sseConnectFailed: '实时诊疗通道连接失败，请稍后重试。',
       ageSuffix: '岁',
@@ -309,7 +311,7 @@ export default {
       },
       waiting: {
         description: '患者当前处于候诊区，等待医生分配。',
-        tip: '系统正在为您分配医生资源，请稍候。',
+        tip: '等待分配医生资源...',
         reconnectFailedTitle: '视频连接异常，调度失败',
         reconnectFailedDescription: '已通知医助工作站，请等待人工安排。',
         fields: {
@@ -321,8 +323,8 @@ export default {
       },
       consultation: {
         description: '本诊疗室已集成多语种实时翻译功能，保障医患无障碍沟通。',
-        subtitleTitle: '多语种实时转写',
-        subtitleRecord: '会话转写记录',
+        subtitleTitle: '多语种实时翻译',
+        subtitleRecord: '会话记录',
         subtitleStarting: '启动中',
         subtitleRetryNeeded: '连接异常，请重试',
         subtitleReady: '实时同步中',
@@ -332,7 +334,7 @@ export default {
         translation: '翻译',
         recognizing: '语音识别中...',
         sourceText: '原文',
-        originalLanguage: '是否展示双语',
+        originalLanguage: '展示双语',
         showOriginalLanguage: '开启',
         hideOriginalLanguage: '关闭',
         translationPending: '翻译中',
@@ -352,11 +354,11 @@ export default {
         cameraLoadFailed: '摄像头列表加载失败，请检查浏览器权限。',
         cameraSwitchSuccess: '摄像头已切换。',
         cameraSwitchFailed: '摄像头切换失败，请检查设备是否可用。',
-        leave: '结束会诊并退出',
+        leave: '结束会诊',
         inCall: '会诊中',
         selfBadge: '您',
         doctorPrefix: '医生：',
-        waitingDoctor: '等待医生接入',
+        waitingDoctor: '等待中',
         waitingDoctorJoin: '等待医生接入……',
         connected: '实时连接已建立',
         footerSubtitle: '区域医疗中心 · 双语实时会诊',
@@ -368,7 +370,7 @@ export default {
         backToWaiting: '返回候诊区',
         missingParams: '入会参数不完整，请重新从候诊区进入视频会诊。',
         joinFailed: '加入会诊房间失败，请稍后重试。',
-        chatPlaceholder: '请输入老挝语消息，系统将自动翻译为中文后发送。',
+        chatPlaceholder: '请输入。',
         chatSend: '发送消息',
         chatSending: '发送中...',
         chatConnecting: '消息通道连接中...',
@@ -386,7 +388,7 @@ export default {
     aideVideo: {
       consultation: {
         description: '医助端视频诊疗旁听页面，仅用于观看医生与患者通话。',
-        inCall: '医助旁听中',
+        inCall: '会诊中',
         connected: '旁听连接已建立',
         errorTitle: '无法加入医助视频旁听',
         backToWorkbench: '返回工作台',
@@ -395,12 +397,17 @@ export default {
         aideFallbackName: '医助',
         doctorRejectedMessage: '{doctorName}医生拒绝此次视频诊疗',
         rejectedTitle: '视频问诊未接通',
-        rejectedDescription: '{doctorName}当前拒绝了视频问诊请求',
-        resendRequest: '重新发起请求',
+        rejectedDescription: '{doctorName}医生当前拒绝了视频问诊请求',
+        resendRequest: '重新发起问诊',
         resendingRequest: '正在发起...',
         resendRequestSuccess: '已重新发起视频问诊请求。',
         resendRequestFailed: '重新发起请求失败，请稍后处理。',
-        handleLater: '稍后处理'
+        handleLater: '稍后处理',
+        cameraLabels: {
+          sideScanner: '侧面高拍仪',
+          patientCamera: '患者摄像头',
+          doctorCamera: '医生摄像头'
+        }
       }
     },
     videoGuide: {

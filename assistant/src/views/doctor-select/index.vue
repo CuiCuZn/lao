@@ -90,10 +90,7 @@
 
                 <p class="doctor-department">{{ doctor.departmentName }}</p>
 
-                <div class="doctor-status" :class="{ offline: !doctor.online }">
-                  <i />
-                  <span>{{ doctor.online ? t('assistant.doctorSelect.online') : t('assistant.doctorSelect.offline') }}</span>
-                </div>
+                <i class="doctor-status" :class="{ offline: !doctor.online }" />
               </div>
             </div>
 
@@ -141,10 +138,9 @@ import { ArrowLeft, Check, RefreshRight } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { listDepartment, listDepartmentDoctors } from '@/api/department'
 import { getPatientDetail } from '@/api/patient'
-import { createVideoRoom } from '@/api/video'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
-import { startAssistantConsultationSse, stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
-import { broadcastPatientContextSync, broadcastVideoRoomCreated } from '@/utils/patient-channel'
+import { createAideVideoRoom } from '@/utils/aide-video-room'
+import { broadcastPatientContextSync } from '@/utils/patient-channel'
 
 interface DepartmentOption {
   id: string
@@ -487,57 +483,33 @@ const handleCreateRoom = async () => {
 
   creatingRoom.value = true
 
-  let sseReady = false
-  let consultationStarted = false
-
   try {
     const caseId = normalizeCaseId(patientSummary.caseId)
     if (!caseId) {
       throw new Error(t('assistant.doctorSelect.sseConnectFailed'))
     }
 
-    try {
-      await startAssistantConsultationSse({
-        patientId,
-        caseId,
-        doctorName: selectedDoctor.value?.name || ''
-      }, router)
-      sseReady = true
-    } catch {
-      throw new Error(t('assistant.doctorSelect.sseConnectFailed'))
-    }
+    const roomId = await createAideVideoRoom({
+      patientId,
+      caseId,
+      doctorId: selectedDoctorId.value
+    })
 
-    const response = await createVideoRoom({
-      patientId,
-      userId: selectedDoctorId.value,
-      caseId
-    })
-    broadcastVideoRoomCreated({
-      patientId,
-      doctorId: selectedDoctorId.value,
-      doctorName: selectedDoctor.value?.name || '',
-      goodAt: selectedDoctor.value?.goodAt || '',
-      ...(caseId ? { caseId } : {}),
-      roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : ''
-    })
     await navigateToAideConsultationRoom(router, {
       patientId,
       doctorId: selectedDoctorId.value,
       doctorName: selectedDoctor.value?.name || '',
       goodAt: selectedDoctor.value?.goodAt || '',
-      roomId: response?.data !== null && response?.data !== undefined ? String(response.data) : '',
+      roomId,
       ...(caseId ? { caseId } : {})
     })
-    consultationStarted = true
     ElMessage.success(t('assistant.doctorSelect.createRoomSuccess'))
   } catch (error) {
-    if (sseReady && !consultationStarted) {
-      stopAssistantConsultationSse()
-    }
-
     const message =
       error instanceof Error && error.message === 'missingParams'
         ? t('assistant.aideVideo.consultation.missingParams')
+        : error instanceof Error && error.message === 'missingRoomId'
+          ? t('assistant.aideVideo.consultation.joinFailed')
         : error instanceof Error && error.message.trim()
           ? error.message
           : t('assistant.aideVideo.consultation.joinFailed')
@@ -614,6 +586,7 @@ onMounted(() => {
 
 .back-btn {
   min-height: 38px;
+  min-width: 112px;
   width: fit-content;
   padding: 0 14px;
   border: 1px solid rgba(255, 255, 255, 0.66);
@@ -622,7 +595,9 @@ onMounted(() => {
   color: #607183;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: 0 12px 30px rgba(66, 98, 141, 0.08);
   transition: transform 0.2s ease, background-color 0.2s ease;
@@ -632,14 +607,17 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1;
 }
 
 .back-btn span {
   display: inline-flex;
   align-items: center;
+  flex: none;
   line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
 }
 
 .back-btn:hover {
@@ -654,14 +632,14 @@ onMounted(() => {
 .header-copy h2 {
   margin: 0;
   color: #182334;
-  font-size: 24px;
+  font-size: 29px;
   font-weight: 800;
 }
 
 .header-copy p {
   margin: 10px 0 0;
   color: #5b6d80;
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1.8;
 }
 
@@ -701,7 +679,7 @@ onMounted(() => {
   width: 48px;
   height: 48px;
   background: linear-gradient(135deg, #5db6ff 0%, #168fd4 100%);
-  font-size: 24px;
+  font-size: 29px;
   flex: none;
 }
 
@@ -721,7 +699,7 @@ onMounted(() => {
 
 .patient-primary strong {
   color: #1b2738;
-  font-size: 28px;
+  font-size: 33px;
   font-weight: 800;
 }
 
@@ -729,7 +707,7 @@ onMounted(() => {
 .patient-copy p,
 .complaint-summary span,
 .complaint-summary strong {
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .patient-copy p {
@@ -779,7 +757,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -828,7 +806,7 @@ onMounted(() => {
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.88);
   color: #657588;
-  font-size: 15px;
+  font-size: 20px;
   box-shadow: 0 14px 40px rgba(54, 88, 128, 0.06);
 }
 
@@ -882,7 +860,7 @@ onMounted(() => {
   height: 58px;
   flex: none;
   background: linear-gradient(135deg, #477dff 0%, #225fda 100%);
-  font-size: 28px;
+  font-size: 33px;
 }
 
 .doctor-copy {
@@ -902,17 +880,16 @@ onMounted(() => {
 
 .doctor-title-row strong {
   color: #1d2a3b;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
 }
 
 .doctor-title-row span,
 .doctor-department,
-.doctor-status span,
 .doctor-metrics span,
 .doctor-specialty span,
 .doctor-specialty p {
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .doctor-title-row span,
@@ -926,26 +903,19 @@ onMounted(() => {
 }
 
 .doctor-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #0aa363;
-  font-weight: 600;
-}
-
-.doctor-status i {
+  position: absolute;
+  top: 12px;
+  left: 18px;
+  z-index: 2;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: currentColor;
+  background: #0aa363;
   box-shadow: 0 0 0 4px rgba(10, 163, 99, 0.12);
 }
 
 .doctor-status.offline {
-  color: #a0aebd;
-}
-
-.doctor-status.offline i {
+  background: #a0aebd;
   box-shadow: 0 0 0 4px rgba(160, 174, 189, 0.14);
 }
 
@@ -958,7 +928,6 @@ onMounted(() => {
 .doctor-metrics span {
   padding: 6px 10px;
   border-radius: 10px;
-  background: #f6fbff;
   color: #4a7f57;
   font-weight: 700;
 }
@@ -1011,7 +980,7 @@ onMounted(() => {
 }
 
 .doctor-radio :deep(.el-icon) {
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1;
 }
 
@@ -1020,7 +989,7 @@ onMounted(() => {
   border-radius: 12px;
   background: linear-gradient(180deg, #1697db 0%, #1086d1 100%);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 700;
 }
 
@@ -1042,7 +1011,7 @@ onMounted(() => {
 
 .doctor-action-bar span {
   color: #5c6e82;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
 }
 
@@ -1117,7 +1086,7 @@ onMounted(() => {
   }
 
   .patient-primary strong {
-    font-size: 24px;
+    font-size: 29px;
   }
 
   .doctor-action-bar {

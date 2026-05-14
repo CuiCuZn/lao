@@ -22,6 +22,8 @@ export default {
       ageGender: '年龄/性别',
       ageSuffix: '岁',
       marriage: '婚况',
+      unmarried: '未婚',
+      married: '已婚',
       patientId: '病历号',
       idCard: '身份证号',
       phone: '手机号',

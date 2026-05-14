@@ -2,6 +2,7 @@ import router from './router'
 import { getToken } from '@/utils/auth'
 import { useUserStore } from '@/stores/user'
 import { assistantHomePath } from '@/router'
+import { startAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
 import i18n from '@/locales'
 import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
@@ -11,6 +12,12 @@ NProgress.configure({ showSpinner: false })
 
 const whiteList = ['/login', '/assistant/patient/waiting']
 const requiredRole = 'assistant_doctor'
+
+const ensureAssistantSseConnected = () => {
+  void startAssistantConsultationSse(router).catch((error) => {
+    console.warn('Failed to start assistant SSE.', error)
+  })
+}
 
 const resolveLoginRedirect = (redirect: unknown) => {
   if (typeof redirect !== 'string') {
@@ -46,6 +53,8 @@ router.beforeEach(async (to) => {
           return { path: '/login' }
         }
 
+        ensureAssistantSseConnected()
+
         if (to.path === '/') {
           return { path: assistantHomePath, replace: true }
         }
@@ -66,6 +75,8 @@ router.beforeEach(async (to) => {
       NProgress.done()
       return { path: '/login' }
     }
+
+    ensureAssistantSseConnected()
 
     if (to.matched.length === 0) {
       NProgress.done()

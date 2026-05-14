@@ -32,7 +32,7 @@ import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { listenPatientChannelMessages } from '@/utils/patient-channel'
 import { getVideoId, getVideoToken } from '@/api/video'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const sessionStore = usePatientSessionStore()
 const reconnectFailedMessage = ref('')
@@ -48,11 +48,27 @@ const toOptionalText = (value: string | number | undefined) => {
   return normalizedValue || ''
 }
 
+const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+
+const syncLanguage = (lang: string) => {
+  if (!supportedLocales.includes(lang as (typeof supportedLocales)[number])) {
+    return
+  }
+
+  locale.value = lang
+  localStorage.setItem('lang', lang)
+}
+
 onMounted(() => {
   stopListening = listenPatientChannelMessages(async (message) => {
     if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.contextSync) {
       reconnectFailedMessage.value = ''
       await sessionStore.syncPatientById(message.payload.patientId)
+      return
+    }
+
+    if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.languageChanged) {
+      syncLanguage(message.payload.lang)
       return
     }
 
@@ -194,7 +210,7 @@ onBeforeUnmount(() => {
 
 .waiting-stage__tip {
   color: #7888a2;
-  font-size: 30px;
+  font-size: 35px;
   font-weight: 500;
   line-height: 1.5;
   text-align: center;
@@ -203,7 +219,7 @@ onBeforeUnmount(() => {
 .waiting-stage__description {
   margin: 0;
   color: #7f8ea5;
-  font-size: 18px;
+  font-size: 23px;
   line-height: 1.6;
   text-align: center;
 }
@@ -218,11 +234,11 @@ onBeforeUnmount(() => {
 
 @media (max-width: 1200px) {
   .waiting-stage__tip {
-    font-size: 24px;
+    font-size: 29px;
   }
 
   .waiting-stage__description {
-    font-size: 16px;
+    font-size: 21px;
   }
 }
 
@@ -243,11 +259,11 @@ onBeforeUnmount(() => {
   }
 
   .waiting-stage__tip {
-    font-size: 18px;
+    font-size: 23px;
   }
 
   .waiting-stage__description {
-    font-size: 14px;
+    font-size: 19px;
   }
 
   .waiting-stage__visual {

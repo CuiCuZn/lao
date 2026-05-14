@@ -24,6 +24,8 @@ import type {
   ConsultationChannelContext,
   ConsultationLeaveOptions,
   ConsultationParticipantView,
+  ConsultationSubtitleBootstrapOptions,
+  ConsultationSubtitleTaskPolicy,
   ConsultationSubtitleBinding,
   ConsultationTrackStats,
   PatientConsultationJoinParams
@@ -44,7 +46,7 @@ interface StoredCameraSelection {
 }
 
 const buildSubtitleTaskId = (channelId: string, sourceLanguage: string) => {
-  return `rtc_${sourceLanguage}_${channelId}_${Date.now()}`
+  return `rtc_${sourceLanguage}_${channelId}`
 }
 
 const readStoredCameraSelection = (): StoredCameraSelection | null => {
@@ -138,6 +140,7 @@ export const useDoctorConsultationSession = () => {
   const secondaryAsr = shallowRef<ConsultationSubtitleBinding['asr']>(null)
   const primaryTaskId = ref('')
   const secondaryTaskId = ref('')
+  const activeSubtitleTaskPolicy = ref<ConsultationSubtitleTaskPolicy>('skip')
   const channelContext = ref<ConsultationChannelContext | null>(null)
   const teardownInProgress = ref(false)
 
@@ -306,35 +309,52 @@ export const useDoctorConsultationSession = () => {
     return mergeRemoteUsers(primaryRemoteUsers.value, secondaryRemoteUsers.value).length === 0
   }
 
-  const stopSubtitleTasks = async () => {
+  const shouldUseSubtitleTaskPolicy = (policy: ConsultationSubtitleTaskPolicy = 'auto') => {
+    if (policy === 'force') {
+      return true
+    }
+
+    if (policy === 'skip') {
+      return false
+    }
+
+    return shouldManageSubtitleTasks()
+  }
+
+  const stopSubtitleTasks = async (policy: ConsultationSubtitleTaskPolicy = 'auto') => {
     const localChannelContext = channelContext.value
 
     if (!localChannelContext) {
       return
     }
 
-    if (!shouldManageSubtitleTasks()) {
+    if (!shouldUseSubtitleTaskPolicy(policy)) {
       primaryTaskId.value = ''
       secondaryTaskId.value = ''
       return
     }
 
     const tasks: Promise<unknown>[] = []
+    const resolvedPrimaryTaskId =
+      primaryTaskId.value || buildSubtitleTaskId(localChannelContext.primaryChannelId, localChannelContext.language)
+    const resolvedSecondaryTaskId =
+      secondaryTaskId.value ||
+      buildSubtitleTaskId(localChannelContext.secondaryChannelId, localChannelContext.secondaryLanguage)
 
-    if (primaryTaskId.value && localChannelContext.primaryChannelId) {
+    if (resolvedPrimaryTaskId && localChannelContext.primaryChannelId) {
       tasks.push(
         closeVideoSubtitle({
           channelId: localChannelContext.primaryChannelId,
-          taskId: primaryTaskId.value
+          taskId: resolvedPrimaryTaskId
         }).catch(() => undefined)
       )
     }
 
-    if (secondaryTaskId.value && localChannelContext.secondaryChannelId) {
+    if (resolvedSecondaryTaskId && localChannelContext.secondaryChannelId) {
       tasks.push(
         closeVideoSubtitle({
           channelId: localChannelContext.secondaryChannelId,
-          taskId: secondaryTaskId.value
+          taskId: resolvedSecondaryTaskId
         }).catch(() => undefined)
       )
     }
@@ -382,6 +402,7 @@ export const useDoctorConsultationSession = () => {
     trackStatsMap.value = new Map()
     primaryAsr.value = null
     secondaryAsr.value = null
+    activeSubtitleTaskPolicy.value = 'skip'
     channelContext.value = null
     subtitleError.value = ''
     subtitleLoading.value = false
@@ -443,7 +464,7 @@ export const useDoctorConsultationSession = () => {
     teardownInProgress.value = true
 
     await cleanupSubtitle()
-    await stopSubtitleTasks()
+    await stopSubtitleTasks(options.taskPolicy || activeSubtitleTaskPolicy.value)
 
     primaryClient.value?.removeAllListeners()
     secondaryClient.value?.removeAllListeners()
@@ -762,7 +783,8 @@ export const useDoctorConsultationSession = () => {
     }
   }
 
-  const bootstrapSubtitle = async () => {
+  const bootstrapSubtitle = async (options: ConsultationSubtitleBootstrapOptions = {}) => {
+    activeSubtitleTaskPolicy.value = options.taskPolicy || 'auto'
     const localChannelContext = channelContext.value
 
     if (!localChannelContext || !primaryAsr.value || !secondaryAsr.value) {
@@ -777,9 +799,10 @@ export const useDoctorConsultationSession = () => {
       primaryAsr.value.setCurrentTranslateLanguages([localChannelContext.secondaryLanguage, 'source'])
       secondaryAsr.value.setCurrentTranslateLanguages([localChannelContext.language, 'source'])
       const startTasks: Promise<unknown>[] = []
+      const shouldStartSubtitleTasks = shouldUseSubtitleTaskPolicy(options.taskPolicy)
 
-      if (shouldManageSubtitleTasks()) {
-        if (!primaryTaskId.value) {
+      if (shouldStartSubtitleTasks) {
+        if (options.taskPolicy === 'force' || !primaryTaskId.value) {
           const nextPrimaryTaskId = buildSubtitleTaskId(
             localChannelContext.primaryChannelId,
             localChannelContext.language
@@ -795,7 +818,7 @@ export const useDoctorConsultationSession = () => {
           )
         }
 
-        if (!secondaryTaskId.value) {
+        if (options.taskPolicy === 'force' || !secondaryTaskId.value) {
           const nextSecondaryTaskId = buildSubtitleTaskId(
             localChannelContext.secondaryChannelId,
             localChannelContext.secondaryLanguage
@@ -1089,6 +1112,7 @@ export const useDoctorConsultationSession = () => {
     localPreviewTrack,
     enterConsultationRoom,
     bootstrapSubtitle,
+    stopSubtitleTasks,
     cleanupSubtitle,
     leaveConsultationRoom,
     toggleCamera,

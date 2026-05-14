@@ -10,7 +10,6 @@
 
           <div class="header-copy">
             <h2>{{ t('assistant.intake.pageTitle') }}</h2>
-            <p>{{ t('assistant.intake.pageSubtitle') }}</p>
           </div>
 
           <div class="save-status" :class="`is-${saveState}`">
@@ -348,6 +347,7 @@ const lastSavedSnapshot = ref('')
 const queuedSave = ref(false)
 const loadingDetail = ref(false)
 const maritalStatusDict = ref<DictDataVO[]>([])
+let savingPromise: Promise<boolean> | null = null
 
 const maritalStatusOptions = computed(() => {
   if (maritalStatusDict.value.length > 0) {
@@ -445,46 +445,57 @@ const clearSaveTimer = () => {
   }
 }
 
-const submitSave = async () => {
+const submitSave = async (): Promise<boolean> => {
   if (!validateForm()) {
     saveState.value = 'idle'
-    return
+    return false
   }
 
   const payload = buildSavePayload()
   const snapshot = JSON.stringify(payload)
 
   if (snapshot === lastSavedSnapshot.value) {
-    return
+    return true
   }
 
-  if (saveState.value === 'saving') {
+  if (savingPromise) {
     queuedSave.value = true
-    return
+    await savingPromise
+    return submitSave()
   }
 
   saveState.value = 'saving'
 
-  try {
-    const response = await savePatient(payload)
-    if (response?.data?.patientId !== undefined) {
-      patientId.value = toNumber(response.data.patientId)
-      await syncPatientIdToRoute()
+  savingPromise = (async () => {
+    try {
+      const response = await savePatient(payload)
+      if (response?.data?.patientId !== undefined) {
+        patientId.value = toNumber(response.data.patientId)
+        await syncPatientIdToRoute()
+      }
+      if (response?.data?.caseId !== undefined) {
+        caseId.value = toNumber(response.data.caseId)
+        sessionStore.setCaseId(caseId.value)
+      }
+      lastSavedSnapshot.value = JSON.stringify(buildSavePayload())
+      saveState.value = 'saved'
+      return true
+    } catch {
+      saveState.value = 'error'
+      return false
+    } finally {
+      savingPromise = null
     }
-    if (response?.data?.caseId !== undefined) {
-      caseId.value = toNumber(response.data.caseId)
-      sessionStore.setCaseId(caseId.value)
-    }
-    lastSavedSnapshot.value = JSON.stringify(buildSavePayload())
-    saveState.value = 'saved'
-  } catch {
-    saveState.value = 'error'
-  } finally {
-    if (queuedSave.value) {
-      queuedSave.value = false
-      void submitSave()
-    }
+  })()
+
+  const saved = await savingPromise
+
+  if (queuedSave.value) {
+    queuedSave.value = false
+    return submitSave()
   }
+
+  return saved
 }
 
 const scheduleAutoSave = () => {
@@ -644,12 +655,19 @@ const goBack = () => {
   router.push('/assistant/patient-identify')
 }
 
-const goToDoctorSelect = () => {
+const goToDoctorSelect = async () => {
+  clearSaveTimer()
+  await submitSave()
+
   const currentPatientId = patientId.value ?? getRoutePatientId()
+
+  if (currentPatientId === undefined) {
+    return
+  }
 
   router.push({
     path: '/assistant/doctor-select',
-    ...(currentPatientId !== undefined ? { query: { patientId: String(currentPatientId) } } : {})
+    query: { patientId: String(currentPatientId) }
   })
 }
 </script>
@@ -730,7 +748,7 @@ const goToDoctorSelect = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 19px;
   line-height: 1;
 }
 
@@ -752,7 +770,7 @@ const goToDoctorSelect = () => {
 .header-copy h2 {
   margin: 0;
   color: #161f2c;
-  font-size: clamp(28px, 3.8vw, 38px);
+  font-size: clamp(33px, 3.8vw, 43px);
   font-weight: 800;
   line-height: 1.14;
   letter-spacing: 0.02em;
@@ -761,7 +779,7 @@ const goToDoctorSelect = () => {
 .header-copy p {
   margin: 14px 0 0;
   color: #617283;
-  font-size: 15px;
+  font-size: 20px;
   font-weight: 600;
   line-height: 1.75;
 }
@@ -778,7 +796,7 @@ const goToDoctorSelect = () => {
   border: 1px solid rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.72);
   color: #7a8b9d;
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 600;
   box-shadow: 0 12px 30px rgba(66, 98, 141, 0.08);
 }
@@ -815,7 +833,7 @@ const goToDoctorSelect = () => {
   border-radius: 18px;
   background: linear-gradient(135deg, #4d78f4 0%, #3c67ef 100%);
   color: #ffffff;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 700;
   letter-spacing: 0.2px;
   cursor: pointer;
@@ -859,7 +877,7 @@ const goToDoctorSelect = () => {
 .panel-title h3 {
   margin: 0;
   color: #172033;
-  font-size: 18px;
+  font-size: 23px;
   font-weight: 800;
 }
 
@@ -942,7 +960,7 @@ const goToDoctorSelect = () => {
   table-layout: fixed;
   background: rgba(255, 255, 255, 0.92);
   color: #111827;
-  font-size: 12px;
+  font-size: 17px;
   line-height: 1.45;
 }
 
@@ -968,7 +986,7 @@ const goToDoctorSelect = () => {
 .diagnosis-table .table-title {
   height: 36px;
   background: #f5f5f5;
-  font-size: 13px;
+  font-size: 18px;
 }
 
 .field {
@@ -987,7 +1005,7 @@ const goToDoctorSelect = () => {
 
 .field-label {
   color: #25364a;
-  font-size: 14px;
+  font-size: 19px;
   font-weight: 600;
 }
 
@@ -997,7 +1015,7 @@ const goToDoctorSelect = () => {
   font-style: normal;
 }
 
-.field input,
+.field input:not([type='radio']),
 .field textarea {
   width: 100%;
   border: 1px solid #dde6ef;
@@ -1005,11 +1023,11 @@ const goToDoctorSelect = () => {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.96);
   color: #25364a;
-  font-size: 14px;
+  font-size: 19px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.field input {
+.field input:not([type='radio']) {
   height: 44px;
   padding: 0 14px;
 }
@@ -1020,13 +1038,13 @@ const goToDoctorSelect = () => {
   resize: vertical;
 }
 
-.field input:focus,
+.field input:not([type='radio']):focus,
 .field textarea:focus {
   border-color: #4b79ee;
   box-shadow: 0 0 0 4px rgba(75, 121, 238, 0.12);
 }
 
-.field input::placeholder,
+.field input:not([type='radio'])::placeholder,
 .field textarea::placeholder {
   color: #a5b2c1;
 }
@@ -1046,7 +1064,7 @@ const goToDoctorSelect = () => {
 
 .field :deep(.field-date-picker .el-input__inner) {
   color: #25364a;
-  font-size: 14px;
+  font-size: 19px;
 }
 
 .field :deep(.field-date-picker .el-input__inner::placeholder) {
@@ -1062,35 +1080,53 @@ const goToDoctorSelect = () => {
 
 .gender-group,
 .radio-group {
+  width: 100%;
+  min-width: 0;
   min-height: 44px;
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 10px 18px;
   padding: 0 2px;
   flex-wrap: wrap;
 }
 
+.radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 8px;
+}
+
 .gender-option,
 .radio-option {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   white-space: nowrap;
   color: #233244;
-  font-size: 14px;
+  font-size: 19px;
   cursor: pointer;
 }
 
 .radio-option {
-  gap: 6px;
+  gap: 8px;
 }
 
 .radio-option span {
-  min-width: 2em;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gender-option input,
 .radio-option input {
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
   margin: 0;
   accent-color: #168fd4;
 }

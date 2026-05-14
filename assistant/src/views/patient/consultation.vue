@@ -37,7 +37,7 @@
             <div class="stage-pill">
               <span class="stage-dot" />
               <span>{{ t('assistant.patientVideo.consultation.inCall') }}</span>
-              <span>{{ currentDate }}</span>
+              <span>{{ consultationDuration }}</span>
             </div>
 
             <div v-if="session.connectionError.value" class="connection-banner">
@@ -46,77 +46,31 @@
 
             <div class="preview-row">
               <consult-participant-card
-                :user-name="patientName"
-                :track="session.localPreviewTrack.value"
-                :muted="!session.micEnabled.value"
-                :badge="t('assistant.patientVideo.consultation.selfBadge')"
+                :user-name="previewParticipant.userName"
+                :track="previewParticipant.track"
+                :muted="previewParticipant.muted"
+                :speaking="previewParticipant.speaking"
+                :badge="previewParticipant.track ? '' : previewParticipant.placeholderBadge"
+                :mirror="previewParticipantRole === 'patient'"
                 compact
-                mirror
+                @click="toggleFeaturedParticipant"
               />
             </div>
 
-            <consult-participant-card
-              class="featured-card"
-              :user-name="doctorStageParticipant.userName"
-              :track="doctorStageParticipant.track"
-              :muted="doctorStageParticipant.muted"
-              :speaking="doctorStageParticipant.speaking"
-              :badge="doctorStageParticipant.track ? '' : doctorStageParticipant.placeholderBadge"
-              :placeholder-mode="doctorPlaceholderMode"
-            />
-          </div>
-
-          <footer class="consultation-footer">
-            <div class="doctor-panel">
-              <div class="doctor-avatar">{{ doctorAvatarText }}</div>
-
-              <div class="doctor-copy">
-                <div class="doctor-heading">
-                  <strong>{{ doctorTitle }}</strong>
-                  <span v-if="session.joined.value" class="doctor-status">
-                    {{ t('assistant.patientVideo.consultation.connected') }}
-                  </span>
-                </div>
-
-                <p v-if="consultationDoctorGoodAt" class="doctor-good-at">
-                  <span>{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
-                  {{ consultationDoctorGoodAt }}
-                </p>
-
-                <!-- 显示会诊信息（可选）：此处代码只注释不删除 -->
-                <!-- <div class="doctor-meta">
-                  <span>{{ t('assistant.patientVideo.consultation.doctorId') }}: {{ consultationDoctorId || '--' }}</span>
-                  <span>{{ t('assistant.patientVideo.consultation.caseId') }}: {{ consultationCaseId || '--' }}</span>
-                  <span>{{ t('assistant.patientVideo.consultation.channelId') }}: {{ channelId || '--' }}</span>
-                </div> -->
-              </div>
-            </div>
-
-            <consult-room-controls
-              :camera-enabled="session.cameraEnabled.value"
-              :mic-enabled="session.micEnabled.value"
-              :on-toggle-camera="session.toggleCamera"
-              :on-switch-camera="openCameraSwitchDialog"
-              :on-toggle-mic="session.toggleMic"
-              :on-leave="handleLeave"
-              :camera-switching="session.cameraSwitching.value"
-              show-camera
-              :show-leave="false"
-            />
-          </footer>
+          <consult-participant-card
+            class="featured-card"
+            :user-name="featuredParticipant.userName"
+            :track="featuredParticipant.track"
+              :muted="featuredParticipant.muted"
+              :speaking="featuredParticipant.speaking"
+              :badge="featuredParticipant.track ? '' : featuredParticipant.placeholderBadge"
+              :placeholder-mode="featuredPlaceholderMode"
+              :mirror="featuredParticipantRole === 'patient'"
+            :show-status="false"
+          />
+        </div>
         </section>
       </div>
-
-      <consult-camera-select-dialog
-        v-model="cameraDialogVisible"
-        :devices="session.cameraDevices.value"
-        :selected-device-id="session.selectedCameraId.value"
-        :loading="session.cameraDeviceLoading.value"
-        :switching="session.cameraSwitching.value"
-        :initial-required="cameraDialogRequired"
-        @confirm="handleCameraSelectionConfirm"
-        @refresh="refreshCameraDevices"
-      />
     </section>
   </patient-page-shell>
 </template>
@@ -124,22 +78,21 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
-import { getVideoId, getVideoToken, saveSubtitle } from '@/api/video'
+import { getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle } from '@/api/video'
 import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { usePatientSessionStore } from '@/stores/patient-session'
-import { listenPatientChannelMessages } from '@/utils/patient-channel'
-import ConsultCameraSelectDialog from '@/views/patient/consultation/components/ConsultCameraSelectDialog.vue'
+import { broadcastPatientMediaControlState, listenPatientChannelMessages } from '@/utils/patient-channel'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
-import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from '@/views/patient/consultation/components/ConsultSubtitleTimeline.vue'
 import { usePatientConsultationSession } from '@/views/patient/consultation/composables/usePatientConsultationSession'
 import { usePatientSubtitleTimeline } from '@/views/patient/consultation/composables/usePatientSubtitleTimeline'
 import { createPatientConsultationChatService } from '@/views/patient/consultation/services/consultation-chat'
+import { normalizeConversationHistory, type ConsultationHistoryItem } from '@/views/patient/consultation/services/consultation-history'
 import type { ConsultationChatPayload, SubtitleTimelineItem } from '@/views/patient/consultation/types'
 
 const RTC_APP_ID = 'bkbbxxzy'
@@ -178,13 +131,14 @@ const takeOptionalText = (value: unknown) => {
   return normalizedValue || ''
 }
 
-const isCurrentConsultationContext = (payload: { patientId: string; caseId: string }) => {
+const isCurrentConsultationContext = (payload: { patientId: string; caseId?: string | number }) => {
   if (payload.patientId && userId.value && payload.patientId !== userId.value) {
     return false
   }
 
   const currentCaseId = takeOptionalText(consultationCaseId.value)
-  if (payload.caseId && currentCaseId && payload.caseId !== currentCaseId) {
+  const payloadCaseId = takeOptionalText(payload.caseId)
+  if (payloadCaseId && currentCaseId && payloadCaseId !== currentCaseId) {
     return false
   }
 
@@ -210,13 +164,13 @@ const consultationDoctorId = computed(() => queryValue('doctorId') || takeOption
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
 const pageError = ref('')
-const currentDate = ref('')
+const consultationDuration = ref('00:00:00')
 const chatDraft = ref('')
 const chatSending = ref(false)
-const cameraDialogVisible = ref(false)
-const cameraDialogRequired = ref(false)
-let dateTimer = 0
-let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
+const featuredParticipantRole = ref<'doctor' | 'patient'>('doctor')
+let durationTimer = 0
+let durationStartedAt = 0
+let durationRequestId = 0
 
 const patientName = computed(() => {
   return takeText(sessionStore.patientDetail, ['patientName', 'name']) || userId.value || t('common.notAvailable')
@@ -273,6 +227,35 @@ const doctorStageParticipant = computed(() => {
 const doctorPlaceholderMode = computed<'waiting' | 'avatar'>(() => {
   return doctorRoomParticipant.value && !doctorStageParticipant.value.track ? 'avatar' : 'waiting'
 })
+
+const patientSelfParticipant = computed(() => ({
+  userId: session.channelContext.value?.userId || userId.value || 'patient',
+  userName: patientName.value,
+  track: session.localPreviewTrack.value,
+  muted: !session.micEnabled.value,
+  speaking: false,
+  placeholderBadge: t('assistant.patientVideo.consultation.selfBadge')
+}))
+
+const featuredParticipant = computed(() => {
+  return featuredParticipantRole.value === 'doctor' ? doctorStageParticipant.value : patientSelfParticipant.value
+})
+
+const previewParticipantRole = computed<'doctor' | 'patient'>(() => {
+  return featuredParticipantRole.value === 'doctor' ? 'patient' : 'doctor'
+})
+
+const previewParticipant = computed(() => {
+  return previewParticipantRole.value === 'doctor' ? doctorStageParticipant.value : patientSelfParticipant.value
+})
+
+const featuredPlaceholderMode = computed<'waiting' | 'avatar' | 'avatar-name'>(() => {
+  return featuredParticipantRole.value === 'doctor' ? doctorPlaceholderMode.value : 'avatar-name'
+})
+
+const toggleFeaturedParticipant = () => {
+  featuredParticipantRole.value = previewParticipantRole.value
+}
 
 const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
   if (item.beginTime > 0) {
@@ -408,13 +391,89 @@ const timeline = usePatientSubtitleTimeline({
   onFinalizedItem: handleSubtitleFinalized
 })
 
+const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
+  if (item.isDoctor === 1) {
+    return {
+      speakerId: session.channelContext.value?.userId || userId.value || 'patient',
+      speakerName: patientName.value,
+      side: 'self' as const
+    }
+  }
+
+  if (item.isDoctor === 2) {
+    return {
+      speakerId: 'aide',
+      speakerName: t('assistant.aideVideo.consultation.aideFallbackName'),
+      side: 'remote' as const
+    }
+  }
+
+  const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
+  return {
+    speakerId: `doctor:${doctorId}`,
+    speakerName: doctorTitle.value,
+    side: 'remote' as const
+  }
+}
+
+const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
+  items.forEach((item) => {
+    const speaker = resolveHistorySpeaker(item)
+    timeline.appendHistoryMessage({
+      ...speaker,
+      messageType: item.messageType,
+      sourceText: item.contentLo,
+      translatedText: item.contentCn,
+      sourceLanguage: 'lo',
+      targetLanguage: 'cn',
+      timestamp: item.timestamp
+    })
+  })
+}
+
+const loadConversationHistory = async (resolvedVideoId: string) => {
+  if (!resolvedVideoId) {
+    return
+  }
+
+  try {
+    const historyResponse = await getVideoConversation(resolvedVideoId)
+    const historyItems = normalizeConversationHistory(historyResponse?.data)
+
+    if (!historyItems.length) {
+      return
+    }
+
+    appendConversationHistory(historyItems)
+  } catch (error) {
+    console.warn('Failed to load patient consultation conversation history.', error)
+  }
+}
+
 const chat = createPatientConsultationChatService({
-  onMessage: ({ contentLo, contentCn }) => {
+  onMessage: ({ contentLo, contentCn, role }) => {
     const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
+    const sender =
+      role === 1
+        ? {
+            speakerId: session.channelContext.value?.userId || userId.value || 'patient',
+            speakerName: patientName.value,
+            side: 'self' as const
+          }
+        : role === 2
+          ? {
+              speakerId: 'aide',
+              speakerName: t('assistant.aideVideo.consultation.aideFallbackName'),
+              side: 'remote' as const
+            }
+          : {
+              speakerId: `doctor:${doctorId}`,
+              speakerName: doctorTitle.value,
+              side: 'remote' as const
+            }
+
     timeline.appendManualMessage({
-      speakerId: `doctor:${doctorId}`,
-      speakerName: doctorTitle.value,
-      side: 'remote',
+      ...sender,
       sourceText: contentLo,
       translatedText: contentCn
     })
@@ -467,54 +526,48 @@ const connectConsultationChat = async () => {
   }
 }
 
+const serializeCameraDevices = () => {
+  return session.cameraDevices.value.map((device) => ({
+    deviceId: device.deviceId || '',
+    label: device.label || '',
+    groupId: device.groupId || '',
+    kind: device.kind || 'videoinput'
+  }))
+}
+
+const broadcastMediaControlState = (error = '') => {
+  const patientId = takeOptionalText(userId.value)
+  if (!patientId) {
+    return
+  }
+
+  broadcastPatientMediaControlState({
+    patientId,
+    caseId: takeOptionalText(consultationCaseId.value),
+    cameraEnabled: session.cameraEnabled.value,
+    micEnabled: session.micEnabled.value,
+    cameraSwitching: session.cameraSwitching.value,
+    selectedCameraId: session.selectedCameraId.value,
+    cameraDevices: serializeCameraDevices(),
+    ...(error ? { error } : {})
+  })
+}
+
 const refreshCameraDevices = async () => {
   try {
     await session.loadCameraDevices()
   } catch (error) {
     console.warn('Failed to load patient camera devices.', error)
     ElMessage.warning(t('assistant.patientVideo.consultation.cameraLoadFailed'))
+  } finally {
+    broadcastMediaControlState()
   }
 }
 
 const requestInitialCameraSelection = async () => {
   await refreshCameraDevices()
 
-  if (session.rememberedCameraAvailable.value && session.selectedCameraId.value) {
-    return session.selectedCameraId.value
-  }
-
-  cameraDialogRequired.value = true
-  cameraDialogVisible.value = true
-
-  return new Promise<string>((resolve) => {
-    pendingInitialCameraSelection = resolve
-  })
-}
-
-const openCameraSwitchDialog = async () => {
-  cameraDialogRequired.value = false
-  cameraDialogVisible.value = true
-  await refreshCameraDevices()
-}
-
-const handleCameraSelectionConfirm = async (deviceId: string) => {
-  if (cameraDialogRequired.value) {
-    session.selectCamera(deviceId)
-    pendingInitialCameraSelection?.(deviceId)
-    pendingInitialCameraSelection = null
-    cameraDialogVisible.value = false
-    cameraDialogRequired.value = false
-    return
-  }
-
-  try {
-    await session.switchCamera(deviceId)
-    cameraDialogVisible.value = false
-    ElMessage.success(t('assistant.patientVideo.consultation.cameraSwitchSuccess'))
-  } catch (error) {
-    console.warn('Failed to switch patient camera.', error)
-    ElMessage.warning(t('assistant.patientVideo.consultation.cameraSwitchFailed'))
-  }
+  return session.selectedCameraId.value
 }
 
 const handleChatInput = (value: string) => {
@@ -578,6 +631,8 @@ const handleChatSend = async () => {
     const [sendResult, saveResult] = await Promise.allSettled([
       chat.sendTranslatedMessage({
         doctorId,
+        patientId: userId.value,
+        role: 1,
         ...payload
       }),
       addWrittenRecord({
@@ -609,8 +664,77 @@ const goBackToWaiting = async () => {
   await router.replace('/assistant/patient/waiting')
 }
 
-const syncCurrentDate = () => {
-  currentDate.value = new Date().toLocaleDateString('zh-CN')
+const formatDuration = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return [hours, minutes, seconds].map((item) => String(item).padStart(2, '0')).join(':')
+}
+
+const parseVideoTime = (value: unknown) => {
+  if (value === null || value === undefined) {
+    return Number.NaN
+  }
+
+  return Date.parse(String(value))
+}
+
+const resolveVideoDurationMs = (value: unknown) => {
+  if (!isObjectRecord(value)) {
+    return 0
+  }
+
+  const startTime = parseVideoTime(value.videoStartTime)
+  const currentTime = parseVideoTime(value.newDate)
+  if (!Number.isFinite(startTime) || !Number.isFinite(currentTime)) {
+    return 0
+  }
+
+  return Math.max(0, currentTime - startTime)
+}
+
+const syncConsultationDuration = () => {
+  consultationDuration.value = formatDuration(Date.now() - durationStartedAt)
+}
+
+const clearConsultationDurationTimer = () => {
+  if (durationTimer) {
+    window.clearInterval(durationTimer)
+    durationTimer = 0
+  }
+}
+
+const stopConsultationDuration = () => {
+  durationRequestId += 1
+  durationStartedAt = 0
+  consultationDuration.value = '00:00:00'
+  clearConsultationDurationTimer()
+}
+
+const startConsultationDuration = async (resolvedVideoId: string) => {
+  durationRequestId += 1
+  const currentRequestId = durationRequestId
+  clearConsultationDurationTimer()
+  durationStartedAt = Date.now()
+  consultationDuration.value = '00:00:00'
+  durationTimer = window.setInterval(syncConsultationDuration, 1000)
+
+  if (!resolvedVideoId) {
+    return
+  }
+
+  try {
+    const response = await getVideoTime(resolvedVideoId)
+    if (currentRequestId !== durationRequestId) {
+      return
+    }
+
+    durationStartedAt = Date.now() - resolveVideoDurationMs(response?.data)
+    syncConsultationDuration()
+  } catch (error) {
+    console.warn('Failed to load patient consultation video duration.', error)
+  }
 }
 
 const ensurePatientProfile = async () => {
@@ -668,10 +792,13 @@ const bootstrapConsultation = async () => {
       secondaryToken: secondaryToken.value,
       language: 'lo'
     })
+    void startConsultationDuration(consultationVideoId.value)
 
+    await loadConversationHistory(consultationVideoId.value)
     await connectConsultationChat()
     timeline.bindAsrStreams(session.subtitleBindings.value)
-    await session.bootstrapSubtitle()
+    await session.bootstrapSubtitle({ taskPolicy: 'skip' })
+    broadcastMediaControlState()
   } catch (error) {
     pageError.value =
       error instanceof Error && error.message
@@ -683,7 +810,54 @@ const bootstrapConsultation = async () => {
 const retrySubtitle = async () => {
   await session.cleanupSubtitle()
   timeline.bindAsrStreams(session.subtitleBindings.value)
-  await session.bootstrapSubtitle()
+  await session.bootstrapSubtitle({ taskPolicy: 'skip' })
+}
+
+const handlePatientMediaControlCommand = async (payload: {
+  patientId: string
+  caseId?: string | number
+  action: string
+  enabled?: boolean
+  deviceId?: string
+}) => {
+  if (!isCurrentConsultationContext(payload)) {
+    return
+  }
+
+  if (payload.action === 'request-state') {
+    broadcastMediaControlState()
+    return
+  }
+
+  try {
+    if (payload.action === 'set-camera-enabled') {
+      if (typeof payload.enabled === 'boolean' && session.cameraEnabled.value !== payload.enabled) {
+        await session.toggleCamera()
+      }
+      broadcastMediaControlState()
+      return
+    }
+
+    if (payload.action === 'set-mic-enabled') {
+      if (typeof payload.enabled === 'boolean' && session.micEnabled.value !== payload.enabled) {
+        await session.toggleMic()
+      }
+      broadcastMediaControlState()
+      return
+    }
+
+    if (payload.action === 'switch-camera') {
+      const deviceId = takeOptionalText(payload.deviceId)
+      if (deviceId) {
+        await session.switchCamera(deviceId)
+      }
+      broadcastMediaControlState()
+    }
+  } catch (error) {
+    const message = error instanceof Error && error.message ? error.message : t('assistant.patientVideo.consultation.cameraSwitchFailed')
+    console.warn('Failed to apply patient media control command.', error)
+    broadcastMediaControlState(message)
+  }
 }
 
 const handleVideoRoomCreated = async (payload: {
@@ -728,11 +902,11 @@ const handleVideoRoomCreated = async (payload: {
     }
 
     savedSubtitleKeys.clear()
+    stopConsultationDuration()
     chatDraft.value = ''
-    pendingInitialCameraSelection = null
     chat.disconnect()
     timeline.clearTimeline()
-    await session.leaveConsultationRoom()
+    await session.leaveConsultationRoom({ taskPolicy: 'skip' })
     sessionStore.setVideoRoomContext({
       patientId: payload.patientId,
       doctorId: payload.doctorId,
@@ -772,22 +946,40 @@ const handleLeave = async () => {
 
   leavingInProgress = true
   savedSubtitleKeys.clear()
+  stopConsultationDuration()
   chatDraft.value = ''
-  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
   try {
-    await session.leaveConsultationRoom()
+    await session.leaveConsultationRoom({ taskPolicy: 'skip' })
     await goBackToWaiting()
   } finally {
     leavingInProgress = false
   }
 }
 
+watch(
+  () => [
+    session.cameraEnabled.value,
+    session.micEnabled.value,
+    session.cameraSwitching.value,
+    session.selectedCameraId.value,
+    session.cameraDevices.value.length
+  ],
+  () => {
+    broadcastMediaControlState()
+  }
+)
+
 onMounted(async () => {
   stopListening = listenPatientChannelMessages(async (message) => {
     if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.videoRoomCreated) {
       await handleVideoRoomCreated(message.payload)
+      return
+    }
+
+    if (message.type === PATIENT_CHANNEL_MESSAGE_TYPES.patientMediaControlCommand) {
+      await handlePatientMediaControlCommand(message.payload)
       return
     }
 
@@ -804,21 +996,18 @@ onMounted(async () => {
 
     await handleLeave()
   })
-  syncCurrentDate()
-  dateTimer = window.setInterval(syncCurrentDate, 60_000)
   await bootstrapConsultation()
 })
 
 onBeforeUnmount(async () => {
   stopListening?.()
   stopListening = null
-  window.clearInterval(dateTimer)
+  stopConsultationDuration()
   savedSubtitleKeys.clear()
   chatDraft.value = ''
-  pendingInitialCameraSelection = null
   chat.disconnect()
   timeline.clearTimeline()
-  await session.leaveConsultationRoom()
+  await session.leaveConsultationRoom({ taskPolicy: 'skip' })
 })
 </script>
 
@@ -827,7 +1016,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-height: 0;
   flex: 1;
-  padding: 12px;
+  padding: 8px;
   box-sizing: border-box;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(240, 245, 251, 0.84) 0%, rgba(250, 252, 255, 0.98) 100%);
@@ -835,8 +1024,8 @@ onBeforeUnmount(async () => {
 
 .consultation-layout {
   display: grid;
-  grid-template-columns: 470px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 2fr 3fr;
+  gap: 8px;
   height: 100%;
   min-height: 0;
 }
@@ -856,7 +1045,7 @@ onBeforeUnmount(async () => {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  gap: 10px;
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -866,15 +1055,15 @@ onBeforeUnmount(async () => {
   min-height: 0;
   border: 1.5px solid rgba(53, 118, 242, 0.94);
   border-radius: 10px;
-  padding: 12px;
+  padding: 8px;
   background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
   box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
 .stage-pill {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 20px;
+  left: 20px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
@@ -883,7 +1072,7 @@ onBeforeUnmount(async () => {
   padding: 5px 10px;
   background: rgba(255, 255, 255, 0.96);
   color: #233a64;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(76, 100, 145, 0.12);
 }
@@ -899,14 +1088,14 @@ onBeforeUnmount(async () => {
 .connection-banner {
   position: absolute;
   top: 12px;
-  right: 194px;
+  right: 288px;
   z-index: 6;
-  max-width: calc(100% - 280px);
+  max-width: calc(100% - 374px);
   border-radius: 999px;
   padding: 5px 10px;
   background: rgba(255, 241, 241, 0.96);
   color: #c54949;
-  font-size: 12px;
+  font-size: 19px;
   font-weight: 700;
 }
 
@@ -916,109 +1105,18 @@ onBeforeUnmount(async () => {
   right: 12px;
   z-index: 6;
   display: grid;
-  grid-template-columns: minmax(120px, 160px);
-  gap: 8px;
-  width: min(160px, calc(100% - 200px));
+  grid-template-columns: minmax(226px, 270px);
+  gap: 6px;
+  width: min(270px, calc(100% - 314px));
 }
 
 .preview-row :deep(.consult-participant-card) {
   width: 100%;
+  cursor: pointer;
 }
 
 .featured-card {
   height: 100%;
-}
-
-.consultation-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 1px solid #d7e4f7;
-  border-radius: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(180deg, #edf4ff 0%, #eef6ff 100%);
-}
-
-.doctor-panel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.doctor-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
-  color: #ffffff;
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.doctor-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.doctor-heading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.doctor-heading strong {
-  color: #22365d;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.doctor-status {
-  color: #24a35c;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.doctor-copy p {
-  margin: 0;
-  color: #5f7697;
-  font-size: 13px;
-}
-
-.doctor-good-at {
-  max-width: min(520px, 46vw);
-  line-height: 1.5;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.doctor-good-at span {
-  color: #22365d;
-  font-weight: 800;
-}
-
-.doctor-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.doctor-meta span {
-  border-radius: 999px;
-  padding: 3px 8px;
-  background: rgba(61, 117, 226, 0.1);
-  color: #3a63b8;
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .consultation-error-state {
@@ -1042,26 +1140,32 @@ onBeforeUnmount(async () => {
 }
 
 .error-icon {
-  font-size: 36px;
+  font-size: 45px;
   color: #de5a56;
 }
 
 .error-card h2 {
   margin: 0;
   color: #213659;
-  font-size: 20px;
+  font-size: 27px;
 }
 
 .error-card p {
   margin: 0;
   color: #647b9f;
+  font-size: 21px;
   line-height: 1.7;
+}
+
+.error-card :deep(.el-button) {
+  font-size: 21px;
 }
 
 @media (max-width: 1180px) {
   .consultation-layout {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(280px, 36%) minmax(0, 1fr);
+    gap: 8px;
   }
 
   .subtitle-column {
@@ -1071,11 +1175,11 @@ onBeforeUnmount(async () => {
 
 @media (max-width: 900px) {
   .patient-consultation-page {
-    padding: 8px;
+    padding: 6px;
   }
 
   .consultation-layout {
-    gap: 8px;
+    gap: 6px;
     grid-template-rows: minmax(240px, 34%) minmax(0, 1fr);
   }
 
@@ -1097,9 +1201,5 @@ onBeforeUnmount(async () => {
     margin: 40px 0 8px;
   }
 
-  .consultation-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
 }
 </style>

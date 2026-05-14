@@ -99,7 +99,7 @@ const { t } = useI18n()
   border: none;
   padding: 0;
   background: transparent;
-  color: #2d4268;
+  color: #27406d;
   cursor: pointer;
   transition: transform 0.15s ease;
 }
@@ -144,11 +144,8 @@ const { t } = useI18n()
   background: linear-gradient(180deg, #fff0f0 0%, #ffe0e0 100%);
 }
 
-.control-button--secondary {
-  opacity: 0.72;
-}
-
 .control-button--danger .icon-shell {
+  color: #ffffff;
   background: linear-gradient(180deg, #f86a6a 0%, #e94a4a 100%);
 }
 

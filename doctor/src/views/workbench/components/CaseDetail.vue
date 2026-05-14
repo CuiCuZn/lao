@@ -310,6 +310,20 @@ const formatGender = (value: unknown) => {
   return takeOptionalText(value)
 }
 
+const formatMarriage = (value: unknown) => {
+  const text = takeOptionalText(value).toLowerCase()
+
+  if (text === '0') {
+    return t('assistant.caseResult.unmarried')
+  }
+
+  if (text === '1') {
+    return t('assistant.caseResult.married')
+  }
+
+  return takeOptionalText(value)
+}
+
 const getCandidateRecords = () => {
   if (!detail.value) {
     return []
@@ -435,7 +449,7 @@ const patientInfoItems = computed<DetailItem[]>(() => [
   })(),
   {
     label: t('assistant.caseResult.marriage'),
-    value: resolveDisplayText(pickText(['marriage', 'maritalStatus']))
+    value: resolveDisplayText(formatMarriage(pickText(['marriage', 'maritalStatus'])))
   },
   {
     label: t('assistant.caseResult.patientId'),

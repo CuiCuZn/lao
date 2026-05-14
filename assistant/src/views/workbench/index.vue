@@ -34,48 +34,79 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Document, FirstAidKit, UserFilled } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
+import { getUndoneCaseList } from '@/api/record'
 
 const { t } = useI18n()
 const router = useRouter()
+const hasPendingRecords = ref(false)
 
-const cards = computed(() => [
-  {
-    path: '/assistant/patient-identify',
-    title: t('assistant.workbench.clinicTitle'),
-    description: t('assistant.workbench.clinicDescription'),
-    icon: UserFilled,
-    iconColor: '#3f72f0',
-    surface: 'linear-gradient(135deg, #8fb0fb 0%, #4d78f4 52%, #3c67ef 100%)',
-    shadow: '0 24px 44px rgba(75, 121, 238, 0.24)'
-  },
-  {
-    path: '/assistant/records',
-    title: t('assistant.workbench.recordTitle'),
-    description: t('assistant.workbench.recordDescription'),
-    icon: Document,
-    iconColor: '#2db27b',
-    surface: 'linear-gradient(135deg, #4fe0b8 0%, #34ca91 48%, #29b977 100%)',
-    shadow: '0 24px 44px rgba(47, 188, 124, 0.24)'
-  },
-  {
-    path: '/assistant/pending-records',
-    title: t('assistant.workbench.pendingTitle'),
-    description: t('assistant.workbench.pendingDescription'),
-    icon: FirstAidKit,
-    iconColor: '#ef7f1b',
-    surface: 'linear-gradient(135deg, #ffb55a 0%, #ff9842 56%, #ff8634 100%)',
-    shadow: '0 24px 44px rgba(255, 148, 56, 0.24)'
+const cards = computed(() => {
+  const baseCards = [
+    {
+      path: '/assistant/patient-identify',
+      title: t('assistant.workbench.clinicTitle'),
+      description: t('assistant.workbench.clinicDescription'),
+      icon: UserFilled,
+      iconColor: '#3f72f0',
+      surface: 'linear-gradient(135deg, #8fb0fb 0%, #4d78f4 52%, #3c67ef 100%)',
+      shadow: '0 24px 44px rgba(75, 121, 238, 0.24)'
+    },
+    {
+      path: '/assistant/records',
+      title: t('assistant.workbench.recordTitle'),
+      description: t('assistant.workbench.recordDescription'),
+      icon: Document,
+      iconColor: '#2db27b',
+      surface: 'linear-gradient(135deg, #4fe0b8 0%, #34ca91 48%, #29b977 100%)',
+      shadow: '0 24px 44px rgba(47, 188, 124, 0.24)'
+    }
+  ]
+
+  if (hasPendingRecords.value) {
+    baseCards.push({
+      path: '/assistant/pending-records',
+      title: t('assistant.workbench.pendingTitle'),
+      description: t('assistant.workbench.pendingDescription'),
+      icon: FirstAidKit,
+      iconColor: '#ef7f1b',
+      surface: 'linear-gradient(135deg, #ffb55a 0%, #ff9842 56%, #ff8634 100%)',
+      shadow: '0 24px 44px rgba(255, 148, 56, 0.24)'
+    })
   }
-])
+
+  return baseCards
+})
+
+const loadPendingRecordAvailability = async () => {
+  try {
+    const response = await getUndoneCaseList({
+      searchInfo: '',
+      checkInfo: -1,
+      pageSize: 1,
+      pageNum: 1
+    })
+    const parsedTotal = Number(response?.total)
+    hasPendingRecords.value =
+      (Number.isFinite(parsedTotal) && parsedTotal > 0) ||
+      (Array.isArray(response?.rows) && response.rows.length > 0)
+  } catch (error) {
+    console.warn('Failed to check assistant undone case records.', error)
+    hasPendingRecords.value = false
+  }
+}
 
 const goTo = (path: string) => {
   router.push(path)
 }
+
+onMounted(() => {
+  void loadPendingRecordAvailability()
+})
 </script>
 
 <style scoped lang="scss">
@@ -129,7 +160,7 @@ const goTo = (path: string) => {
 .workbench-hero h1 {
   margin: 0;
   color: #161f2c;
-  font-size: clamp(36px, 4.6vw, 52px);
+  font-size: clamp(41px, 4.6vw, 57px);
   font-weight: 800;
   line-height: 1.14;
   letter-spacing: 0.02em;
@@ -138,23 +169,23 @@ const goTo = (path: string) => {
 .workbench-hero p {
   margin: 16px 0 0;
   color: #617283;
-  font-size: 16px;
+  font-size: 21px;
   font-weight: 600;
   line-height: 1.5;
 }
 
 .entry-grid {
-  width: min(980px, 100%);
+  width: min(1200px, 100%);
   margin-top: 118px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
 }
 
 .entry-card {
   position: relative;
   min-height: 255px;
-  padding: 38px 28px 32px;
+  padding: 70px 30px;
   border: none;
   border-radius: 14px;
   display: flex;
@@ -193,8 +224,8 @@ const goTo = (path: string) => {
 }
 
 .entry-icon {
-  width: 58px;
-  height: 58px;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,7 +233,7 @@ const goTo = (path: string) => {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 249, 255, 0.92));
   box-shadow: 0 14px 30px rgba(33, 70, 126, 0.16);
   color: var(--icon-color);
-  font-size: 30px;
+  font-size: 50px;
 }
 
 .entry-copy {
@@ -216,7 +247,7 @@ const goTo = (path: string) => {
 .entry-copy h2 {
   margin: 0;
   color: #ffffff;
-  font-size: 28px;
+  font-size: 33px;
   font-weight: 700;
   line-height: 1.28;
 }
@@ -224,7 +255,7 @@ const goTo = (path: string) => {
 .entry-copy p {
   margin: 0;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
+  font-size: 23px;
   font-weight: 600;
   line-height: 1.7;
 }
@@ -247,7 +278,7 @@ const goTo = (path: string) => {
   }
 
   .entry-copy h2 {
-    font-size: 24px;
+    font-size: 29px;
   }
 }
 
@@ -269,7 +300,7 @@ const goTo = (path: string) => {
 
 @media (max-width: 640px) {
   .workbench-hero p {
-    font-size: 14px;
+    font-size: 19px;
   }
 
   .entry-card {
@@ -282,7 +313,7 @@ const goTo = (path: string) => {
   }
 
   .entry-copy h2 {
-    font-size: 24px;
+    font-size: 29px;
   }
 }
 </style>

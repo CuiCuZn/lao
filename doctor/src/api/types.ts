@@ -203,6 +203,19 @@ export interface VideoConversationHistoryResponse {
   [key: string]: unknown;
 }
 
+export interface VideoTimeData {
+  videoStartTime?: string | number | null;
+  newDate?: string | number | null;
+  [key: string]: unknown;
+}
+
+export interface VideoTimeResponse {
+  code?: number;
+  msg?: string;
+  data?: VideoTimeData | null;
+  [key: string]: unknown;
+}
+
 export interface CaseListItem {
   caseId?: string | number;
   departmentName?: string;

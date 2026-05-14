@@ -35,7 +35,10 @@ import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { switchWorkbenchOnlineStatus } from '@/api/workbench'
 import brandLogo from '@/assets/logo.png'
+
+const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -55,16 +58,35 @@ const userMetaLine = computed(() => {
   return userStore.roles[0] || t('menu.doctorPortal')
 })
 
+function isDoctorOnline() {
+  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
+  if (cachedOnlineStatus !== null) {
+    return cachedOnlineStatus === 'true'
+  }
+
+  const profileOnlineStatus = userStore.profile?.isOnLine
+  return profileOnlineStatus !== undefined && profileOnlineStatus !== null
+    ? String(profileOnlineStatus) === '1'
+    : false
+}
+
+async function logout() {
+  if (isDoctorOnline()) {
+    await switchWorkbenchOnlineStatus()
+    localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, 'false')
+  }
+
+  await userStore.logout()
+  window.location.replace(router.resolve({ path: '/login' }).href)
+}
+
 const handleCommand = (command: string) => {
   if (command === 'logout') {
     ElMessageBox.confirm(t('logout.confirmText'), t('common.tip'), {
       confirmButtonText: t('common.confirm'),
       cancelButtonText: t('common.cancel'),
       type: 'warning'
-    }).then(async () => {
-      await userStore.logout()
-      window.location.replace(router.resolve({ path: '/login' }).href)
-    })
+    }).then(logout)
   }
 }
 

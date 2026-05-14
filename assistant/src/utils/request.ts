@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosReq
 import { ElMessage } from 'element-plus'
 import i18n from '@/locales'
 import { getToken, removeToken } from '@/utils/auth'
+import { stopAssistantConsultationSse } from '@/utils/assistant-consultation-sse'
 import { generateAesKey, encryptBase64, encryptWithAes } from '@/utils/crypto'
 import { encrypt as rsaEncrypt } from '@/utils/jsencrypt'
 
@@ -47,7 +48,7 @@ class Request {
         const storedLang = localStorage.getItem('lang')
         const currentLang = supportedLocales.includes(storedLang as SupportedLocale)
           ? (storedLang as SupportedLocale)
-          : 'zh-cn'
+          : 'lo'
         if (storedLang !== currentLang) {
           localStorage.setItem('lang', currentLang)
         }
@@ -56,7 +57,7 @@ class Request {
           lo: 'lo_LA',
           en: 'en_US'
         }
-        config.headers['content-language'] = langMap[currentLang] || 'zh_CN'
+        config.headers['content-language'] = langMap[currentLang] || 'lo_LA'
         ;(config as InternalAxiosRequestConfig & { __silentError?: boolean }).__silentError = silentError
         ;(config as InternalAxiosRequestConfig & { __successCodes?: number[] }).__successCodes = successCodes
 
@@ -111,6 +112,7 @@ class Request {
         if (code === 401) {
           if (!isReloginShow) {
             isReloginShow = true
+            stopAssistantConsultationSse()
             removeToken()
             location.reload()
           }

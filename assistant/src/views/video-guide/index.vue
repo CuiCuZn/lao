@@ -26,7 +26,7 @@ const { t } = useI18n()
 .page-template h2 {
   margin: 0;
   color: var(--assistant-text);
-  font-size: 24px;
+  font-size: 29px;
 }
 
 .page-template p {
