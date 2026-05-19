@@ -1085,8 +1085,8 @@ const handleConsultationCompleted = async (event: { patientId: string; caseId: s
   doctorRejectedDialogVisible.value = false
 
   await showConfirmDialog({
-    message: '本次诊疗已完成',
-    confirmText: '确定',
+    message: t('assistant.aideVideo.consultation.completedMessage'),
+    confirmText: t('common.confirm'),
     showCancel: false
   })
 

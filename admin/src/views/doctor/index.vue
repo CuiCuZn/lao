@@ -148,8 +148,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="角色" prop="roleIds">
-              <el-select v-model="singleRoleId" placeholder="请选择角色" style="width: 100%">
+            <el-form-item :label="t('doctor.role')" prop="roleIds">
+              <el-select v-model="singleRoleId" :placeholder="t('doctor.selectRole')" style="width: 100%">
                 <el-option
                   v-for="item in roleOptions"
                   :key="item.roleId"
@@ -264,15 +264,15 @@ const form = ref<UserForm>({
 const rules = {
   nickName: [{ required: true, message: t('doctor.inputNickName'), trigger: 'blur' }],
   userName: [{ required: true, message: t('doctor.inputUserName'), trigger: 'blur' }],
-  password: [{ required: true, message: '请输入登录密码', trigger: 'blur' }],
-  jobNumber: [{ required: true, message: '请输入工号', trigger: 'blur' }],
+  password: [{ required: true, message: t('doctor.inputPassword'), trigger: 'blur' }],
+  jobNumber: [{ required: true, message: t('doctor.inputJobNumber'), trigger: 'blur' }],
   departmentId: [{ required: true, message: t('doctor.selectDept'), trigger: 'change' }],
-  title: [{ required: true, message: '请输入职称', trigger: 'blur' }],
+  title: [{ required: true, message: t('doctor.inputTitle'), trigger: 'blur' }],
   phonenumber: [
     { required: true, message: t('doctor.inputPhonenumber'), trigger: 'blur' },
-    { pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: '请输入正确的手机号码', trigger: 'blur' }
+    { pattern: /^1[3|4|5|6|7|8|9][0-9]\d{8}$/, message: t('doctor.invalidPhone'), trigger: 'blur' }
   ],
-  roleIds: [{ required: true, message: '请选择角色', trigger: 'change' }]
+  roleIds: [{ required: true, message: t('doctor.selectRole'), trigger: 'change' }]
 }
 
 /**
@@ -446,15 +446,15 @@ const handleDetail = async (row: UserVO) => {
  * 重置密码
  */
 const handleResetPwd = (row: UserVO) => {
-  ElMessageBox.prompt('请输入 "' + row.nickName + '" 的新密码', t('doctor.resetPwd'), {
+  ElMessageBox.prompt(t('doctor.newPasswordPrompt', { name: row.nickName }), t('doctor.resetPwd'), {
     confirmButtonText: t('common.confirm'),
     cancelButtonText: t('common.cancel'),
     inputPattern: /^.{5,20}$/,
-    inputErrorMessage: '密码长度需在 5 到 20 个字符之间'
+    inputErrorMessage: t('doctor.passwordLength')
   }).then(async ({ value }) => {
     const [err] = await to(resetUserPwd(row.userId, value))
     if (!err) {
-      ElMessage.success('重置成功')
+      ElMessage.success(t('doctor.resetPwdSuccess'))
     }
   }).catch(() => {})
 }
@@ -501,7 +501,7 @@ const reset = () => {
  * 导出操作
  */
 const handleExport = () => {
-  ElMessage.info('正在导出，请稍后...')
+  ElMessage.info(t('common.exportPending'))
 }
 
 onMounted(() => {

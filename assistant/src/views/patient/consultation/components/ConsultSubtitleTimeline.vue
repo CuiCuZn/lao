@@ -168,17 +168,18 @@ const sendDisabled = computed(() => {
   )
 })
 
-const languageLabelMap: Record<string, string> = {
-  cn: '中文',
-  zh: '中文',
-  'zh-cn': '中文',
-  lo: 'ລາວ',
-  lao: 'ລາວ'
+const languageLabelKeyMap: Record<string, string> = {
+  cn: 'assistant.patientVideo.consultation.languageChinese',
+  zh: 'assistant.patientVideo.consultation.languageChinese',
+  'zh-cn': 'assistant.patientVideo.consultation.languageChinese',
+  lo: 'assistant.patientVideo.consultation.languageLao',
+  lao: 'assistant.patientVideo.consultation.languageLao'
 }
 
 const formatLanguageLabel = (languageCode: string) => {
   const normalizedCode = languageCode?.trim().toLowerCase()
-  return languageLabelMap[normalizedCode] || languageCode?.toUpperCase() || t('assistant.patientVideo.consultation.sourceText')
+  const labelKey = languageLabelKeyMap[normalizedCode]
+  return labelKey ? t(labelKey) : languageCode?.toUpperCase() || t('assistant.patientVideo.consultation.sourceText')
 }
 
 const toggleBilingual = () => {

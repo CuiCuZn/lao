@@ -125,7 +125,7 @@
               </el-button>
               <el-button v-else type="info" plain class="queue-action detail-action" size="small" round
                 @click="openCaseDetail(item)">
-                {{ t('workbench.viewDetail', '查看详情') }}
+                {{ t('workbench.viewDetail') }}
               </el-button>
             </article>
           </div>
@@ -200,7 +200,7 @@
       </div>
     </el-dialog>
 
-    <el-drawer v-model="drawerVisible" :title="t('workbench.viewDetail', '查看详情')" size="60%" destroy-on-close
+    <el-drawer v-model="drawerVisible" :title="t('workbench.viewDetail')" size="60%" destroy-on-close
       append-to-body>
       <case-detail v-if="drawerVisible" :case-id="currentCaseId" />
     </el-drawer>

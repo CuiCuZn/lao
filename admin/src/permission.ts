@@ -71,7 +71,7 @@ router.beforeEach(async (to, from) => {
           // 获取失败，重置令牌去登录
           await userStore.logout()
           dictStore.clearDict() // 清理字典缓存
-          ElMessage.error(err instanceof Error ? err.message : '身份校验失败')
+          ElMessage.error(err instanceof Error ? err.message : i18n.global.t('message.authCheckFailed'))
           NProgress.done()
           return {
             path: '/login',

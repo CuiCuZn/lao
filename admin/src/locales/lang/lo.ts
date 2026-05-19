@@ -9,9 +9,10 @@ export default {
       loadFailed: 'ໂຫຼດຜົນການກວດບໍ່ສຳເລັດ ກະລຸນາລອງໃໝ່.',
       loading: 'ກຳລັງໂຫຼດຜົນການກວດ...',
       completedTitle: 'ການກວດທາງໄກຄັ້ງນີ້ສຳເລັດແລ້ວ',
-      completedDescription: 'ແພດໄດ້ອອກຜົນການວິນິດໄສ ແລະ ໃບສັ່ງຢາແລ້ວ ກະລຸນາກວດສອບຂໍ້ມູນແລະຈັດເກັບໃຫ້ສຳເລັດ',
+      completedDescription: 'ແພດໄດ້ອອກຜົນວິນິດໄສ ແລະ ໃບສັ່ງຢາແລ້ວ ກະລຸນາກວດກ່ອນຈັດເກັບ.',
       visitDate: 'ວັນທີ່ກວດ',
       visitDuration: 'ໄລຍະເວລາການກວດ',
+      durationMinuteSecond: '{minutes} ນາທີ {seconds} ວິນາທີ',
       visitId: 'ID ການກວດ',
       patientInfo: 'ຂໍ້ມູນພື້ນຖານຄົນໄຂ້',
       consultationInfo: 'ຂໍ້ມູນການກວດ',
@@ -35,7 +36,7 @@ export default {
       pastHistory: 'ປະຫວັດເກົ່າ',
       allergyHistory: 'ປະຫວັດການແພ້',
       familyHistory: 'ປະຫວັດຄອບຄົວ',
-      diseaseName: 'ຊື່ໂລກ',
+      diseaseName: 'ຜົນວິນິດໄສ',
       syndromeType: 'ປະເພດອາການ',
       therapy: 'ວິທີຮັກສາ',
       prescription: 'ໃບສັ່ງຢາ',
@@ -71,7 +72,7 @@ export default {
       female: 'ຍິງ',
       notAvailable: 'ບໍ່ມີຂໍ້ມູນ',
       noDiagnosisData: 'ຍັງບໍ່ມີຜົນຈາກເຄື່ອງວິນິດໄສ 4 ດ້ານ',
-      noPrescription: 'ຍັງບໍ່ມີຂໍ້ມູນໃບສັ່ງຢາ'
+      noPrescription: 'ການກວດຄັ້ງນີ້ບໍ່ມີໃບສັ່ງຢາ'
     },
   },
   language: {
@@ -89,9 +90,9 @@ export default {
     edit: 'ແກ້ໄຂ',
     view: 'ເບິ່ງ',
     search: 'ຄົ້ນຫາ',
-    reset: 'ຣີເຊັດ',
-    operate: 'ການດໍາເນີນງານ',
-    tip: 'ຄໍາແນະນໍາ',
+    reset: 'ລ້າງ',
+    operate: 'ດຳເນີນການ',
+    tip: 'ແຈ້ງເຕືອນ',
     add: 'ເພີ່ມໃໝ່',
     export: 'ສົ່ງອອກ',
     enable: 'ເປີດໃຊ້ງານ',
@@ -101,11 +102,13 @@ export default {
     selectStatus: 'ກະລຸນາເລືອກສະຖານະ',
     addSuccess: 'ເພີ່ມສຳເລັດແລ້ວ',
     editSuccess: 'ແກ້ໄຂສຳເລັດແລ້ວ',
-    operateSuccess: 'ດໍາເນີນການສຳເລັດແລ້ວ'
+    operateSuccess: 'ດໍາເນີນການສຳເລັດ',
+    backHome: 'ກັບໄປໜ້າຫຼັກ',
+    exportPending: 'ກຳລັງສົ່ງອອກ ກະລຸນາລໍຖ້າ...'
   },
   login: {
-    title: 'ລະບົບການຈັດການດ້ານຫຼັງຄລີນິກ',
-    tenant: 'ຜູ້ເຊົ່າ (Tenant)',
+    title: 'ລະບົບຈັດການໂຮງໝໍ',
+    tenant: 'ຜູ້ເຊົ່າ',
     username: 'ຊື່ຜູ້ໃຊ້',
     password: 'ລະຫັດຜ່ານ',
     rememberMe: 'ຈື່ລະຫັດຜ່ານ',
@@ -116,8 +119,8 @@ export default {
     inputPassword: 'ກະລຸນາປ້ອນລະຫັດຜ່ານ'
   },
   logout: {
-    confirmText: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການອອກຈາກລະບົບ ແລະ ອອກຈາກລະບົບ?',
-    successText: 'ອອກຈາກລະບົບສຳເລັດແລ້ວ'
+    confirmText: 'ຕ້ອງການອອກຈາກລະບົບຈັດການບໍ?',
+    successText: 'ອອກຈາກລະບົບສຳເລັດ'
   },
   dept: {
     deptName: 'ຊື່ພະແນກ',
@@ -130,6 +133,9 @@ export default {
     phrases: 'ຂໍ້ຄວາມທີ່ໃຊ້ເລື້ອຍໆ',
     inputDeptName: 'ກະລຸນາປ້ອນຊື່ພະແນກ',
     inputDeptCode: 'ກະລຸນາປ້ອນລະຫັດພະແນກ',
+    inputLeader: 'ກະລຸນາປ້ອນຜູ້ຮັບຜິດຊອບ',
+    inputPhone: 'ກະລຸນາປ້ອນເບີໂທ',
+    inputPhrase: 'ກະລຸນາປ້ອນຄໍາໃຊ້ປະຈໍາ ເຊັ່ນ: ກິນອາຫານອ່ອນ',
     selectDeptType: 'ກະລຸນາເລືອກປະເພດພະແນກ',
     selectStatus: 'ກະລຸນາເລືອກສະຖານະ',
     clinical: 'ພະແນກຄລີນິກ',
@@ -138,7 +144,7 @@ export default {
     addDept: 'ເພີ່ມພະແນກໃໝ່',
     editDept: 'ແກ້ໄຂພະແນກ',
     deptDetail: 'ລາຍລະອຽດພະແນກ',
-    confirmStatus: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການ {operate} ພະແນກນີ້?',
+    confirmStatus: 'ຢືນຢັນຈະ{operate}ພະແນກນີ້ບໍ?',
     addPhrase: 'ເພີ່ມຂໍ້ຄວາມ'
   },
   doctor: {
@@ -156,15 +162,22 @@ export default {
     remark: 'ໝາຍເຫດ',
     inputNickName: 'ກະລຸນາປ້ອນຊື່ທ່ານໝໍ',
     inputUserName: 'ກະລຸນາປ້ອນບັນຊີເຂົ້າສູ່ລະບົບ',
+    inputPassword: 'ກະລຸນາປ້ອນລະຫັດຜ່ານ',
+    inputJobNumber: 'ກະລຸນາປ້ອນເລກພະນັກງານ',
     inputPhonenumber: 'ກະລຸນາປ້ອນເບີໂທລະສັບ',
     selectDept: 'ກະລຸນາເລືອກພະແນກ',
     inputTitle: 'ກະລຸນາປ້ອນຕຳແໜ່ງ',
+    selectRole: 'ກະລຸນາເລືອກບົດບາດ',
+    invalidPhone: 'ກະລຸນາປ້ອນເບີມືຖືໃຫ້ຖືກຕ້ອງ',
     addDoctor: 'ເພີ່ມທ່ານໝໍໃໝ່',
     editDoctor: 'ແກ້ໄຂຂໍ້ມູນທ່ານໝໍ',
     doctorDetail: 'ລາຍລະອຽດທ່ານໝໍ',
-    confirmStatus: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການ {operate} ບັນຊີທ່ານໝໍນີ້?',
-    resetPwd: 'ຣີເຊັດລະຫັດຜ່ານ',
-    confirmResetPwd: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການຣີເຊັດລະຫັດຜ່ານຂອງທ່ານໝໍຄົນນີ້?'
+    confirmStatus: 'ຢືນຢັນຈະ{operate}ບັນຊີທ່ານໝໍນີ້ບໍ?',
+    resetPwd: 'ຕັ້ງລະຫັດໃໝ່',
+    confirmResetPwd: 'ຢືນຢັນຈະຕັ້ງລະຫັດໃໝ່ໃຫ້ທ່ານໝໍນີ້ບໍ?',
+    newPasswordPrompt: 'ກະລຸນາປ້ອນລະຫັດໃໝ່ຂອງ "{name}"',
+    passwordLength: 'ລະຫັດຜ່ານຕ້ອງມີ 5 ຫາ 20 ຕົວອັກສອນ',
+    resetPwdSuccess: 'ຕັ້ງລະຫັດໃໝ່ສຳເລັດ'
   },
   record: {
     caseId: 'ເລກທີຄະດີ',
@@ -179,12 +192,24 @@ export default {
     selectVisitDate: 'ກະລຸນາເລືອກວັນທີກວດ'
   },
   message: {
-    noPermission: 'ບັນຊີນີ້ບໍ່ມີສິດເຂົ້າໃຊ້ລະບົບນີ້.'
+    noPermission: 'ບັນຊີນີ້ບໍ່ມີສິດເຂົ້າໃຊ້ລະບົບນີ້.',
+    sessionExpired: 'ເຊສຊັນໝົດອາຍຸ ກະລຸນາເຂົ້າລະບົບໃໝ່.',
+    authCheckFailed: 'ກວດສອບຕົວຕົນບໍ່ສຳເລັດ',
+    networkError: 'ເຊື່ອມຕໍ່ API ບໍ່ໄດ້',
+    timeout: 'ຄຳຂໍ API ໝົດເວລາ',
+    systemError: 'ລະບົບຜິດພາດ'
   },
   menu: {
-    doctorMgmt: 'ການຈັດການບັນຊີທ່ານໝໍ',
+    brand: 'ລະບົບຈັດການກວດຮັກສາ',
+    doctorMgmt: 'ຈັດການທ່ານໝໍ',
     deptMgmt: 'ການຈັດການພະແນກ',
     recordMgmt: 'ບັນທຶກການກວດພະຍາດ',
     adminSystem: 'ລະບົບການຈັດການພາກສ່ວນຫຼັງ'
+  },
+  error: {
+    notFoundDesc: 'ຂໍອະໄພ, ບໍ່ພົບໜ້ານີ້.'
+  },
+  route: {
+    login: 'ເຂົ້າລະບົບ'
   }
 }

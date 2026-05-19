@@ -1,7 +1,7 @@
 <template>
   <div class="sidebar">
     <div class="logo">
-      <p style="font-size: 16px; font-weight: bold;color: #fff;">壮医诊疗管理系统</p>
+      <p style="font-size: 16px; font-weight: bold;color: #fff;">{{ t('menu.brand') }}</p>
     </div>
 
     <el-menu

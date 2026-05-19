@@ -289,7 +289,7 @@ const formatDuration = (value: unknown) => {
     const totalSeconds = Math.floor(value)
     const minutes = Math.floor(totalSeconds / 60)
     const seconds = totalSeconds % 60
-    return `${minutes}分${seconds}秒`
+    return t('assistant.caseResult.durationMinuteSecond', { minutes, seconds })
   }
 
   const text = takeOptionalText(value)

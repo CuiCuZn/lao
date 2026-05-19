@@ -123,23 +123,13 @@
                 <table class="diagnosis-table">
                   <tbody>
                     <tr>
-                      <th class="table-title" colspan="6">舌象诊断结果</th>
+                      <th class="table-title" colspan="6">{{ t('assistant.caseResult.tongueResult') }}</th>
                     </tr>
-                    <tr>
-                      <th>舌色</th>
-                      <td>淡白色</td>
-                      <th>舌形</th>
-                      <td>点次舌，齿痕舌</td>
-                      <th>舌态</th>
-                      <td>正常</td>
-                    </tr>
-                    <tr>
-                      <th>苔色</th>
-                      <td>黄白相间苔</td>
-                      <th>苔质</th>
-                      <td>厚苔</td>
-                      <th>舌下络脉</th>
-                      <td>正常</td>
+                    <tr v-for="(row, rowIndex) in tongueDemoRows" :key="`tongue-${rowIndex}`">
+                      <template v-for="item in row" :key="item.label">
+                        <th>{{ item.label }}</th>
+                        <td>{{ item.value }}</td>
+                      </template>
                     </tr>
                   </tbody>
                 </table>
@@ -147,19 +137,13 @@
                 <table class="diagnosis-table">
                   <tbody>
                     <tr>
-                      <th class="table-title" colspan="4">面相诊断结果</th>
+                      <th class="table-title" colspan="4">{{ t('assistant.caseResult.faceResult') }}</th>
                     </tr>
-                    <tr>
-                      <th>面色</th>
-                      <td>面色淡黄</td>
-                      <th>面部光泽</th>
-                      <td>少量光泽</td>
-                    </tr>
-                    <tr>
-                      <th>唇色</th>
-                      <td>青紫</td>
-                      <th>局部特征</th>
-                      <td>-</td>
+                    <tr v-for="(row, rowIndex) in faceDemoRows" :key="`face-${rowIndex}`">
+                      <template v-for="item in row" :key="item.label">
+                        <th>{{ item.label }}</th>
+                        <td>{{ item.value }}</td>
+                      </template>
                     </tr>
                   </tbody>
                 </table>
@@ -167,27 +151,17 @@
                 <table class="diagnosis-table">
                   <tbody>
                     <tr>
-                      <th class="table-title" colspan="3">脉象诊断结果</th>
+                      <th class="table-title" colspan="3">{{ t('assistant.caseResult.pulseResult') }}</th>
                     </tr>
                     <tr>
                       <th></th>
-                      <td>左手</td>
-                      <td>右手</td>
+                      <td>{{ t('assistant.caseResult.leftHand') }}</td>
+                      <td>{{ t('assistant.caseResult.rightHand') }}</td>
                     </tr>
-                    <tr>
-                      <th>寸</th>
-                      <td>虚</td>
-                      <td>缓</td>
-                    </tr>
-                    <tr>
-                      <th>关</th>
-                      <td>缓</td>
-                      <td>虚</td>
-                    </tr>
-                    <tr>
-                      <th>尺</th>
-                      <td>虚</td>
-                      <td>虚</td>
+                    <tr v-for="row in pulseDemoRows" :key="row.label">
+                      <th>{{ row.label }}</th>
+                      <td>{{ row.left }}</td>
+                      <td>{{ row.right }}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -359,6 +333,36 @@ const maritalStatusOptions = computed(() => {
     { dictLabel: t('assistant.intake.maritalStatusOptions.married'), dictValue: '1' }
   ]
 })
+
+const tongueDemoRows = computed(() => [
+  [
+    { label: t('assistant.caseResult.tongueColor'), value: t('assistant.caseResult.demoPaleTongue') },
+    { label: t('assistant.caseResult.tongueShape'), value: t('assistant.caseResult.demoSpottedToothMarkedTongue') },
+    { label: t('assistant.caseResult.tongueState'), value: t('assistant.caseResult.demoNormal') }
+  ],
+  [
+    { label: t('assistant.caseResult.tongueCoatingColor'), value: t('assistant.caseResult.demoYellowWhiteCoating') },
+    { label: t('assistant.caseResult.tongueCoatingQuality'), value: t('assistant.caseResult.demoThickCoating') },
+    { label: t('assistant.caseResult.sublingualVein'), value: t('assistant.caseResult.demoNormal') }
+  ]
+])
+
+const faceDemoRows = computed(() => [
+  [
+    { label: t('assistant.caseResult.complexion'), value: t('assistant.caseResult.demoPaleYellowComplexion') },
+    { label: t('assistant.caseResult.faceLuster'), value: t('assistant.caseResult.demoSlightLuster') }
+  ],
+  [
+    { label: t('assistant.caseResult.lipColor'), value: t('assistant.caseResult.demoBluishPurple') },
+    { label: t('assistant.caseResult.localFeature'), value: '-' }
+  ]
+])
+
+const pulseDemoRows = computed(() => [
+  { label: t('assistant.caseResult.cun'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoModeratePulse') },
+  { label: t('assistant.caseResult.guan'), left: t('assistant.caseResult.demoModeratePulse'), right: t('assistant.caseResult.demoDeficientPulse') },
+  { label: t('assistant.caseResult.chi'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoDeficientPulse') }
+])
 
 const buildSavePayload = (): PatientSaveParams => ({
   ...(patientId.value !== undefined ? { patientId: patientId.value } : {}),

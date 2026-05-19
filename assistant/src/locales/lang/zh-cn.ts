@@ -144,6 +144,7 @@ export default {
       completedDescription: '主治医师已下达诊断及处方医嘱，复核无误后可进行单据归档打印。',
       visitDate: '就诊日期',
       visitDuration: '接诊时长',
+      durationMinuteSecond: '{minutes}分{seconds}秒',
       visitId: '就诊ID',
       patientInfo: '患者基本信息',
       consultationInfo: '就诊信息',
@@ -185,6 +186,7 @@ export default {
       bloodStasisType: '血瘀质',
       tongueColor: '舌色',
       tongueShape: '舌形',
+      tongueState: '舌态',
       tongueCoatingColor: '苔色',
       tongueCoatingQuality: '苔质',
       sublingualVein: '舌下络脉',
@@ -203,7 +205,17 @@ export default {
       female: '女',
       notAvailable: '暂无',
       noDiagnosisData: '暂无四诊仪采集结果',
-      noPrescription: '本次就诊未开具处方'
+      noPrescription: '本次就诊未开具处方',
+      demoPaleTongue: '淡白色',
+      demoSpottedToothMarkedTongue: '点次舌，齿痕舌',
+      demoNormal: '正常',
+      demoYellowWhiteCoating: '黄白相间苔',
+      demoThickCoating: '厚苔',
+      demoPaleYellowComplexion: '面色淡黄',
+      demoSlightLuster: '少量光泽',
+      demoBluishPurple: '青紫',
+      demoDeficientPulse: '虚',
+      demoModeratePulse: '缓'
     },
     patientIdentify: {
       pageTitle: '患者身份核验',
@@ -360,6 +372,7 @@ export default {
         doctorPrefix: '医生：',
         waitingDoctor: '等待中',
         waitingDoctorJoin: '等待医生接入……',
+        waitingJoin: '等待接入',
         connected: '实时连接已建立',
         footerSubtitle: '区域医疗中心 · 双语实时会诊',
         goodAt: '擅长',
@@ -382,7 +395,14 @@ export default {
         chatInputRequired: '请输入要发送的消息内容。',
         chatTranslateFailed: '消息翻译失败，请稍后重试。',
         chatSendFailed: '消息已发送，但网络传输失败。',
-        chatSaveFailed: '消息已发送，但聊天记录保存失败。'
+        chatSaveFailed: '消息已发送，但聊天记录保存失败。',
+        autoplayBlocked: '由于浏览器自动播放限制，请点击确认后开始播放音频。',
+        unsupportedBrowser: '当前浏览器暂不支持音视频通话',
+        subtitleEngineUnavailable: '字幕引擎尚未初始化，请重新进入房间后重试。',
+        subtitlePartialFailed: '字幕服务启动部分失败，可稍后点击重试字幕。',
+        subtitleUnavailable: '字幕服务暂时不可用，可稍后重试。',
+        languageChinese: '中文',
+        languageLao: '老挝语'
       }
     },
     aideVideo: {
@@ -403,6 +423,7 @@ export default {
         resendRequestSuccess: '已重新发起视频问诊请求。',
         resendRequestFailed: '重新发起请求失败，请稍后处理。',
         handleLater: '稍后处理',
+        completedMessage: '本次诊疗已完成',
         cameraLabels: {
           sideScanner: '侧面高拍仪',
           patientCamera: '患者摄像头',

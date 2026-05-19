@@ -9,6 +9,7 @@ import DingRTC, {
 import { ElMessageBox } from 'element-plus'
 import { computed, ref, shallowRef, triggerRef } from 'vue'
 import { closeVideoSubtitle, openVideoSubtitle } from '@/api/video'
+import i18n from '@/locales'
 import {
   closeLocalTrack,
   createConsultationClients,
@@ -152,9 +153,9 @@ export const useDoctorConsultationSession = () => {
     autoplayFailedHandlerBound = true
 
     DingRTC.on('autoplay-failed', (track: any) => {
-      ElMessageBox.confirm('由于浏览器自动播放限制，请点击确认后开始播放音频。', '提示', {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
+      ElMessageBox.confirm(i18n.global.t('doctorVideo.consultation.autoplayBlocked'), i18n.global.t('common.tip'), {
+        confirmButtonText: i18n.global.t('common.confirm'),
+        cancelButtonText: i18n.global.t('common.cancel'),
         type: 'warning'
       })
         .then(() => {
@@ -705,7 +706,7 @@ export const useDoctorConsultationSession = () => {
 
     if (!supported.value) {
       joining.value = false
-      throw new Error('当前浏览器暂不支持音视频通话')
+      throw new Error(i18n.global.t('doctorVideo.consultation.unsupportedBrowser'))
     }
 
     bindAutoplayFailedHandler()
@@ -788,7 +789,7 @@ export const useDoctorConsultationSession = () => {
     const localChannelContext = channelContext.value
 
     if (!localChannelContext || !primaryAsr.value || !secondaryAsr.value) {
-      subtitleError.value = '字幕引擎尚未初始化，请重新进入房间后重试。'
+      subtitleError.value = i18n.global.t('doctorVideo.consultation.subtitleEngineUnavailable')
       return
     }
 
@@ -843,10 +844,10 @@ export const useDoctorConsultationSession = () => {
       ])
 
       if (settledTasks.some((item) => item.status === 'rejected')) {
-        subtitleError.value = '字幕服务启动部分失败，可稍后点击重试字幕。'
+        subtitleError.value = i18n.global.t('doctorVideo.consultation.subtitlePartialFailed')
       }
     } catch {
-      subtitleError.value = '字幕服务暂时不可用，可稍后重试。'
+      subtitleError.value = i18n.global.t('doctorVideo.consultation.subtitleUnavailable')
     } finally {
       subtitleLoading.value = false
     }
@@ -1066,11 +1067,11 @@ export const useDoctorConsultationSession = () => {
 
     return remoteParticipants.value[0] || {
       userId: 'placeholder',
-      userName: '等待患者接入',
+      userName: i18n.global.t('doctorVideo.consultation.waitingPatientJoin'),
       track: null,
       muted: true,
       speaking: false,
-      placeholderBadge: '等待接入'
+      placeholderBadge: i18n.global.t('doctorVideo.consultation.waitingJoin')
     }
   })
 

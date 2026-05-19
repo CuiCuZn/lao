@@ -10,6 +10,7 @@ import { computed, ref, shallowRef, triggerRef } from 'vue'
 import { closeVideoSubtitle, openVideoSubtitle } from '@/api/video'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { showConfirmDialog } from '@/utils/confirm-dialog'
+import i18n from '@/locales'
 import {
   closeLocalTrack,
   createConsultationClients,
@@ -167,9 +168,9 @@ export const usePatientConsultationSession = () => {
 
     DingRTC.on('autoplay-failed', async (track: any) => {
       const confirmed = await showConfirmDialog({
-        message: '由于浏览器自动播放限制，请点击确认后开始播放音频。',
-        confirmText: '确认',
-        cancelText: '取消'
+        message: i18n.global.t('assistant.patientVideo.consultation.autoplayBlocked'),
+        confirmText: i18n.global.t('common.confirm'),
+        cancelText: i18n.global.t('common.cancel')
       })
 
       if (confirmed) {
@@ -724,7 +725,7 @@ export const usePatientConsultationSession = () => {
 
     if (!supported.value) {
       joining.value = false
-      throw new Error('当前浏览器暂不支持音视频通话')
+      throw new Error(i18n.global.t('assistant.patientVideo.consultation.unsupportedBrowser'))
     }
 
     bindAutoplayFailedHandler()
@@ -810,7 +811,7 @@ export const usePatientConsultationSession = () => {
     const localChannelContext = channelContext.value
 
     if (!localChannelContext || !primaryAsr.value || !secondaryAsr.value) {
-      subtitleError.value = '字幕引擎尚未初始化，请重新进入房间后重试。'
+      subtitleError.value = i18n.global.t('assistant.patientVideo.consultation.subtitleEngineUnavailable')
       return
     }
 
@@ -865,10 +866,10 @@ export const usePatientConsultationSession = () => {
       ])
 
       if (settledTasks.some((item) => item.status === 'rejected')) {
-        subtitleError.value = '字幕服务启动部分失败，可稍后点击重试字幕。'
+        subtitleError.value = i18n.global.t('assistant.patientVideo.consultation.subtitlePartialFailed')
       }
     } catch {
-      subtitleError.value = '字幕服务暂时不可用，可稍后重试。'
+      subtitleError.value = i18n.global.t('assistant.patientVideo.consultation.subtitleUnavailable')
     } finally {
       subtitleLoading.value = false
     }
@@ -1090,7 +1091,7 @@ export const usePatientConsultationSession = () => {
     const doctorName = takeOptionalText(patientSessionStore.doctorName)
     const doctorDisplayName = doctorName
       ? `${doctorName}${doctorId ? ` · ${doctorId}` : ''}`
-      : doctorId || '等待医生接入'
+      : doctorId || i18n.global.t('assistant.patientVideo.consultation.waitingDoctorJoin')
 
     return remoteParticipants.value[0] || {
       userId: doctorId || 'placeholder',
@@ -1098,7 +1099,7 @@ export const usePatientConsultationSession = () => {
       track: null,
       muted: true,
       speaking: false,
-      placeholderBadge: '等待接入'
+      placeholderBadge: i18n.global.t('assistant.patientVideo.consultation.waitingJoin')
     }
   })
 

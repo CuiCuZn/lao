@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { getToken, removeToken } from '@/utils/auth'
 import { generateAesKey, encryptWithAes, encryptBase64 } from '@/utils/crypto'
 import { encrypt as rsaEncrypt } from '@/utils/jsencrypt'
+import i18n from '@/locales'
 
 // 标记是否正在显示重新登录对话框，避免并发请求时重复弹出
 let isReloginShow = false
@@ -107,7 +108,7 @@ class Request {
             removeToken()
             location.reload() // 通过刷新触发 permission.ts 跳转到登录页并清除 Pinia
           }
-          return Promise.reject('无效的会话，或者会话已过期，请重新登录。')
+          return Promise.reject(i18n.global.t('message.sessionExpired'))
         } else if (code !== 200) {
           ElMessage.error(data.msg || 'Error')
           return Promise.reject(new Error(data.msg || 'Error'))
@@ -117,11 +118,11 @@ class Request {
       (error) => {
         const { message } = error
         if (message === 'Network Error') {
-          ElMessage.error('后端接口连接异常')
+          ElMessage.error(i18n.global.t('message.networkError'))
         } else if (message.includes('timeout')) {
-          ElMessage.error('系统接口请求超时')
+          ElMessage.error(i18n.global.t('message.timeout'))
         } else {
-          ElMessage.error(message || '系统异常')
+          ElMessage.error(message || i18n.global.t('message.systemError'))
         }
         return Promise.reject(error)
       }

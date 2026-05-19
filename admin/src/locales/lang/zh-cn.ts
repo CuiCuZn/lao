@@ -12,6 +12,7 @@ export default {
       completedDescription: '主治医师已下达诊断及处方医嘱，复核无误后可进行单据归档打印。',
       visitDate: '就诊日期',
       visitDuration: '接诊时长',
+      durationMinuteSecond: '{minutes}分{seconds}秒',
       visitId: '就诊ID',
       patientInfo: '患者基本信息',
       consultationInfo: '就诊信息',
@@ -101,7 +102,9 @@ export default {
     selectStatus: '请选择状态',
     addSuccess: '新增成功',
     editSuccess: '修改成功',
-    operateSuccess: '操作成功'
+    operateSuccess: '操作成功',
+    backHome: '返回首页',
+    exportPending: '正在导出，请稍后...'
   },
   login: {
     title: '院端管理后台',
@@ -130,6 +133,9 @@ export default {
     phrases: '临床常用语',
     inputDeptName: '请输入科室名称',
     inputDeptCode: '请输入科室编码',
+    inputLeader: '请输入负责人',
+    inputPhone: '请输入电话',
+    inputPhrase: '请输入诊疗常用语 (如: 饮食清淡)',
     selectDeptType: '请选择科室类型',
     selectStatus: '请选择科室状态',
     clinical: '临床科室',
@@ -156,15 +162,22 @@ export default {
     remark: '备注',
     inputNickName: '请输入医师姓名',
     inputUserName: '请输入系统账号',
+    inputPassword: '请输入登录密码',
+    inputJobNumber: '请输入工号',
     inputPhonenumber: '请输入工作电话',
     selectDept: '请指定所属科室',
     inputTitle: '请输入临床职称',
+    selectRole: '请选择角色',
+    invalidPhone: '请输入正确的手机号码',
     addDoctor: '新增医师',
     editDoctor: '修改医师信息',
     doctorDetail: '医师执业详情',
     confirmStatus: '确认要{operate}该医师账号吗？',
     resetPwd: '重置登录密钥',
-    confirmResetPwd: '确认要重置该医师的登录密钥吗？'
+    confirmResetPwd: '确认要重置该医师的登录密钥吗？',
+    newPasswordPrompt: '请输入 "{name}" 的新密码',
+    passwordLength: '密码长度需在 5 到 20 个字符之间',
+    resetPwdSuccess: '重置成功'
   },
   record: {
     caseId: '就诊ID',
@@ -179,12 +192,24 @@ export default {
     selectVisitDate: '请选择接诊日期'
   },
   message: {
-    noPermission: '当前账号没有权限进入该系统'
+    noPermission: '当前账号没有权限进入该系统',
+    sessionExpired: '无效的会话，或者会话已过期，请重新登录。',
+    authCheckFailed: '身份校验失败',
+    networkError: '后端接口连接异常',
+    timeout: '系统接口请求超时',
+    systemError: '系统异常'
   },
   menu: {
+    brand: '壮医诊疗管理系统',
     doctorMgmt: '医师档案管理',
     deptMgmt: '科室编制管理',
     recordMgmt: '诊疗记录审计',
     adminSystem: '院端数据总控台'
+  },
+  error: {
+    notFoundDesc: '抱歉，页面不存在。'
+  },
+  route: {
+    login: '登录'
   }
 }

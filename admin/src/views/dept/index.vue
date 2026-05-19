@@ -118,12 +118,12 @@
           </el-col>
           <el-col :span="12">
             <el-form-item :label="t('dept.leader')" prop="departmentPrincipal">
-              <el-input v-model="form.departmentPrincipal" placeholder="请输入负责人" />
+              <el-input v-model="form.departmentPrincipal" :placeholder="t('dept.inputLeader')" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item :label="t('dept.phone')" prop="departmentPhone">
-              <el-input v-model="form.departmentPhone" placeholder="请输入电话" />
+              <el-input v-model="form.departmentPhone" :placeholder="t('dept.inputPhone')" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -140,7 +140,7 @@
         <el-divider content-position="left">{{ t('dept.phrases') }}</el-divider>
         <div class="phrases-section">
           <div v-for="(phrase, index) in form.phrases" :key="index" class="phrase-item">
-            <el-input v-if="form.phrases" v-model="form.phrases[index]" placeholder="请输入诊疗常用语 (如: 饮食清淡)" style="width: 80%" />
+            <el-input v-if="form.phrases" v-model="form.phrases[index]" :placeholder="t('dept.inputPhrase')" style="width: 80%" />
             <el-button v-if="!isView" type="danger" link :icon="Minus" @click="removePhrase(index)" />
           </div>
           <el-button v-if="!isView" type="primary" link :icon="Plus" @click="addPhrase">{{ t('dept.addPhrase') }}</el-button>
@@ -222,8 +222,8 @@ const rules = {
   departmentName: [{ required: true, message: t('dept.inputDeptName'), trigger: 'blur' }],
   departmentCode: [{ required: true, message: t('dept.inputDeptCode'), trigger: 'blur' }],
   departmentType: [{ required: true, message: t('dept.selectDeptType'), trigger: 'change' }],
-  departmentPrincipal: [{ required: true, message: '请输入负责人', trigger: 'blur' }],
-  departmentPhone: [{ required: true, message: '请输入电话', trigger: 'blur' }]
+  departmentPrincipal: [{ required: true, message: t('dept.inputLeader'), trigger: 'blur' }],
+  departmentPhone: [{ required: true, message: t('dept.inputPhone'), trigger: 'blur' }]
 }
 
 // 2. 核心逻辑方法
@@ -345,7 +345,7 @@ const handleDelete = async (row: DeptVO) => {
  * 导出操作
  */
 const handleExport = () => {
-  ElMessage.info('正在导出，请稍后...')
+  ElMessage.info(t('common.exportPending'))
 }
 
 /**
