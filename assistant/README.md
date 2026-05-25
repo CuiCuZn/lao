@@ -83,6 +83,8 @@ assistant/
 - `/lao-api`：后端业务接口，转发时移除 `/lao-api` 前缀。
 - `/resource`：WebSocket 资源通道。
 
+视频问诊聊天使用 `/resource/websocket` WebSocket 通道。连接成功后，前端每 10 秒发送一次 `{"type":"ping"}` 作为保活心跳；该心跳只负责保持连接活跃，不依赖后端响应，也不触发自动重连。离开问诊页或关闭连接时会停止心跳定时器。
+
 ## 安装与启动
 
 ```bash
