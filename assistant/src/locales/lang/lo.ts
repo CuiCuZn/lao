@@ -101,9 +101,7 @@ export default {
       incomplete: 'ຍັງບໍ່ສໍາເລັດ',
       viewDetail: 'ເບິ່ງລາຍລະອຽດ',
       patientAgeGender: '{age} ປີ/{gender}',
-      doctorMeta: '{title}--{department}',
-      male: 'ຊາຍ',
-      female: 'ຍິງ'
+      doctorMeta: '{title}--{department}'
     },
     pendingRecords: {
       pageTitle: 'ລາຍການຍັງບໍ່ສໍາເລັດ',
@@ -127,9 +125,7 @@ export default {
       reconnectFailed: 'ການເຊື່ອມຕໍ່ຄືນລົ້ມເຫຼວ ກະລຸນາລອງໃໝ່ພາຍຫຼັງ',
       reconnectMissingTargets: 'ບໍ່ພົບຂໍ້ມູນແພດເດີມ ຫຼື ຄົນໄຂ້ ຈຶ່ງບໍ່ສາມາດເຊື່ອມຕໍ່ຄືນໄດ້',
       patientAgeGender: '{age} ປີ/{gender}',
-      doctorMeta: '{title}--{department}',
-      male: 'ຊາຍ',
-      female: 'ຍິງ'
+      doctorMeta: '{title}--{department}'
     },
     caseResult: {
       pageTitle: 'ຜົນການກວດຮັກສາ',
@@ -144,6 +140,7 @@ export default {
       completedDescription: 'ແພດໄດ້ອອກຜົນວິນິດໄສ ແລະ ໃບສັ່ງຢາແລ້ວ ກະລຸນາກວດກ່ອນຈັດເກັບ.',
       visitDate: 'ວັນທີ່ກວດ',
       visitDuration: 'ໄລຍະເວລາການກວດ',
+      callDuration: 'ໄລຍະເວລາໂທ',
       durationMinuteSecond: '{minutes} ນາທີ {seconds} ວິນາທີ',
       visitId: 'ID ການກວດ',
       patientInfo: 'ຂໍ້ມູນພື້ນຖານຄົນໄຂ້',
@@ -201,8 +198,6 @@ export default {
       chi: 'ສ່ວນເລິກ',
       drugName: 'ຊື່ຢາສະໝຸນໄພ',
       dosage: 'ປະລິມານ',
-      male: 'ຊາຍ',
-      female: 'ຍິງ',
       notAvailable: 'ບໍ່ມີຂໍ້ມູນ',
       noDiagnosisData: 'ຍັງບໍ່ມີຜົນຈາກເຄື່ອງວິນິດໄສ 4 ດ້ານ',
       noPrescription: 'ການກວດຄັ້ງນີ້ບໍ່ມີໃບສັ່ງຢາ',
@@ -263,10 +258,6 @@ export default {
         maritalStatus: 'ສະຖານະການແຕ່ງງານ',
         medicalAccount: 'ຂໍ້ມູນປະກັນສຸຂະພາບ',
         address: 'ທີ່ຢູ່ອາໄສ'
-      },
-      sexOptions: {
-        male: 'ຊາຍ',
-        female: 'ຍິງ'
       },
       maritalStatusOptions: {
         unmarried: 'ຍັງບໍ່ແຕ່ງງານ',
@@ -343,6 +334,8 @@ export default {
         retrySubtitle: 'ລອງຄຳບັນຍາຍອີກຄັ້ງ',
         subtitleEmptyTitle: 'ຫຼັງຈາກເຂົ້າຫ້ອງ ລະບົບຈະເປີດຄຳບັນຍາຍໃຫ້ອັດຕະໂນມັດ.',
         subtitleEmptyDescription: 'ເມື່ອຝ່າຍໃດຝ່າຍໜຶ່ງເວົ້າ ເນື້ອຫາສອງພາສາຈະຖືກສະແດງທີ່ນີ້.',
+        subtitleSingleLanguageEmptyTitle: 'ຫຼັງຈາກເຂົ້າຫ້ອງ ລະບົບຈະເປີດການຖອດສຽງໃຫ້ອັດຕະໂນມັດ.',
+        subtitleSingleLanguageEmptyDescription: 'ເນື້ອຫາການສົນທະນາຈະສະແດງເປັນພາສາຈີນຢູ່ທີ່ນີ້.',
         translation: 'ຄຳແປ',
         recognizing: 'ກຳລັງຮັບຮູ້...',
         sourceText: 'ຂໍ້ຄວາມຕົ້ນສະບັບ',
@@ -424,6 +417,10 @@ export default {
         resendRequestFailed: 'ສົ່ງຄໍາຂໍອີກຄັ້ງບໍ່ສໍາເລັດ ກະລຸນາຈັດການພາຍຫຼັງ.',
         handleLater: 'ຈັດການພາຍຫຼັງ',
         completedMessage: 'ການກວດຄັ້ງນີ້ສຳເລັດແລ້ວ',
+        leaveConfirmTitle: 'ການກວດຍັງບໍ່ສຳເລັດ ຕ້ອງການວາງສາຍບໍ?',
+        leaveConfirmDescription: 'ຫຼັງຈາກວາງສາຍ ສາມາດເຊື່ອມຕໍ່ໃໝ່ໄດ້',
+        leaveConfirmCancel: 'ກັບຄືນ',
+        leaveConfirmConfirm: 'ຢືນຢັນວາງສາຍ',
         cameraLabels: {
           sideScanner: 'ກ້ອງຖ່າຍເອກະສານດ້ານຂ້າງ',
           patientCamera: 'ກ້ອງຄົນໄຂ້',

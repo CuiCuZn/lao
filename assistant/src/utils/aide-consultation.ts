@@ -10,6 +10,7 @@ interface AideConsultationNavigationPayload {
   doctorName: string
   goodAt?: string
   roomId: string
+  consultationLang?: 'lo' | 'cn'
 }
 
 const takeOptionalText = (value: unknown) => {
@@ -40,6 +41,18 @@ const resolveCurrentAideUserId = async () => {
   return resolveUserStoreId()
 }
 
+const resolveConsultationLang = (value?: string) => {
+  if (value === 'cn' || value === 'zh-cn') {
+    return 'cn' as const
+  }
+
+  if (value === 'lo') {
+    return 'lo' as const
+  }
+
+  return localStorage.getItem('lang') === 'zh-cn' ? 'cn' : 'lo'
+}
+
 export async function navigateToAideConsultationRoom(
   router: Router,
   payload: AideConsultationNavigationPayload,
@@ -52,12 +65,13 @@ export async function navigateToAideConsultationRoom(
   const doctorName = takeOptionalText(payload.doctorName)
   const caseId = takeOptionalText(payload.caseId)
   const goodAt = takeOptionalText(payload.goodAt)
+  const consultationLang = resolveConsultationLang(payload.consultationLang)
 
   if (!aideUserId || !roomId || !patientId || !doctorId) {
     throw new Error('missingParams')
   }
 
-  const primaryChannelId = `${roomId}_lo`
+  const primaryChannelId = consultationLang === 'cn' ? `${roomId}_cn` : `${roomId}_lo`
   const secondaryChannelId = `${roomId}_cn`
   const videoIdPromise = caseId
     ? getVideoId(caseId)
@@ -73,17 +87,19 @@ export async function navigateToAideConsultationRoom(
       channelId: primaryChannelId,
       userId: aideUserId
     }),
-    getVideoToken({
-      channelId: secondaryChannelId,
-      userId: aideUserId
-    }),
+    consultationLang === 'lo'
+      ? getVideoToken({
+          channelId: secondaryChannelId,
+          userId: aideUserId
+        })
+      : Promise.resolve(null),
     videoIdPromise
   ])
 
   const token = takeOptionalText(primaryResponse?.data)
   const secondaryToken = takeOptionalText(secondaryResponse?.data)
 
-  if (!token || !secondaryToken) {
+  if (!token || (consultationLang === 'lo' && !secondaryToken)) {
     throw new Error('missingParams')
   }
 
@@ -94,6 +110,7 @@ export async function navigateToAideConsultationRoom(
     doctorName,
     goodAt,
     roomId,
+    consultationLang,
     ...(caseId ? { caseId } : {}),
     ...(videoId ? { videoId } : {})
   })
@@ -102,12 +119,13 @@ export async function navigateToAideConsultationRoom(
     path: '/assistant/aide/consultation',
     query: {
       token,
-      secondaryToken,
+      ...(secondaryToken ? { secondaryToken } : {}),
       channelId: roomId,
       userId: aideUserId,
       patientId,
       doctorId,
       doctorName,
+      consultationLang,
       ...(goodAt ? { goodAt } : {}),
       ...(caseId ? { caseId } : {}),
       ...(videoId ? { videoId } : {})

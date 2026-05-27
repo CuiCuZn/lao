@@ -10,7 +10,6 @@
           <el-dropdown-menu>
             <el-dropdown-item command="zh-cn">{{ t('language.zhCn') }}</el-dropdown-item>
             <el-dropdown-item command="lo">{{ t('language.lo') }}</el-dropdown-item>
-            <el-dropdown-item command="en">{{ t('language.en') }}</el-dropdown-item>
           </el-dropdown-menu>
         </template>
       </el-dropdown>
@@ -88,8 +87,7 @@ const { locale, t } = useI18n()
 const currentLangName = computed(() => {
   const map: Record<string, string> = {
     'zh-cn': t('language.zhCn'),
-    lo: t('language.lo'),
-    en: t('language.en')
+    lo: t('language.lo')
   }
   return map[locale.value] || t('language.zhCn')
 })

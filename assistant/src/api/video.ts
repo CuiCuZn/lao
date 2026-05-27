@@ -52,7 +52,11 @@ export function getVideoTime(videoId: string | number): Promise<VideoTimeRespons
 }
 
 export function openVideoSubtitle(data: VideoOpenSubtitleParams): Promise<VideoOpenSubtitleResponse> {
-  return request.post('/video/openSubtitle', data)
+  return request.post('/video/openSubtitle', data, {
+    headers: {
+      silentError: true
+    }
+  })
 }
 
 export function closeVideoSubtitle(data: VideoCloseSubtitleParams): Promise<VideoCloseSubtitleResponse> {

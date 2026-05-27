@@ -149,6 +149,12 @@ const resolveHistoryTexts = (record: Record<string, unknown>) => {
       contentCn = sourceText
       contentLo = translatedText
     }
+  } else if (sourceText && !translatedText) {
+    if (sourceLanguage === 'lo' || sourceLanguage === 'lao') {
+      contentLo = sourceText
+    } else {
+      contentCn = sourceText
+    }
   }
 
   return {
@@ -169,7 +175,7 @@ const normalizeHistoryItem = (
   const { contentCn, contentLo } = resolveHistoryTexts(rawItem)
   const isDoctor = resolveHistoryDoctorFlag(rawItem)
 
-  if (!contentCn || !contentLo || isDoctor === null) {
+  if ((!contentCn && !contentLo) || isDoctor === null) {
     return null
   }
 

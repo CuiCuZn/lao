@@ -18,6 +18,7 @@
         </span>
 
         <button
+          v-if="translationEnabled"
           type="button"
           class="language-toggle"
           :class="{ 'is-active': showBilingual }"
@@ -58,26 +59,26 @@
             :class="[
               'message-bubble',
               item.side === 'self' ? 'bubble-self' : 'bubble-remote',
-              !showBilingual ? 'message-bubble--translated-only' : ''
+              !effectiveShowBilingual ? 'message-bubble--translated-only' : ''
             ]"
           >
-            <div v-if="showBilingual && item.sourceText" class="message-section">
+            <div v-if="effectiveShowBilingual && item.sourceText" class="message-section">
               <p class="section-title">{{ formatLanguageLabel(item.sourceLanguage) }}</p>
               <p class="message-text">{{ item.sourceText }}</p>
             </div>
 
-            <div v-if="showBilingual && item.sourceText && item.translatedText" class="message-divider" />
+            <div v-if="effectiveShowBilingual && item.sourceText && item.translatedText" class="message-divider" />
 
             <div
-              v-if="showBilingual ? item.translatedText : true"
-              :class="['message-section', !showBilingual ? 'message-section--translated-only' : '']"
+              v-if="effectiveShowBilingual ? item.translatedText : true"
+              :class="['message-section', !effectiveShowBilingual ? 'message-section--translated-only' : '']"
             >
-              <p v-if="showBilingual" class="section-title section-title--translated">{{ t('doctorVideo.consultation.translation') }}</p>
+              <p v-if="effectiveShowBilingual" class="section-title section-title--translated">{{ t('doctorVideo.consultation.translation') }}</p>
               <p
                 :class="[
                   'message-text',
                   'translated-text',
-                  !showBilingual && isSingleLanguageDisplayPending(item) ? 'message-text--pending' : ''
+                  !effectiveShowBilingual && isSingleLanguageDisplayPending(item) ? 'message-text--pending' : ''
                 ]"
               >
                 {{ resolveDisplayText(item) }}
@@ -91,8 +92,8 @@
     </div>
 
     <div v-else class="empty-state">
-      <p>{{ t('doctorVideo.consultation.subtitleEmptyTitle') }}</p>
-      <p>{{ t('doctorVideo.consultation.subtitleEmptyDescription') }}</p>
+      <p>{{ translationEnabled ? t('doctorVideo.consultation.subtitleEmptyTitle') : t('doctorVideo.consultation.subtitleSingleLanguageEmptyTitle') }}</p>
+      <p>{{ translationEnabled ? t('doctorVideo.consultation.subtitleEmptyDescription') : t('doctorVideo.consultation.subtitleSingleLanguageEmptyDescription') }}</p>
     </div>
 
     <div class="composer-panel">
@@ -148,14 +149,18 @@ interface Props {
   chatInputDisabled?: boolean
   chatSendDisabled?: boolean
   chatStatusText?: string
+  translationEnabled?: boolean
   onChatInput?: (value: string) => void
   onChatSend?: () => void | Promise<void>
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  translationEnabled: true
+})
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
 const showBilingual = ref(false)
+const effectiveShowBilingual = computed(() => props.translationEnabled && showBilingual.value)
 const sendDisabled = computed(() => {
   return Boolean(
     props.chatInputDisabled ||
@@ -192,10 +197,18 @@ const hasSourceText = (item: SubtitleTimelineItem) => {
 }
 
 const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
+  if (!props.translationEnabled) {
+    return !(item.sourceText?.trim() || item.translatedText?.trim())
+  }
+
   return item.side === 'remote' && !hasTranslatedText(item)
 }
 
 const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
+  if (!props.translationEnabled) {
+    return item.sourceText?.trim() || item.translatedText?.trim() || t('doctorVideo.consultation.translationPending')
+  }
+
   if (item.side === 'self') {
     return item.sourceText?.trim() || item.translatedText?.trim() || ''
   }
@@ -208,7 +221,7 @@ const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
 }
 
 const resolveDisplayText = (item: SubtitleTimelineItem) => {
-  if (showBilingual.value) {
+  if (effectiveShowBilingual.value) {
     return item.translatedText
   }
 

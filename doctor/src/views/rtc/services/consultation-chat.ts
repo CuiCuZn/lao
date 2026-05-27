@@ -13,6 +13,8 @@ interface ConsultationChatServiceOptions {
 }
 
 const OUTGOING_DEDUP_WINDOW = 3_000
+const HEARTBEAT_INTERVAL = 10_000
+const HEARTBEAT_PAYLOAD = JSON.stringify({ type: 'ping' })
 
 const isRecord = (value: unknown): value is Record<string, unknown> => {
   return typeof value === 'object' && value !== null
@@ -102,7 +104,7 @@ const resolveChatPayload = (
     takeOptionalText(payloadRecord?.recordLo) ||
     takeOptionalText(payloadRecord?.translation)
 
-  if (!contentCn || !contentLo) {
+  if (!contentCn && !contentLo) {
     return null
   }
 
@@ -130,7 +132,27 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
   let activeConnectionId = 0
   let connectPromise: Promise<void> | null = null
   let manualClose = false
+  let heartbeatTimer: number | null = null
   const recentOutgoingMap = new Map<string, number>()
+
+  const stopHeartbeat = () => {
+    if (heartbeatTimer === null) {
+      return
+    }
+
+    window.clearInterval(heartbeatTimer)
+    heartbeatTimer = null
+  }
+
+  const startHeartbeat = (socket: WebSocket) => {
+    stopHeartbeat()
+
+    heartbeatTimer = window.setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(HEARTBEAT_PAYLOAD)
+      }
+    }, HEARTBEAT_INTERVAL)
+  }
 
   const pruneRecentOutgoingMap = () => {
     const now = Date.now()
@@ -152,6 +174,7 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
     manualClose = true
     activeConnectionId += 1
     connectPromise = null
+    stopHeartbeat()
 
     const activeSocket = socketRef.value
     socketRef.value = null
@@ -179,6 +202,7 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
     manualClose = false
     connectionStatus.value = 'connecting'
     const connectionId = ++activeConnectionId
+    stopHeartbeat()
 
     connectPromise = (async () => {
       try {
@@ -205,6 +229,7 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
 
             settled = true
             connectionStatus.value = 'connected'
+            startHeartbeat(socket)
             resolve()
           })
 
@@ -243,6 +268,10 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
           })
 
           socket.addEventListener('error', () => {
+            if (connectionId === activeConnectionId) {
+              stopHeartbeat()
+            }
+
             const error = new Error('Doctor consultation chat websocket connection failed.')
 
             if (!settled) {
@@ -255,6 +284,10 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
           })
 
           socket.addEventListener('close', () => {
+            if (connectionId === activeConnectionId) {
+              stopHeartbeat()
+            }
+
             socketRef.value = null
 
             if (!manualClose && connectionId === activeConnectionId) {
@@ -270,6 +303,10 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
           })
         })
       } catch (error) {
+        if (connectionId === activeConnectionId) {
+          stopHeartbeat()
+        }
+
         socketRef.value = null
         connectionStatus.value = manualClose ? 'closed' : 'error'
         await emitError(error)
@@ -303,7 +340,7 @@ export const createDoctorConsultationChatService = (options: ConsultationChatSer
     const normalizedContentCn = takeOptionalText(contentCn)
     const normalizedContentLo = takeOptionalText(contentLo)
 
-    if (!normalizedPatientId || !normalizedDoctorAideId || normalizedRole === undefined || !normalizedContentCn || !normalizedContentLo) {
+    if (!normalizedPatientId || !normalizedDoctorAideId || normalizedRole === undefined || (!normalizedContentCn && !normalizedContentLo)) {
       throw new Error('Doctor consultation chat payload is incomplete.')
     }
 

@@ -7,7 +7,7 @@ import { generateAesKey, encryptBase64, encryptWithAes } from '@/utils/crypto'
 import { encrypt as rsaEncrypt } from '@/utils/jsencrypt'
 
 let isReloginShow = false
-const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+const supportedLocales = ['zh-cn', 'lo'] as const
 type SupportedLocale = typeof supportedLocales[number]
 
 const encryptHeader = 'encrypt-key'
@@ -53,8 +53,7 @@ class Request {
         }
         const langMap: Record<string, string> = {
           'zh-cn': 'zh_CN',
-          lo: 'lo_LA',
-          en: 'en_US'
+          lo: 'lo_LA'
         }
         config.headers['content-language'] = langMap[currentLang] || 'zh_CN'
         ;(config as InternalAxiosRequestConfig & { __silentError?: boolean }).__silentError = silentError

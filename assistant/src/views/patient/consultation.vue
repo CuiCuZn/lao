@@ -28,6 +28,8 @@
           :chat-send-disabled="chatSendDisabled"
           :chat-status-text="chatStatusText"
           :show-chat-composer="false"
+          :translation-enabled="translationEnabled"
+          :primary-language="consultationLang"
           :on-chat-input="handleChatInput"
           :on-chat-send="handleChatSend"
         />
@@ -163,6 +165,11 @@ const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId
 const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
+const consultationLang = computed<'lo' | 'cn'>(() => {
+  const rawLang = queryValue('consultationLang') || sessionStore.consultationLang
+  return rawLang === 'cn' || rawLang === 'zh-cn' ? 'cn' : 'lo'
+})
+const translationEnabled = computed(() => consultationLang.value === 'lo')
 const pageError = ref('')
 const consultationDuration = ref('00:00:00')
 const chatDraft = ref('')
@@ -272,6 +279,17 @@ const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
 const resolveSubtitleSavePayload = (item: SubtitleTimelineItem) => {
   const sourceText = item.sourceText.trim()
   const translatedText = item.translatedText.trim()
+
+  if (!translationEnabled.value) {
+    if (!item.sourceFinal || !sourceText) {
+      return null
+    }
+
+    return {
+      recordCn: sourceText,
+      recordLo: ''
+    }
+  }
 
   if (!item.sourceFinal || !item.translatedFinal || !sourceText || !translatedText) {
     return null
@@ -388,6 +406,7 @@ const timeline = usePatientSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || userId.value,
   getCurrentUserName: () => patientName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value),
+  getTranslationEnabled: () => translationEnabled.value,
   onFinalizedItem: handleSubtitleFinalized
 })
 
@@ -419,13 +438,14 @@ const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
 const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
   items.forEach((item) => {
     const speaker = resolveHistorySpeaker(item)
+    const sourceText = translationEnabled.value ? item.contentLo : item.contentCn || item.contentLo
     timeline.appendHistoryMessage({
       ...speaker,
       messageType: item.messageType,
-      sourceText: item.contentLo,
-      translatedText: item.contentCn,
-      sourceLanguage: 'lo',
-      targetLanguage: 'cn',
+      sourceText,
+      translatedText: translationEnabled.value ? item.contentCn : '',
+      sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -474,8 +494,10 @@ const chat = createPatientConsultationChatService({
 
     timeline.appendManualMessage({
       ...sender,
-      sourceText: contentLo,
-      translatedText: contentCn
+      sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
+      translatedText: translationEnabled.value ? contentCn : '',
+      sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : 'cn'
     })
   },
   onError: (error) => {
@@ -580,8 +602,10 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerId: currentUserId,
     speakerName: patientName.value,
     side: 'self',
-    sourceText: payload.contentLo,
-    translatedText: payload.contentCn
+    sourceText: translationEnabled.value ? payload.contentLo : payload.contentCn || payload.contentLo,
+    translatedText: translationEnabled.value ? payload.contentCn : '',
+    sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+    targetLanguage: translationEnabled.value ? 'cn' : 'cn'
   })
 }
 
@@ -614,14 +638,15 @@ const handleChatSend = async () => {
   chatSending.value = true
 
   try {
-    const translationResponse = await translateConsultationText({
-      source: 'lo',
-      to: 'cn',
-      text: normalizedText
-    })
-    const contentCn = resolveTranslationText(translationResponse?.data)
+    const contentCn = translationEnabled.value
+      ? resolveTranslationText((await translateConsultationText({
+          source: 'lo',
+          to: 'cn',
+          text: normalizedText
+        }))?.data)
+      : normalizedText
     const payload = {
-      contentLo: normalizedText,
+      contentLo: translationEnabled.value ? normalizedText : '',
       contentCn
     }
 
@@ -639,7 +664,7 @@ const handleChatSend = async () => {
         caseId,
         isDoctor: 1,
         contentCn,
-        contentLo: normalizedText
+        contentLo: translationEnabled.value ? normalizedText : ''
       })
     ])
 
@@ -790,7 +815,8 @@ const bootstrapConsultation = async () => {
       userName,
       token: token.value,
       secondaryToken: secondaryToken.value,
-      language: 'lo'
+      language: consultationLang.value,
+      translationEnabled: translationEnabled.value
     })
     void startConsultationDuration(consultationVideoId.value)
 
@@ -867,6 +893,7 @@ const handleVideoRoomCreated = async (payload: {
   doctorName: string
   goodAt?: string
   roomId: string
+  consultationLang?: string
 }) => {
   const caseId = takeOptionalText(payload.caseId)
   if (!payload.roomId || payload.roomId === channelId.value || !isCurrentConsultationContext({ patientId: payload.patientId, caseId })) {
@@ -874,7 +901,8 @@ const handleVideoRoomCreated = async (payload: {
   }
 
   try {
-    const primaryChannelId = `${payload.roomId}_lo`
+    const nextConsultationLang = payload.consultationLang === 'cn' ? 'cn' : 'lo'
+    const primaryChannelId = nextConsultationLang === 'cn' ? `${payload.roomId}_cn` : `${payload.roomId}_lo`
     const secondaryChannelId = `${payload.roomId}_cn`
     const videoIdPromise = caseId
       ? getVideoId(caseId)
@@ -889,15 +917,17 @@ const handleVideoRoomCreated = async (payload: {
         channelId: primaryChannelId,
         userId: payload.patientId
       }),
-      getVideoToken({
-        channelId: secondaryChannelId,
-        userId: payload.patientId
-      }),
+      nextConsultationLang === 'lo'
+        ? getVideoToken({
+            channelId: secondaryChannelId,
+            userId: payload.patientId
+          })
+        : Promise.resolve(null),
       videoIdPromise
     ])
     const nextToken = takeOptionalText(primaryResponse?.data)
     const nextSecondaryToken = takeOptionalText(secondaryResponse?.data)
-    if (!nextToken || !nextSecondaryToken) {
+    if (!nextToken || (nextConsultationLang === 'lo' && !nextSecondaryToken)) {
       return
     }
 
@@ -913,6 +943,7 @@ const handleVideoRoomCreated = async (payload: {
       doctorName: payload.doctorName,
       goodAt: takeOptionalText(payload.goodAt),
       roomId: payload.roomId,
+      consultationLang: nextConsultationLang,
       ...(caseId ? { caseId } : {}),
       ...(nextVideoId ? { videoId: nextVideoId } : {})
     })
@@ -921,11 +952,12 @@ const handleVideoRoomCreated = async (payload: {
       path: '/assistant/patient/consultation',
       query: {
         token: nextToken,
-        secondaryToken: nextSecondaryToken,
+        ...(nextSecondaryToken ? { secondaryToken: nextSecondaryToken } : {}),
         channelId: payload.roomId,
         userId: payload.patientId,
         doctorId: payload.doctorId,
         doctorName: payload.doctorName,
+        consultationLang: nextConsultationLang,
         ...(payload.goodAt ? { goodAt: payload.goodAt } : {}),
         ...(caseId ? { caseId } : {}),
         ...(nextVideoId ? { videoId: nextVideoId } : {})

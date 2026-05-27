@@ -186,20 +186,18 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
 
   const syncFinalState = (item: SubtitleTimelineItem) => {
     const progress = ensureFieldProgress(item)
+    const translationEnabled = options.getTranslationEnabled?.() !== false
     item.sourceFinal = progress.source.isFinal
-    item.translatedFinal = progress.translated.isFinal
-    // Patient consultation always expects a bilingual row, so keep the item
-    // in draft state until both source and translated segments are finalized.
-    item.isFinal = item.sourceFinal && item.translatedFinal
+    item.translatedFinal = translationEnabled ? progress.translated.isFinal : true
+    item.isFinal = item.sourceFinal && (!translationEnabled || item.translatedFinal)
     syncSourceSentenceAlias(item)
 
     if (
       !options.onFinalizedItem ||
       notifiedFinalizedItems.has(item) ||
       !item.sourceFinal ||
-      !item.translatedFinal ||
       !item.sourceText.trim() ||
-      !item.translatedText.trim()
+      (translationEnabled && (!item.translatedFinal || !item.translatedText.trim()))
     ) {
       return
     }
@@ -460,10 +458,11 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     targetLanguage = 'cn',
     timestamp
   }: ManualTimelineMessageParams) => {
+    const translationEnabled = options.getTranslationEnabled?.() !== false
     const normalizedSourceText = sourceText.trim()
     const normalizedTranslatedText = translatedText.trim()
 
-    if (!normalizedSourceText || !normalizedTranslatedText) {
+    if (!normalizedSourceText || (translationEnabled && !normalizedTranslatedText)) {
       return undefined
     }
 
@@ -489,7 +488,7 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
       sequence,
       speakerSequence,
       sourceFinal: true,
-      translatedFinal: true,
+      translatedFinal: !translationEnabled || Boolean(normalizedTranslatedText),
       isFinal: true
     }
 

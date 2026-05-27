@@ -35,9 +35,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 import brandLogo from '@/assets/logo.png'
 
 const { t } = useI18n()
@@ -80,26 +81,12 @@ const calculateAge = (birthday?: string) => {
   return age >= 0 ? String(age) : ''
 }
 
-const formatSex = (value: unknown) => {
-  const normalized = String(value ?? '').trim().toLowerCase()
-
-  if (normalized === '0' || normalized === 'male' || normalized === '男') {
-    return t('assistant.intake.sexOptions.male')
-  }
-
-  if (normalized === '1' || normalized === 'female' || normalized === '女') {
-    return t('assistant.intake.sexOptions.female')
-  }
-
-  return t('common.notAvailable')
-}
-
 const patientName = computed(() => {
   return takeText(sessionStore.patientDetail, ['patientName', 'name']) || t('common.notAvailable')
 })
 
 const patientSex = computed(() => {
-  return formatSex(sessionStore.patientDetail?.patientSex)
+  return formatSexByDict(sessionStore.patientDetail?.patientSex, t('common.notAvailable'))
 })
 
 const patientAge = computed(() => {
@@ -125,6 +112,10 @@ const statusText = computed(() => {
   }
 
   return t('common.notAvailable')
+})
+
+onMounted(() => {
+  void loadSexDict()
 })
 </script>
 

@@ -13,6 +13,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
   const caseId = ref<string | number | undefined>(undefined)
   const videoId = ref<string | number | undefined>(undefined)
   const roomId = ref('')
+  const consultationLang = ref<'lo' | 'cn'>('lo')
   const loading = ref(false)
   const error = ref('')
 
@@ -23,6 +24,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     caseId.value = undefined
     videoId.value = undefined
     roomId.value = ''
+    consultationLang.value = 'lo'
   }
 
   const setCaseId = (nextCaseId?: string | number) => {
@@ -58,6 +60,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     caseId?: string | number
     videoId?: string | number
     roomId: string
+    consultationLang?: 'lo' | 'cn'
   }) => {
     patientId.value = payload.patientId
     doctorId.value = payload.doctorId
@@ -66,6 +69,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     caseId.value = payload.caseId
     videoId.value = payload.videoId
     roomId.value = payload.roomId
+    consultationLang.value = payload.consultationLang || consultationLang.value
   }
 
   const setDoctorInfo = (payload: { doctorId?: string; doctorName?: string; goodAt?: string }) => {
@@ -112,6 +116,7 @@ export const usePatientSessionStore = defineStore('patient-session', () => {
     caseId,
     videoId,
     roomId,
+    consultationLang,
     loading,
     error,
     syncPatientById,

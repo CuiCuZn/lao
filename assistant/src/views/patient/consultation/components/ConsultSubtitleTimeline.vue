@@ -18,6 +18,7 @@
         </span>
 
         <button
+          v-if="translationEnabled"
           type="button"
           class="language-toggle"
           :class="{ 'is-active': showBilingual }"
@@ -58,26 +59,26 @@
             :class="[
               'message-bubble',
               item.side === 'self' ? 'bubble-self' : 'bubble-remote',
-              !showBilingual ? 'message-bubble--translated-only' : ''
+              !effectiveShowBilingual ? 'message-bubble--translated-only' : ''
             ]"
           >
-            <div v-if="showBilingual && item.sourceText" class="message-section">
+            <div v-if="effectiveShowBilingual && item.sourceText" class="message-section">
               <p class="section-title">{{ formatLanguageLabel(item.sourceLanguage) }}</p>
               <p class="message-text">{{ item.sourceText }}</p>
             </div>
 
-            <div v-if="showBilingual && item.sourceText && item.translatedText" class="message-divider" />
+            <div v-if="effectiveShowBilingual && item.sourceText && item.translatedText" class="message-divider" />
 
             <div
-              v-if="showBilingual ? item.translatedText : true"
-              :class="['message-section', !showBilingual ? 'message-section--translated-only' : '']"
+              v-if="effectiveShowBilingual ? item.translatedText : true"
+              :class="['message-section', !effectiveShowBilingual ? 'message-section--translated-only' : '']"
             >
-              <p v-if="showBilingual" class="section-title section-title--translated">{{ t('assistant.patientVideo.consultation.translation') }}</p>
+              <p v-if="effectiveShowBilingual" class="section-title section-title--translated">{{ t('assistant.patientVideo.consultation.translation') }}</p>
               <p
                 :class="[
                   'message-text',
                   'translated-text',
-                  !showBilingual && isSingleLanguageDisplayPending(item) ? 'message-text--pending' : ''
+                  !effectiveShowBilingual && isSingleLanguageDisplayPending(item) ? 'message-text--pending' : ''
                 ]"
               >
                 {{ resolveDisplayText(item) }}
@@ -91,8 +92,8 @@
     </div>
 
     <div v-else class="empty-state">
-      <p>{{ t('assistant.patientVideo.consultation.subtitleEmptyTitle') }}</p>
-      <p>{{ t('assistant.patientVideo.consultation.subtitleEmptyDescription') }}</p>
+      <p>{{ translationEnabled ? t('assistant.patientVideo.consultation.subtitleEmptyTitle') : t('assistant.patientVideo.consultation.subtitleSingleLanguageEmptyTitle') }}</p>
+      <p>{{ translationEnabled ? t('assistant.patientVideo.consultation.subtitleEmptyDescription') : t('assistant.patientVideo.consultation.subtitleSingleLanguageEmptyDescription') }}</p>
     </div>
 
     <div v-if="showChatComposer" class="composer-panel">
@@ -149,16 +150,21 @@ interface Props {
   chatSendDisabled?: boolean
   chatStatusText?: string
   showChatComposer?: boolean
+  translationEnabled?: boolean
+  primaryLanguage?: string
   onChatInput?: (value: string) => void
   onChatSend?: () => void | Promise<void>
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showChatComposer: true
+  showChatComposer: true,
+  translationEnabled: true,
+  primaryLanguage: 'lo'
 })
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
 const showBilingual = ref(false)
+const effectiveShowBilingual = computed(() => props.translationEnabled && showBilingual.value)
 const sendDisabled = computed(() => {
   return Boolean(
     props.chatInputDisabled ||
@@ -199,6 +205,11 @@ const isLaoLanguage = (languageCode: string) => {
   return normalizedCode === 'lo' || normalizedCode === 'lao'
 }
 
+const isChineseLanguage = (languageCode: string) => {
+  const normalizedCode = languageCode?.trim().toLowerCase()
+  return normalizedCode === 'cn' || normalizedCode === 'zh' || normalizedCode === 'zh-cn'
+}
+
 const resolveLaoDisplayText = (item: SubtitleTimelineItem) => {
   const sourceText = item.sourceText?.trim() || ''
   const translatedText = item.translatedText?.trim() || ''
@@ -214,16 +225,34 @@ const resolveLaoDisplayText = (item: SubtitleTimelineItem) => {
   return ''
 }
 
+const resolvePrimaryLanguageDisplayText = (item: SubtitleTimelineItem) => {
+  if (!props.translationEnabled) {
+    return item.sourceText?.trim() || item.translatedText?.trim() || ''
+  }
+
+  if (props.primaryLanguage === 'cn') {
+    if (isChineseLanguage(item.sourceLanguage)) {
+      return item.sourceText?.trim() || ''
+    }
+
+    if (isChineseLanguage(item.targetLanguage)) {
+      return item.translatedText?.trim() || ''
+    }
+  }
+
+  return resolveLaoDisplayText(item)
+}
+
 const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
-  return !resolveLaoDisplayText(item)
+  return !resolvePrimaryLanguageDisplayText(item)
 }
 
 const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
-  return resolveLaoDisplayText(item) || t('assistant.patientVideo.consultation.translationPending')
+  return resolvePrimaryLanguageDisplayText(item) || t('assistant.patientVideo.consultation.translationPending')
 }
 
 const resolveDisplayText = (item: SubtitleTimelineItem) => {
-  if (showBilingual.value) {
+  if (effectiveShowBilingual.value) {
     return item.translatedText
   }
 

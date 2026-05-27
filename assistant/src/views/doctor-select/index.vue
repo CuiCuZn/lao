@@ -141,6 +141,7 @@ import { getPatientDetail } from '@/api/patient'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
 import { createAideVideoRoom } from '@/utils/aide-video-room'
 import { broadcastPatientContextSync } from '@/utils/patient-channel'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 
 interface DepartmentOption {
   id: string
@@ -214,20 +215,6 @@ const parseList = (response: Record<string, unknown> | null | undefined) => {
 
   const nestedRows = response?.data && typeof response.data === 'object' ? toArray((response.data as Record<string, unknown>).rows) : []
   return nestedRows
-}
-
-const formatSex = (value: unknown) => {
-  const normalized = String(value ?? '').trim().toLowerCase()
-
-  if (normalized === '0' || normalized === 'male' || normalized === '男') {
-    return t('assistant.intake.sexOptions.male')
-  }
-
-  if (normalized === '1' || normalized === 'female' || normalized === '女') {
-    return t('assistant.intake.sexOptions.female')
-  }
-
-  return t('common.notAvailable')
 }
 
 const calculateAge = (birthday?: string) => {
@@ -382,6 +369,7 @@ const loadPatientSummary = async () => {
     return false
   }
 
+  await loadSexDict()
   const response = await getPatientDetail(patientId)
   const detail = (response?.data || {}) as Record<string, unknown>
   const age = pickText(detail, ['patientAge']) || calculateAge(pickText(detail, ['patientBirthday']))
@@ -392,7 +380,7 @@ const loadPatientSummary = async () => {
 
   patientSummary.name = pickText(detail, ['patientName', 'name']) || t('common.notAvailable')
   patientSummary.ageLabel = age ? `${age}${t('assistant.doctorSelect.ageSuffix')}` : t('common.notAvailable')
-  patientSummary.sexLabel = formatSex(detail.patientSex)
+  patientSummary.sexLabel = formatSexByDict(detail.patientSex, t('common.notAvailable'))
   patientSummary.visitNo = pickText(detail, ['patientNumber', 'visitNo', 'visitNumber']) || t('common.notAvailable')
   patientSummary.complaint = complaint || t('common.notAvailable')
   patientSummary.caseId = (detail.caseId as string | number) || ''
@@ -489,10 +477,12 @@ const handleCreateRoom = async () => {
       throw new Error(t('assistant.doctorSelect.sseConnectFailed'))
     }
 
+    const consultationLang = localStorage.getItem('lang') === 'zh-cn' ? 'cn' : 'lo'
     const roomId = await createAideVideoRoom({
       patientId,
       caseId,
-      doctorId: selectedDoctorId.value
+      doctorId: selectedDoctorId.value,
+      consultationLang
     })
 
     await navigateToAideConsultationRoom(router, {
@@ -501,6 +491,7 @@ const handleCreateRoom = async () => {
       doctorName: selectedDoctor.value?.name || '',
       goodAt: selectedDoctor.value?.goodAt || '',
       roomId,
+      consultationLang,
       ...(caseId ? { caseId } : {})
     })
     ElMessage.success(t('assistant.doctorSelect.createRoomSuccess'))
@@ -550,6 +541,7 @@ watch(
 )
 
 onMounted(() => {
+  void loadSexDict()
   if (!getRoutePatientId()) {
     void redirectToHome()
     return

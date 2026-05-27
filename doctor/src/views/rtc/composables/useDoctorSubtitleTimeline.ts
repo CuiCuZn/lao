@@ -186,18 +186,18 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
 
   const syncFinalState = (item: SubtitleTimelineItem) => {
     const progress = ensureFieldProgress(item)
+    const translationEnabled = options.getTranslationEnabled?.() !== false
     item.sourceFinal = progress.source.isFinal
-    item.translatedFinal = progress.translated.isFinal
-    item.isFinal = item.sourceFinal && item.translatedFinal
+    item.translatedFinal = translationEnabled ? progress.translated.isFinal : true
+    item.isFinal = item.sourceFinal && (!translationEnabled || item.translatedFinal)
     syncSourceSentenceAlias(item)
 
     if (
       !options.onFinalizedItem ||
       notifiedFinalizedItems.has(item) ||
       !item.sourceFinal ||
-      !item.translatedFinal ||
       !item.sourceText.trim() ||
-      !item.translatedText.trim()
+      (translationEnabled && (!item.translatedFinal || !item.translatedText.trim()))
     ) {
       return
     }
@@ -458,10 +458,11 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
     targetLanguage = 'lo',
     timestamp
   }: ManualTimelineMessageParams) => {
+    const translationEnabled = options.getTranslationEnabled?.() !== false
     const normalizedSourceText = sourceText.trim()
     const normalizedTranslatedText = translatedText.trim()
 
-    if (!normalizedSourceText || !normalizedTranslatedText) {
+    if (!normalizedSourceText || (translationEnabled && !normalizedTranslatedText)) {
       return undefined
     }
 
@@ -487,7 +488,7 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
       sequence,
       speakerSequence,
       sourceFinal: true,
-      translatedFinal: true,
+      translatedFinal: !translationEnabled || Boolean(normalizedTranslatedText),
       isFinal: true
     }
 

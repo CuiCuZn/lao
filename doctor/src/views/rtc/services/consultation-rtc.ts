@@ -103,10 +103,10 @@ export const mergeRemoteUsers = (primaryUsers: any[], secondaryUsers: any[]) => 
     .filter((user): user is any => Boolean(user))
 }
 
-export const createConsultationClients = (): ConsultationRtcClients => {
+export const createConsultationClients = (translationEnabled = true): ConsultationRtcClients => {
   return {
     primaryClient: DingRTC.createClient(),
-    secondaryClient: DingRTC.createClient()
+    secondaryClient: translationEnabled ? DingRTC.createClient() : null
   }
 }
 
@@ -114,27 +114,29 @@ export const fetchConsultationTokens = async (
   params: PatientConsultationJoinParams
 ): Promise<{
   primaryChannelId: string
-  secondaryChannelId: string
-  secondaryLanguage: ConsultationLanguage
+  secondaryChannelId?: string
+  secondaryLanguage?: ConsultationLanguage
+  translationEnabled: boolean
   primaryTokenResult: RtcChannelTokenResult
-  secondaryTokenResult: RtcChannelTokenResult
+  secondaryTokenResult?: RtcChannelTokenResult
 }> => {
   const primaryChannelId = `${params.channelName}_${params.language}`
+  const translationEnabled = params.translationEnabled !== false
   const secondaryLanguage = params.language === 'cn' ? 'lo' : 'cn'
   const secondaryChannelId = `${params.channelName}_${secondaryLanguage}`
 
   let primaryTokenResult: RtcChannelTokenResult
-  let secondaryTokenResult: RtcChannelTokenResult
+  let secondaryTokenResult: RtcChannelTokenResult | undefined
 
   if (params.token) {
     primaryTokenResult = {
       token: params.token,
       gslb: params.gslb ? [params.gslb] : []
     }
-    secondaryTokenResult = {
+    secondaryTokenResult = translationEnabled ? {
       token: params.secondaryToken || params.token,
       gslb: params.gslb ? [params.gslb] : []
-    }
+    } : undefined
     // secondaryTokenResult = await getRtcChannelToken(
     //   params.userId,
     //   secondaryChannelId,
@@ -142,24 +144,28 @@ export const fetchConsultationTokens = async (
     //   params.appKey
     // )
   } else {
-    ;[primaryTokenResult, secondaryTokenResult] = await Promise.all([
-      getRtcChannelToken(params.userId, primaryChannelId, params.appId, params.appKey),
-      getRtcChannelToken(params.userId, secondaryChannelId, params.appId, params.appKey)
-    ])
+    if (translationEnabled) {
+      ;[primaryTokenResult, secondaryTokenResult] = await Promise.all([
+        getRtcChannelToken(params.userId, primaryChannelId, params.appId, params.appKey),
+        getRtcChannelToken(params.userId, secondaryChannelId, params.appId, params.appKey)
+      ])
+    } else {
+      primaryTokenResult = await getRtcChannelToken(params.userId, primaryChannelId, params.appId, params.appKey)
+    }
   }
 
   return {
     primaryChannelId,
-    secondaryChannelId,
-    secondaryLanguage,
+    ...(translationEnabled ? { secondaryChannelId, secondaryLanguage } : {}),
+    translationEnabled,
     primaryTokenResult,
-    secondaryTokenResult
+    ...(secondaryTokenResult ? { secondaryTokenResult } : {})
   }
 }
 
 export const joinConsultationChannels = async (
   primaryClient: DingRTCClient,
-  secondaryClient: DingRTCClient,
+  secondaryClient: DingRTCClient | null,
   params: PatientConsultationJoinParams
 ): Promise<ConsultationJoinRoomResult> => {
   const tokenResult = await fetchConsultationTokens(params)
@@ -178,24 +184,30 @@ export const joinConsultationChannels = async (
     userName: params.userName
   })
 
-  const secondaryResult = await secondaryClient.join({
-    appId: params.appId,
-    token: tokenResult.secondaryTokenResult.token,
-    uid: params.userId,
-    channel: tokenResult.secondaryChannelId,
-    userName: params.userName
-  })
+  const secondaryResult =
+    tokenResult.translationEnabled &&
+    secondaryClient &&
+    tokenResult.secondaryTokenResult &&
+    tokenResult.secondaryChannelId
+      ? await secondaryClient.join({
+          appId: params.appId,
+          token: tokenResult.secondaryTokenResult.token,
+          uid: params.userId,
+          channel: tokenResult.secondaryChannelId,
+          userName: params.userName
+        })
+      : undefined
 
   return {
     ...tokenResult,
     primaryResult,
-    secondaryResult
+    ...(secondaryResult ? { secondaryResult } : {})
   }
 }
 
 export const subscribeConsultationStreams = async (
   primaryClient: DingRTCClient,
-  secondaryClient: DingRTCClient,
+  secondaryClient: DingRTCClient | null,
   options: ConsultationStreamSubscriptionOptions
 ) => {
   const primarySubParams: SubscribeParam[] = [{ uid: 'mcu', mediaType: 'audio', auxiliary: false }]
@@ -211,7 +223,7 @@ export const subscribeConsultationStreams = async (
     }
   })
 
-  options.secondaryResult.remoteUsers.forEach((user) => {
+  options.secondaryResult?.remoteUsers.forEach((user) => {
     if (user.hasAuxiliary) {
       secondarySubParams.push({ uid: user.userId, mediaType: 'video', auxiliary: true })
     }
@@ -221,7 +233,7 @@ export const subscribeConsultationStreams = async (
     }
   })
 
-  await Promise.all([
+  const tasks: Promise<unknown>[] = [
     primaryClient.batchSubscribe(primarySubParams).then((results) => {
       results.forEach(({ error, track, uid }) => {
         if (error) {
@@ -238,8 +250,11 @@ export const subscribeConsultationStreams = async (
         options.onPrimaryRemoteUsersChanged([...primaryClient.remoteUsers])
         options.onPrimaryTrackStatsNeeded(uid)
       })
-    }),
-    secondaryClient.batchSubscribe(secondarySubParams).then((results) => {
+    })
+  ]
+
+  if (secondaryClient && options.secondaryResult) {
+    tasks.push(secondaryClient.batchSubscribe(secondarySubParams).then((results) => {
       results.forEach(({ error, track, uid }) => {
         if (error) {
           return
@@ -247,37 +262,42 @@ export const subscribeConsultationStreams = async (
 
         if (track && track.trackMediaType === 'audio') {
           const audioTrack = track as RemoteAudioTrack
-          options.onSecondaryAudioTrack(audioTrack)
+          options.onSecondaryAudioTrack?.(audioTrack)
           audioTrack.play()
           return
         }
 
-        options.onSecondaryRemoteUsersChanged([...secondaryClient.remoteUsers])
-        options.onSecondaryTrackStatsNeeded(uid)
+        options.onSecondaryRemoteUsersChanged?.([...secondaryClient.remoteUsers])
+        options.onSecondaryTrackStatsNeeded?.(uid)
       })
-    })
-  ])
+    }))
+  }
+
+  await Promise.all(tasks)
 }
 
 export const registerConsultationAsr = (
   primaryClient: DingRTCClient,
-  secondaryClient: DingRTCClient,
-  language: ConsultationLanguage
+  secondaryClient: DingRTCClient | null,
+  language: ConsultationLanguage,
+  translationEnabled = true
 ): ConsultationAsrRegistrationResult => {
   const secondaryLanguage = language === 'cn' ? 'lo' : 'cn'
   const primaryAsr = new ASR()
-  const secondaryAsr = new ASR()
+  const secondaryAsr = translationEnabled && secondaryClient ? new ASR() : null
 
   primaryClient.register(primaryAsr)
-  secondaryClient.register(secondaryAsr)
+  if (secondaryAsr && secondaryClient) {
+    secondaryClient.register(secondaryAsr)
+  }
 
-  primaryAsr.setCurrentTranslateLanguages([secondaryLanguage, 'source'])
-  secondaryAsr.setCurrentTranslateLanguages([language, 'source'])
+  primaryAsr.setCurrentTranslateLanguages(translationEnabled ? [secondaryLanguage, 'source'] : ['source'])
+  secondaryAsr?.setCurrentTranslateLanguages([language, 'source'])
 
   return {
     primaryAsr,
     secondaryAsr,
-    bindings: [
+    bindings: translationEnabled && secondaryAsr ? [
       {
         asr: primaryAsr,
         sourceLanguage: language,
@@ -286,6 +306,12 @@ export const registerConsultationAsr = (
       {
         asr: secondaryAsr,
         sourceLanguage: secondaryLanguage,
+        targetLanguage: language
+      }
+    ] : [
+      {
+        asr: primaryAsr,
+        sourceLanguage: language,
         targetLanguage: language
       }
     ]

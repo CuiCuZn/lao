@@ -48,7 +48,7 @@ const toOptionalText = (value: string | number | undefined) => {
   return normalizedValue || ''
 }
 
-const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+const supportedLocales = ['zh-cn', 'lo'] as const
 
 const syncLanguage = (lang: string) => {
   if (!supportedLocales.includes(lang as (typeof supportedLocales)[number])) {
@@ -57,6 +57,18 @@ const syncLanguage = (lang: string) => {
 
   locale.value = lang
   localStorage.setItem('lang', lang)
+}
+
+const resolveConsultationLang = (value?: string) => {
+  if (value === 'cn' || value === 'zh-cn') {
+    return 'cn' as const
+  }
+
+  if (value === 'lo') {
+    return 'lo' as const
+  }
+
+  return localStorage.getItem('lang') === 'zh-cn' ? 'cn' : 'lo'
 }
 
 onMounted(() => {
@@ -80,17 +92,19 @@ onMounted(() => {
       reconnectFailedMessage.value = ''
       const caseId = toOptionalText(message.payload.caseId)
       const goodAt = toOptionalText(message.payload.goodAt)
+      const consultationLang = resolveConsultationLang(message.payload.consultationLang)
       sessionStore.setVideoRoomContext({
         patientId: message.payload.patientId,
         doctorId: message.payload.doctorId,
         doctorName: message.payload.doctorName,
         goodAt,
         roomId: message.payload.roomId,
+        consultationLang,
         ...(caseId ? { caseId } : {})
       })
 
       try {
-        const primaryChannelId = `${message.payload.roomId}_lo`
+        const primaryChannelId = consultationLang === 'cn' ? `${message.payload.roomId}_cn` : `${message.payload.roomId}_lo`
         const secondaryChannelId = `${message.payload.roomId}_cn`
         const videoIdPromise = caseId
           ? getVideoId(caseId)
@@ -111,10 +125,12 @@ onMounted(() => {
             channelId: primaryChannelId,
             userId: message.payload.patientId
           }),
-          getVideoToken({
-            channelId: secondaryChannelId,
-            userId: message.payload.patientId
-          }),
+          consultationLang === 'lo'
+            ? getVideoToken({
+                channelId: secondaryChannelId,
+                userId: message.payload.patientId
+              })
+            : Promise.resolve(null),
           videoIdPromise
         ])
 
@@ -133,6 +149,7 @@ onMounted(() => {
           doctorName: message.payload.doctorName,
           goodAt,
           roomId: message.payload.roomId,
+          consultationLang,
           ...(caseId ? { caseId } : {}),
           ...(videoId ? { videoId } : {})
         })
@@ -141,11 +158,12 @@ onMounted(() => {
           path: '/assistant/patient/consultation',
           query: {
             token,
-            secondaryToken,
+            ...(secondaryToken ? { secondaryToken } : {}),
             channelId: message.payload.roomId,
             userId: message.payload.patientId,
             doctorId: message.payload.doctorId,
             doctorName: message.payload.doctorName,
+            consultationLang,
             ...(goodAt ? { goodAt } : {}),
             ...(caseId ? { caseId } : {}),
             ...(videoId ? { videoId } : {})

@@ -101,9 +101,7 @@ export default {
       incomplete: '未完成',
       viewDetail: '查看详情',
       patientAgeGender: '{age}岁/{gender}',
-      doctorMeta: '{title}--{department}',
-      male: '男',
-      female: '女'
+      doctorMeta: '{title}--{department}'
     },
     pendingRecords: {
       pageTitle: '未完成列表',
@@ -127,9 +125,7 @@ export default {
       reconnectFailed: '通道恢复失败，请稍后重试。',
       reconnectMissingTargets: '未找到原始诊疗信息，暂时无法恢复连接。',
       patientAgeGender: '{age}岁/{gender}',
-      doctorMeta: '{title}--{department}',
-      male: '男',
-      female: '女'
+      doctorMeta: '{title}--{department}'
     },
     caseResult: {
       pageTitle: '诊疗报告',
@@ -144,6 +140,7 @@ export default {
       completedDescription: '主治医师已下达诊断及处方医嘱，复核无误后可进行单据归档打印。',
       visitDate: '就诊日期',
       visitDuration: '接诊时长',
+      callDuration: '通话时长',
       durationMinuteSecond: '{minutes}分{seconds}秒',
       visitId: '就诊ID',
       patientInfo: '患者基本信息',
@@ -170,7 +167,7 @@ export default {
       familyHistory: '家族史',
       diseaseName: '主诊断',
       syndromeType: '中医证型',
-      therapy: '治疗方案',
+      therapy: '处方',
       prescription: '处方',
       advice: '医嘱',
       printPrescription: '打印处方',
@@ -201,8 +198,6 @@ export default {
       chi: '尺',
       drugName: '药材名称',
       dosage: '用量',
-      male: '男',
-      female: '女',
       notAvailable: '暂无',
       noDiagnosisData: '暂无四诊仪采集结果',
       noPrescription: '本次就诊未开具处方',
@@ -264,23 +259,19 @@ export default {
         medicalAccount: '医保账户',
         address: '常住地址'
       },
-      sexOptions: {
-        male: '男',
-        female: '女'
-      },
       maritalStatusOptions: {
         unmarried: '未婚',
         married: '已婚'
       },
       placeholders: {
-        name: '手动输入患者全名',
+        name: '请输入姓名',
         birthday: '请选择出生日期',
-        age: '根据出生日期自动计算',
-        idCard: '输入本人有效证件号',
-        phone: '输入可保持联络的手机号',
-        job: '请输入患者工作',
-        medicalAccount: '选填：输入医保凭证/类型',
-        address: '选填：患者当前的居住地址'
+        age: '请输入年龄',
+        idCard: '请输入证件号',
+        phone: '请输入手机号',
+        job: '请输入',
+        medicalAccount: '请输入医保凭证/类型',
+        address: '请输地址'
       },
       receivedDataDescription: '核对到系统下发的就诊关联信息，可直接核阅。',
       emptyDataDescription: '当前无关联流转数据，请依照规定流程完成人工问诊建档。',
@@ -343,6 +334,8 @@ export default {
         retrySubtitle: '重试语音转写',
         subtitleEmptyTitle: '进入诊疗室后翻译功能默认开启。',
         subtitleEmptyDescription: '医患双方发言内容将以双语形式实时展示于此。',
+        subtitleSingleLanguageEmptyTitle: '进入诊疗室后会自动开启实时转写。',
+        subtitleSingleLanguageEmptyDescription: '医患双方发言内容将以中文实时展示于此。',
         translation: '翻译',
         recognizing: '语音识别中...',
         sourceText: '原文',
@@ -383,7 +376,7 @@ export default {
         backToWaiting: '返回候诊区',
         missingParams: '入会参数不完整，请重新从候诊区进入视频会诊。',
         joinFailed: '加入会诊房间失败，请稍后重试。',
-        chatPlaceholder: '请输入。',
+        chatPlaceholder: '请输入',
         chatSend: '发送消息',
         chatSending: '发送中...',
         chatConnecting: '消息通道连接中...',
@@ -424,6 +417,10 @@ export default {
         resendRequestFailed: '重新发起请求失败，请稍后处理。',
         handleLater: '稍后处理',
         completedMessage: '本次诊疗已完成',
+        leaveConfirmTitle: '诊疗未结束，是否挂断？',
+        leaveConfirmDescription: '挂断后可重新连接',
+        leaveConfirmCancel: '返回',
+        leaveConfirmConfirm: '确认挂断',
         cameraLabels: {
           sideScanner: '侧面高拍仪',
           patientCamera: '患者摄像头',

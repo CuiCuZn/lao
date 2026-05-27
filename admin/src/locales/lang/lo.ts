@@ -12,6 +12,7 @@ export default {
       completedDescription: 'ແພດໄດ້ອອກຜົນວິນິດໄສ ແລະ ໃບສັ່ງຢາແລ້ວ ກະລຸນາກວດກ່ອນຈັດເກັບ.',
       visitDate: 'ວັນທີ່ກວດ',
       visitDuration: 'ໄລຍະເວລາການກວດ',
+      callDuration: 'ໄລຍະເວລາໂທ',
       durationMinuteSecond: '{minutes} ນາທີ {seconds} ວິນາທີ',
       visitId: 'ID ການກວດ',
       patientInfo: 'ຂໍ້ມູນພື້ນຖານຄົນໄຂ້',
@@ -68,8 +69,6 @@ export default {
       chi: 'ສ່ວນເລິກ',
       drugName: 'ຊື່ຢາສະໝຸນໄພ',
       dosage: 'ປະລິມານ',
-      male: 'ຊາຍ',
-      female: 'ຍິງ',
       notAvailable: 'ບໍ່ມີຂໍ້ມູນ',
       noDiagnosisData: 'ຍັງບໍ່ມີຜົນຈາກເຄື່ອງວິນິດໄສ 4 ດ້ານ',
       noPrescription: 'ການກວດຄັ້ງນີ້ບໍ່ມີໃບສັ່ງຢາ'

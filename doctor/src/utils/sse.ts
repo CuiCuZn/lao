@@ -9,9 +9,12 @@ interface ConnectSseOptions {
   signal?: AbortSignal;
   onOpen?: (response: Response) => void;
   onMessage?: (message: SseMessage) => void;
+  onHeartbeat?: (message: SseMessage) => void;
   onError?: (error: Error) => void;
   onClose?: () => void;
 }
+
+const SSE_LOG_PREFIX = '[doctor-sse]'
 
 export function connectSse(url: string, options: ConnectSseOptions = {}) {
   const controller = new AbortController()
@@ -37,6 +40,8 @@ export function connectSse(url: string, options: ConnectSseOptions = {}) {
 
 async function startStream(url: string, controller: AbortController, options: ConnectSseOptions) {
   try {
+    logSse('connect', { url })
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -52,6 +57,11 @@ async function startStream(url: string, controller: AbortController, options: Co
       throw new Error(`SSE request failed with status ${response.status}`)
     }
 
+    logSse('open', {
+      url,
+      status: response.status,
+      statusText: response.statusText
+    })
     options.onOpen?.(response)
 
     const reader = response.body.getReader()
@@ -72,6 +82,11 @@ async function startStream(url: string, controller: AbortController, options: Co
         buffer = buffer.slice(separatorIndex + 2)
         if (block) {
           const message = parseSseBlock(block)
+          const heartbeat = isHeartbeatBlock(message, block)
+          logSseBlock(message, block, heartbeat)
+          if (heartbeat) {
+            options.onHeartbeat?.(message)
+          }
           if (message.data) {
             options.onMessage?.(message)
           }
@@ -82,15 +97,27 @@ async function startStream(url: string, controller: AbortController, options: Co
 
     if (buffer.trim()) {
       const message = parseSseBlock(buffer.trim())
+      const heartbeat = isHeartbeatBlock(message, buffer.trim())
+      logSseBlock(message, buffer.trim(), heartbeat)
+      if (heartbeat) {
+        options.onHeartbeat?.(message)
+      }
       if (message.data) {
         options.onMessage?.(message)
       }
     }
   } catch (error) {
     if (!controller.signal.aborted) {
-      options.onError?.(normalizeError(error))
+      const normalizedError = normalizeError(error)
+      logSse('error', {
+        message: normalizedError.message
+      })
+      options.onError?.(normalizedError)
+    } else {
+      logSse('aborted')
     }
   } finally {
+    logSse('close')
     options.onClose?.()
   }
 }
@@ -132,4 +159,45 @@ function normalizeError(error: unknown) {
   }
 
   return new Error(typeof error === 'string' ? error : 'Unknown SSE error')
+}
+
+function isHeartbeatBlock(message: SseMessage, block: string) {
+  const normalizedEvent = message.event.toLowerCase()
+  const normalizedData = message.data.toLowerCase()
+
+  if (normalizedEvent.includes('heartbeat') || normalizedEvent.includes('ping') || normalizedEvent.includes('pong')) {
+    return true
+  }
+
+  if (normalizedData.includes('heartbeat') || normalizedData.includes('ping') || normalizedData.includes('pong')) {
+    return true
+  }
+
+  const lines = block.split('\n').map((line) => line.trim()).filter(Boolean)
+  return lines.length > 0 && lines.every((line) => line.startsWith(':'))
+}
+
+function logSseBlock(message: SseMessage, block: string, heartbeat = isHeartbeatBlock(message, block)) {
+  const payload = {
+    event: message.event,
+    id: message.id,
+    data: message.data,
+    raw: block
+  }
+
+  if (isHeartbeatBlock(message, block)) {
+    logSse('heartbeat', payload)
+    return
+  }
+
+  logSse('message', payload)
+}
+
+function logSse(event: string, payload?: unknown) {
+  if (payload === undefined) {
+    console.log(`${SSE_LOG_PREFIX} ${event}`)
+    return
+  }
+
+  console.log(`${SSE_LOG_PREFIX} ${event}`, payload)
 }

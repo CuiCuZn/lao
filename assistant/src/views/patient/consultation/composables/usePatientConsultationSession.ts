@@ -357,8 +357,10 @@ export const usePatientConsultationSession = () => {
     const resolvedPrimaryTaskId =
       primaryTaskId.value || buildSubtitleTaskId(localChannelContext.primaryChannelId, localChannelContext.language)
     const resolvedSecondaryTaskId =
-      secondaryTaskId.value ||
-      buildSubtitleTaskId(localChannelContext.secondaryChannelId, localChannelContext.secondaryLanguage)
+      localChannelContext.translationEnabled && localChannelContext.secondaryChannelId && localChannelContext.secondaryLanguage
+        ? secondaryTaskId.value ||
+          buildSubtitleTaskId(localChannelContext.secondaryChannelId, localChannelContext.secondaryLanguage)
+        : ''
 
     if (resolvedPrimaryTaskId && localChannelContext.primaryChannelId) {
       tasks.push(
@@ -531,12 +533,12 @@ export const usePatientConsultationSession = () => {
     const activePrimaryClient = primaryClient.value
     const activeSecondaryClient = secondaryClient.value
 
-    if (!activePrimaryClient || !activeSecondaryClient) {
+    if (!activePrimaryClient) {
       return
     }
 
     activePrimaryClient.removeAllListeners()
-    activeSecondaryClient.removeAllListeners()
+    activeSecondaryClient?.removeAllListeners()
 
     activePrimaryClient.on('user-published', (user, mediaType, auxiliary) => {
       syncRemoteUsers()
@@ -601,64 +603,66 @@ export const usePatientConsultationSession = () => {
       })
     })
 
-    activeSecondaryClient.on('user-published', (user, mediaType, auxiliary) => {
-      syncRemoteUsers()
-      updateTrackStats(user.userId)
+    if (activeSecondaryClient) {
+      activeSecondaryClient.on('user-published', (user, mediaType, auxiliary) => {
+        syncRemoteUsers()
+        updateTrackStats(user.userId)
 
-      if (mediaType !== 'video') {
-        return
-      }
+        if (mediaType !== 'video') {
+          return
+        }
 
-      activeSecondaryClient
-        .subscribe(user.userId, 'video', auxiliary)
-        .then(() => {
-          syncRemoteUsers()
-          updateTrackStats(user.userId)
-          applyRemotePublishState(user.userId, true, auxiliary)
+        activeSecondaryClient
+          .subscribe(user.userId, 'video', auxiliary)
+          .then(() => {
+            syncRemoteUsers()
+            updateTrackStats(user.userId)
+            applyRemotePublishState(user.userId, true, auxiliary)
+          })
+          .catch(() => undefined)
+      })
+
+      activeSecondaryClient.on('user-unpublished', (user, mediaType, auxiliary) => {
+        syncRemoteUsers()
+        updateTrackStats(user.userId)
+
+        if (mediaType === 'video') {
+          applyRemotePublishState(user.userId, false, auxiliary)
+        }
+      })
+
+      activeSecondaryClient.on('user-joined', (user) => {
+        syncRemoteUsers()
+        updateTrackStats(user.userId)
+      })
+
+      activeSecondaryClient.on('user-left', (user) => {
+        replaceTrackStatsMap((nextMap) => {
+          nextMap.delete(user.userId)
         })
-        .catch(() => undefined)
-    })
-
-    activeSecondaryClient.on('user-unpublished', (user, mediaType, auxiliary) => {
-      syncRemoteUsers()
-      updateTrackStats(user.userId)
-
-      if (mediaType === 'video') {
-        applyRemotePublishState(user.userId, false, auxiliary)
-      }
-    })
-
-    activeSecondaryClient.on('user-joined', (user) => {
-      syncRemoteUsers()
-      updateTrackStats(user.userId)
-    })
-
-    activeSecondaryClient.on('user-left', (user) => {
-      replaceTrackStatsMap((nextMap) => {
-        nextMap.delete(user.userId)
+        syncRemoteUsers()
       })
-      syncRemoteUsers()
-    })
 
-    activeSecondaryClient.on('user-info-updated', (uid, msg) => {
-      syncRemoteUsers()
-      updateTrackStats(uid)
-      applyRemoteUserInfoUpdate(uid, msg)
-    })
-
-    activeSecondaryClient.on('connection-state-change', async (current, _, reason) => {
-      if (current !== 'disconnected' || teardownInProgress.value) {
-        return
-      }
-
-      if (reason && reason !== 'leave') {
-        connectionError.value = String(reason)
-      }
-
-      await leaveConsultationRoom({
-        keepConnectionError: true
+      activeSecondaryClient.on('user-info-updated', (uid, msg) => {
+        syncRemoteUsers()
+        updateTrackStats(uid)
+        applyRemoteUserInfoUpdate(uid, msg)
       })
-    })
+
+      activeSecondaryClient.on('connection-state-change', async (current, _, reason) => {
+        if (current !== 'disconnected' || teardownInProgress.value) {
+          return
+        }
+
+        if (reason && reason !== 'leave') {
+          connectionError.value = String(reason)
+        }
+
+        await leaveConsultationRoom({
+          keepConnectionError: true
+        })
+      })
+    }
   }
 
   const prepareLocalTracks = async (deviceId = selectedCameraId.value) => {
@@ -730,7 +734,8 @@ export const usePatientConsultationSession = () => {
 
     bindAutoplayFailedHandler()
 
-    const clients = createConsultationClients()
+    const translationEnabled = params.translationEnabled !== false
+    const clients = createConsultationClients(translationEnabled)
     primaryClient.value = clients.primaryClient
     secondaryClient.value = clients.secondaryClient
 
@@ -748,14 +753,15 @@ export const usePatientConsultationSession = () => {
         userName: params.userName,
         baseChannelName: params.channelName,
         primaryChannelId: joinResult.primaryChannelId,
-        secondaryChannelId: joinResult.secondaryChannelId,
+        ...(joinResult.secondaryChannelId ? { secondaryChannelId: joinResult.secondaryChannelId } : {}),
         language: params.language,
-        secondaryLanguage: joinResult.secondaryLanguage,
+        ...(joinResult.secondaryLanguage ? { secondaryLanguage: joinResult.secondaryLanguage } : {}),
+        translationEnabled: joinResult.translationEnabled,
         token: joinResult.primaryTokenResult.token
       }
 
       primaryRemoteUsers.value = [...joinResult.primaryResult.remoteUsers]
-      secondaryRemoteUsers.value = [...joinResult.secondaryResult.remoteUsers]
+      secondaryRemoteUsers.value = joinResult.secondaryResult ? [...joinResult.secondaryResult.remoteUsers] : []
 
       bindClientEvents()
 
@@ -786,7 +792,8 @@ export const usePatientConsultationSession = () => {
       const asrRegistrationResult = registerConsultationAsr(
         clients.primaryClient,
         clients.secondaryClient,
-        params.language
+        params.language,
+        joinResult.translationEnabled
       )
 
       primaryAsr.value = asrRegistrationResult.primaryAsr
@@ -810,7 +817,11 @@ export const usePatientConsultationSession = () => {
     activeSubtitleTaskPolicy.value = options.taskPolicy || 'auto'
     const localChannelContext = channelContext.value
 
-    if (!localChannelContext || !primaryAsr.value || !secondaryAsr.value) {
+    if (
+      !localChannelContext ||
+      !primaryAsr.value ||
+      (localChannelContext.translationEnabled && !secondaryAsr.value)
+    ) {
       subtitleError.value = i18n.global.t('assistant.patientVideo.consultation.subtitleEngineUnavailable')
       return
     }
@@ -819,8 +830,12 @@ export const usePatientConsultationSession = () => {
     subtitleError.value = ''
 
     try {
-      primaryAsr.value.setCurrentTranslateLanguages([localChannelContext.secondaryLanguage, 'source'])
-      secondaryAsr.value.setCurrentTranslateLanguages([localChannelContext.language, 'source'])
+      primaryAsr.value.setCurrentTranslateLanguages(
+        localChannelContext.translationEnabled && localChannelContext.secondaryLanguage
+          ? [localChannelContext.secondaryLanguage, 'source']
+          : ['source']
+      )
+      secondaryAsr.value?.setCurrentTranslateLanguages([localChannelContext.language, 'source'])
 
       const startTasks: Promise<unknown>[] = []
 
@@ -842,7 +857,13 @@ export const usePatientConsultationSession = () => {
         )
       }
 
-      if (shouldStartSubtitleTasks && (options.taskPolicy === 'force' || !secondaryTaskId.value)) {
+      if (
+        localChannelContext.translationEnabled &&
+        localChannelContext.secondaryChannelId &&
+        localChannelContext.secondaryLanguage &&
+        shouldStartSubtitleTasks &&
+        (options.taskPolicy === 'force' || !secondaryTaskId.value)
+      ) {
         const nextSecondaryTaskId = buildSubtitleTaskId(
           localChannelContext.secondaryChannelId,
           localChannelContext.secondaryLanguage
@@ -862,7 +883,7 @@ export const usePatientConsultationSession = () => {
 
       await Promise.allSettled([
         primaryAsr.value.setEnabled(true),
-        secondaryAsr.value.setEnabled(true)
+        ...(secondaryAsr.value ? [secondaryAsr.value.setEnabled(true)] : [])
       ])
 
       if (settledTasks.some((item) => item.status === 'rejected')) {
@@ -1031,6 +1052,16 @@ export const usePatientConsultationSession = () => {
 
     if (!localChannelContext) {
       return []
+    }
+
+    if (!localChannelContext.translationEnabled || !localChannelContext.secondaryLanguage) {
+      return [
+        {
+          asr: primaryAsr.value,
+          sourceLanguage: localChannelContext.language,
+          targetLanguage: localChannelContext.language
+        }
+      ]
     }
 
     return [

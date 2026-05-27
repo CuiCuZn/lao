@@ -57,6 +57,17 @@ export const useUserStore = defineStore('user', () => {
     resetState()
   }
 
+  const setOnlineStatus = (value: boolean): void => {
+    if (!profile.value) {
+      return
+    }
+
+    profile.value = {
+      ...profile.value,
+      isOnLine: value ? '1' : '0'
+    }
+  }
+
   return {
     token,
     profile,
@@ -68,6 +79,7 @@ export const useUserStore = defineStore('user', () => {
     login,
     getInfo,
     logout,
+    setOnlineStatus,
     resetState
   }
 })

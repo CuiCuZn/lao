@@ -39,6 +39,7 @@ import { switchWorkbenchOnlineStatus } from '@/api/workbench'
 import brandLogo from '@/assets/logo.png'
 
 const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
+const RELOAD_RESTORE_ONLINE_KEY = 'doctor_reload_restore_online'
 
 const { t } = useI18n()
 const userStore = useUserStore()
@@ -59,21 +60,24 @@ const userMetaLine = computed(() => {
 })
 
 function isDoctorOnline() {
-  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
-  if (cachedOnlineStatus !== null) {
-    return cachedOnlineStatus === 'true'
+  const profileOnlineStatus = userStore.profile?.isOnLine
+  if (profileOnlineStatus !== undefined && profileOnlineStatus !== null) {
+    const resolved = String(profileOnlineStatus) === '1'
+    localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, String(resolved))
+    return resolved
   }
 
-  const profileOnlineStatus = userStore.profile?.isOnLine
-  return profileOnlineStatus !== undefined && profileOnlineStatus !== null
-    ? String(profileOnlineStatus) === '1'
-    : false
+  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
+  return cachedOnlineStatus === 'true'
 }
 
 async function logout() {
+  sessionStorage.removeItem(RELOAD_RESTORE_ONLINE_KEY)
+
   if (isDoctorOnline()) {
     await switchWorkbenchOnlineStatus()
     localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, 'false')
+    userStore.setOnlineStatus(false)
   }
 
   await userStore.logout()

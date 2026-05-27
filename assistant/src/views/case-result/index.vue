@@ -152,7 +152,7 @@
               </div>
             </div>
 
-            <section class="prescription-section">
+            <!-- <section class="prescription-section">
               <div class="result-table-card__title">{{ t('assistant.caseResult.prescription') }}</div>
 
               <table v-if="prescriptionRows.length" class="result-table result-table--prescription">
@@ -173,7 +173,7 @@
               <div v-else class="empty-block empty-block--compact">
                 {{ t('assistant.caseResult.noPrescription') }}
               </div>
-            </section>
+            </section> -->
           </section>
         </section>
 
@@ -183,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -198,6 +198,7 @@ import {
 } from '@element-plus/icons-vue'
 import AppPage from '@/components/AppPage.vue'
 import { getCaseDetail } from '@/api/record'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 import zhuImage from '@/assets/zhu.png'
 
 type DetailRecord = Record<string, unknown>
@@ -287,17 +288,7 @@ const formatDuration = (value: unknown) => {
 }
 
 const formatGender = (value: unknown) => {
-  const text = takeOptionalText(value).toLowerCase()
-
-  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
-    return t('assistant.caseResult.male')
-  }
-
-  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
-    return t('assistant.caseResult.female')
-  }
-
-  return takeOptionalText(value)
+  return formatSexByDict(value)
 }
 
 const formatMarriage = (value: unknown) => {
@@ -366,6 +357,50 @@ const pickText = (keys: string[], fallback = '') => {
   }
 
   return fallback
+}
+
+const pickValue = (keys: string[]) => {
+  const records = getCandidateRecords()
+
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key]
+      if (takeOptionalText(value)) {
+        return value
+      }
+    }
+  }
+
+  return undefined
+}
+
+const parseVideoTime = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 10000000000 ? value * 1000 : value
+  }
+
+  const text = takeOptionalText(value)
+  if (!text) {
+    return Number.NaN
+  }
+
+  const numericValue = Number(text)
+  if (Number.isFinite(numericValue)) {
+    return numericValue < 10000000000 ? numericValue * 1000 : numericValue
+  }
+
+  return Date.parse(text)
+}
+
+const formatCallDuration = () => {
+  const startTime = parseVideoTime(pickValue(['videoStartTime']))
+  const endTime = parseVideoTime(pickValue(['videoEndTime']))
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return t('assistant.caseResult.notAvailable')
+  }
+
+  return formatDuration((endTime - startTime) / 1000)
 }
 
 const resolveDisplayText = (value: string) => {
@@ -471,6 +506,10 @@ const consultationInfoItems = computed<DetailItem[]>(() => [
   {
     label: t('assistant.caseResult.doctor'),
     value: resolveDisplayText(pickText(['doctorName', 'nickName', 'userName']))
+  },
+  {
+    label: t('assistant.caseResult.callDuration'),
+    value: formatCallDuration()
   }
 ])
 
@@ -577,6 +616,18 @@ const goBack = () => {
   router.push(isFromRecords.value ? '/assistant/records' : '/assistant/workbench')
 }
 
+let resultPageUrl = ''
+
+const pushResultPageHistoryState = () => {
+  resultPageUrl = window.location.href
+  history.pushState(null, '', resultPageUrl)
+}
+
+const handleResultPagePopState = () => {
+  history.pushState(null, '', resultPageUrl || location.href)
+  // alert('当前页面不允许返回')
+}
+
 const fetchDetail = async () => {
   if (!caseId.value) {
     pageError.value = t('assistant.caseResult.missingCaseId')
@@ -598,7 +649,17 @@ const fetchDetail = async () => {
 }
 
 onMounted(() => {
+  void loadSexDict()
   void fetchDetail()
+
+  if (!isFromRecords.value) {
+    pushResultPageHistoryState()
+    window.addEventListener('popstate', handleResultPagePopState)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('popstate', handleResultPagePopState)
 })
 </script>
 

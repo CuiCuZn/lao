@@ -16,7 +16,7 @@
         class="subtitle-column"
         :items="timeline.items.value"
         :loading="session.subtitleLoading.value"
-        :error="session.subtitleError.value"
+        :error="''"
         :on-retry="retrySubtitle"
         :update-scroll-state="timeline.updateScrollState"
         :scroll-to-latest-if-needed="timeline.scrollToLatestIfNeeded"
@@ -26,6 +26,7 @@
         :chat-input-disabled="chatInputDisabled"
         :chat-send-disabled="chatSendDisabled"
         :chat-status-text="chatStatusText"
+        :translation-enabled="translationEnabled"
         :on-chat-input="handleChatInput"
         :on-chat-send="handleChatSend"
       />
@@ -83,7 +84,7 @@
 
         <footer class="session-summary">
           <div class="doctor-panel">
-            <div class="doctor-avatar">{{ doctorAvatarText }}</div>
+            <img class="doctor-avatar" :src="doctorAvatarImage" alt="" />
 
             <div class="doctor-copy">
               <div class="doctor-heading">
@@ -287,7 +288,9 @@ import { useI18n } from 'vue-i18n'
 import { addWrittenRecord, translateConsultationText } from '@/api/patient'
 import type { ConsultationMode, GenerateMedicalRecordData } from '@/api/types'
 import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
+import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { useUserStore } from '@/stores/user'
+import { showConfirmDialog } from '@/utils/confirm-dialog'
 import ConsultCameraSelectDialog from './components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from './components/ConsultParticipantCard.vue'
 import ConsultRoomControls from './components/ConsultRoomControls.vue'
@@ -308,7 +311,7 @@ const DOCTOR_RTC_CONTEXT_KEY = 'doctor_rtc_context'
 
 interface ConsultationHistoryItem {
   messageType: ConsultationMessageType
-  isDoctor: 0 | 1
+  isDoctor: 0 | 1 | 2
   contentCn: string
   contentLo: string
   timestamp: number
@@ -345,9 +348,17 @@ let durationTimer = 0
 let durationStartedAt = 0
 let durationRequestId = 0
 let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
+let leavingInProgress = false
 
 const normalizeConsultationMode = (value: unknown): ConsultationMode => {
   return value === 'continue' ? 'continue' : 'accept'
+}
+
+const normalizeConsultationLang = (value: unknown): 'lo' | 'cn' | undefined => {
+  const normalizedValue = value !== null && value !== undefined ? String(value).trim().toLowerCase() : ''
+  if (normalizedValue === 'cn' || normalizedValue === 'zh-cn' || normalizedValue === 'zh') return 'cn'
+  if (normalizedValue === 'lo' || normalizedValue === 'lo-la' || normalizedValue === 'lao') return 'lo'
+  return undefined
 }
 
 const queryValue = (key: string) => {
@@ -394,8 +405,6 @@ const doctorGoodAt = computed(() => {
   return value !== null && value !== undefined ? String(value).trim() : ''
 })
 
-const doctorAvatarText = computed(() => doctorName.value.slice(0, 1) || t('workbench.defaultRole').slice(0, 1))
-
 const roomId = computed(() => {
   const storedRoomId = consultationContext.value.roomId
   if (storedRoomId !== null && storedRoomId !== undefined && String(storedRoomId).trim() !== '') {
@@ -437,6 +446,14 @@ const consultationMode = computed<ConsultationMode>(() => {
   return normalizeConsultationMode(consultationContext.value.consultationMode)
 })
 const isContinueConsultation = computed(() => consultationMode.value === 'continue')
+const consultationLang = computed<'lo' | 'cn'>(() => {
+  return (
+    normalizeConsultationLang(queryValue('consultationLang')) ||
+    normalizeConsultationLang(consultationContext.value.consultationLang) ||
+    'lo'
+  )
+})
+const translationEnabled = computed(() => consultationLang.value === 'lo')
 
 const patientName = computed(() => {
   return consultationContext.value.patientName || queryValue('patientId') || t('workbench.unknownPatient')
@@ -624,7 +641,9 @@ const diagnosisForm = ref({
 
 const diagnosisRules = computed<FormRules>(() => ({
   diseaseNameCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.diagnosis')), trigger: 'blur' }],
-  syndromeTypeCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.check')), trigger: 'blur' }]
+  syndromeTypeCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.check')), trigger: 'blur' }],
+  therapyCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.therapy')), trigger: 'blur' }],
+  adviceCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.advice')), trigger: 'blur' }]
 }))
 
 const submittingDiagnosis = ref(false)
@@ -768,7 +787,7 @@ const onSubmitDiagnosis = () => {
           familyhistoryCn: outpatientRecordForm.familyHistory
         })
         ElMessage.success(t('doctorVideo.consultation.submitDiagnosisSuccess'))
-        await handleLeave()
+        await leaveConsultation()
       } catch (error) {
         ElMessage.error(t('doctorVideo.consultation.submitDiagnosisFailed'))
       } finally {
@@ -793,6 +812,17 @@ const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
 const resolveSubtitleSavePayload = (item: SubtitleTimelineItem) => {
   const sourceText = item.sourceText.trim()
   const translatedText = item.translatedText.trim()
+
+  if (!translationEnabled.value) {
+    if (!item.sourceFinal || !sourceText) {
+      return null
+    }
+
+    return {
+      recordCn: sourceText,
+      recordLo: ''
+    }
+  }
 
   if (!item.sourceFinal || !item.translatedFinal || !sourceText || !translatedText) {
     return null
@@ -989,7 +1019,7 @@ const resolveHistoryMessageType = (
 ): ConsultationMessageType => {
   const explicitType = takeOptionalText(record.messageType || record.type || record.recordType).toLowerCase()
 
-  if (explicitType.includes('manual') || explicitType.includes('chat') || explicitType.includes('written')) {
+  if (explicitType.includes('manual') || explicitType.includes('chat') || explicitType.includes('written') || explicitType.includes('text')) {
     return 'manual'
   }
 
@@ -1008,11 +1038,11 @@ const resolveHistoryMessageType = (
   return fallbackType || 'subtitle'
 }
 
-const resolveHistoryDoctorFlag = (record: Record<string, unknown>): 0 | 1 | null => {
+const resolveHistoryDoctorFlag = (record: Record<string, unknown>): 0 | 1 | 2 | null => {
   const directValue = record.isDoctor ?? record.is_doctor ?? record.fromDoctor ?? record.doctor
 
   if (typeof directValue === 'number') {
-    return directValue === 0 ? 0 : 1
+    return directValue === 0 || directValue === 1 || directValue === 2 ? directValue : null
   }
 
   if (typeof directValue === 'boolean') {
@@ -1029,6 +1059,10 @@ const resolveHistoryDoctorFlag = (record: Record<string, unknown>): 0 | 1 | null
     if (normalizedValue === '1' || normalizedValue === 'patient' || normalizedValue === 'remote' || normalizedValue === 'false') {
       return 1
     }
+
+    if (normalizedValue === '2' || normalizedValue === 'aide' || normalizedValue === 'assistant') {
+      return 2
+    }
   }
 
   const roleValue = takeOptionalText(record.role || record.speakerRole || record.senderRole).toLowerCase()
@@ -1039,6 +1073,10 @@ const resolveHistoryDoctorFlag = (record: Record<string, unknown>): 0 | 1 | null
 
   if (roleValue.includes('patient')) {
     return 1
+  }
+
+  if (roleValue.includes('aide') || roleValue.includes('assistant')) {
+    return 2
   }
 
   return null
@@ -1080,6 +1118,12 @@ const resolveHistoryTexts = (record: Record<string, unknown>) => {
       contentCn = sourceText
       contentLo = translatedText
     }
+  } else if (sourceText && !translatedText) {
+    if (sourceLanguage === 'lo' || sourceLanguage === 'lao') {
+      contentLo = sourceText
+    } else {
+      contentCn = sourceText
+    }
   }
 
   return {
@@ -1100,7 +1144,7 @@ const normalizeHistoryItem = (
   const { contentCn, contentLo } = resolveHistoryTexts(rawItem)
   const isDoctor = resolveHistoryDoctorFlag(rawItem)
 
-  if (!contentCn || !contentLo || isDoctor === null) {
+  if ((!contentCn && !contentLo) || isDoctor === null) {
     return null
   }
 
@@ -1230,15 +1274,27 @@ const normalizeConversationHistory = (payload: unknown) => {
 const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
   items.forEach((item) => {
     const doctorMessage = item.isDoctor === 0
+    const aideMessage = item.isDoctor === 2
+    const sourceText = translationEnabled.value
+      ? doctorMessage ? item.contentCn : item.contentLo
+      : item.contentCn || item.contentLo
     timeline.appendHistoryMessage({
-      speakerId: doctorMessage ? doctorId.value || 'doctor' : `patient:${patientId.value || 'patient'}`,
-      speakerName: doctorMessage ? doctorName.value : patientName.value,
+      speakerId: doctorMessage
+        ? doctorId.value || 'doctor'
+        : aideMessage
+          ? `aide:${doctorAideId.value || 'aide'}`
+          : `patient:${patientId.value || 'patient'}`,
+      speakerName: doctorMessage
+        ? doctorName.value
+        : aideMessage
+          ? t('doctorVideo.consultation.aideFallbackName')
+          : patientName.value,
       side: doctorMessage ? 'self' : 'remote',
       messageType: item.messageType,
-      sourceText: doctorMessage ? item.contentCn : item.contentLo,
-      translatedText: doctorMessage ? item.contentLo : item.contentCn,
-      sourceLanguage: doctorMessage ? 'cn' : 'lo',
-      targetLanguage: doctorMessage ? 'lo' : 'cn',
+      sourceText,
+      translatedText: translationEnabled.value ? doctorMessage ? item.contentLo : item.contentCn : '',
+      sourceLanguage: translationEnabled.value ? doctorMessage ? 'cn' : 'lo' : 'cn',
+      targetLanguage: translationEnabled.value ? doctorMessage ? 'lo' : 'cn' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -1302,6 +1358,7 @@ const timeline = useDoctorSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || doctorId.value,
   getCurrentUserName: () => doctorName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== doctorId.value),
+  getTranslationEnabled: () => translationEnabled.value,
   onFinalizedItem: handleSubtitleFinalized
 })
 
@@ -1329,9 +1386,9 @@ const chat = createDoctorConsultationChatService({
 
     timeline.appendManualMessage({
       ...sender,
-      sourceText: contentLo,
-      translatedText: contentCn,
-      sourceLanguage: 'lo',
+      sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
+      translatedText: translationEnabled.value ? contentCn : '',
+      sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
       targetLanguage: 'cn'
     })
   },
@@ -1340,7 +1397,7 @@ const chat = createDoctorConsultationChatService({
   }
 })
 
-const chatInputDisabled = computed(() => chatSending.value)
+const chatInputDisabled = computed(() => false)
 const chatSendDisabled = computed(() => {
   return (
     chatSending.value ||
@@ -1446,9 +1503,9 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerName: doctorName.value,
     side: 'self',
     sourceText: payload.contentCn,
-    translatedText: payload.contentLo,
+    translatedText: translationEnabled.value ? payload.contentLo : '',
     sourceLanguage: 'cn',
-    targetLanguage: 'lo'
+    targetLanguage: translationEnabled.value ? 'lo' : 'cn'
   })
 }
 
@@ -1480,22 +1537,23 @@ const handleChatSend = async () => {
     return
   }
 
+  chatDraft.value = ''
   chatSending.value = true
 
   try {
-    const translationResponse = await translateConsultationText({
-      source: 'cn',
-      to: 'lo',
-      text: normalizedText
-    })
-    const contentLo = resolveTranslationText(translationResponse?.data)
+    const contentLo = translationEnabled.value
+      ? resolveTranslationText((await translateConsultationText({
+          source: 'cn',
+          to: 'lo',
+          text: normalizedText
+        }))?.data)
+      : ''
     const payload = {
       contentCn: normalizedText,
       contentLo
     }
 
     appendLocalManualMessage(payload)
-    chatDraft.value = ''
 
     const [sendResult, saveResult] = await Promise.allSettled([
       chat.sendTranslatedMessage({
@@ -1523,6 +1581,9 @@ const handleChatSend = async () => {
     }
   } catch (error) {
     console.warn('Failed to translate doctor consultation chat message.', error)
+    if (!chatDraft.value) {
+      chatDraft.value = normalizedText
+    }
     ElMessage.warning(t('doctorVideo.consultation.chatTranslateFailed'))
   } finally {
     chatSending.value = false
@@ -1566,10 +1627,12 @@ const bootstrapConsultation = async () => {
         channelId: primaryChannelId,
         userId: doctorId.value
       }),
-      getVideoToken({
-        channelId: secondaryChannelId,
-        userId: doctorId.value
-      }),
+      translationEnabled.value
+        ? getVideoToken({
+            channelId: secondaryChannelId,
+            userId: doctorId.value
+          })
+        : Promise.resolve(null),
       videoIdPromise
     ])
 
@@ -1582,7 +1645,7 @@ const bootstrapConsultation = async () => {
         ? String(secondaryResponse.data)
         : ''
 
-    if (!token) {
+    if (!token || (translationEnabled.value && !secondaryToken)) {
       throw new Error(t('doctorVideo.consultation.joinFailed'))
     }
 
@@ -1594,7 +1657,8 @@ const bootstrapConsultation = async () => {
       userName: doctorName.value,
       token,
       secondaryToken,
-      language: 'cn'
+      language: 'cn',
+      translationEnabled: translationEnabled.value
     })
 
     const resolvedConsultationVideoId = takeOptionalText(resolvedVideoId) || videoId.value
@@ -1619,7 +1683,7 @@ const retrySubtitle = async () => {
   await session.bootstrapSubtitle({ taskPolicy })
 }
 
-const handleLeave = async () => {
+const leaveConsultation = async () => {
   savedSubtitleKeys.clear()
   stopConsultationDuration()
   chatDraft.value = ''
@@ -1628,6 +1692,34 @@ const handleLeave = async () => {
   timeline.clearTimeline()
   await session.leaveConsultationRoom({ taskPolicy: isContinueConsultation.value ? 'auto' : 'skip' })
   await goBackToWorkbench()
+}
+
+const handleLeave = async () => {
+  if (leavingInProgress) {
+    return
+  }
+
+  leavingInProgress = true
+  const confirmed = await showConfirmDialog({
+    title: t('doctorVideo.consultation.leaveConfirmTitle'),
+    message: t('doctorVideo.consultation.leaveConfirmMessage'),
+    description: t('doctorVideo.consultation.leaveConfirmDescription'),
+    cancelText: t('doctorVideo.consultation.leaveConfirmCancel'),
+    confirmText: t('doctorVideo.consultation.leaveConfirmConfirm'),
+    type: 'danger',
+    icon: 'warning'
+  })
+
+  if (!confirmed) {
+    leavingInProgress = false
+    return
+  }
+
+  try {
+    await leaveConsultation()
+  } finally {
+    leavingInProgress = false
+  }
 }
 
 onMounted(async () => {
@@ -1796,16 +1888,11 @@ onBeforeUnmount(async () => {
 }
 
 .doctor-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(180deg, #2f6aec 0%, #2257c7 100%);
-  color: #ffffff;
-  font-size: 20px;
-  font-weight: 800;
+  display: block;
+  object-fit: cover;
 }
 
 .doctor-copy {
@@ -1967,7 +2054,7 @@ onBeforeUnmount(async () => {
 }
 
 .compact-form-item {
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .compact-history-form .compact-form-item:last-child,

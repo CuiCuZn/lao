@@ -17,7 +17,7 @@
           class="subtitle-column"
           :items="timeline.items.value"
           :loading="session.subtitleLoading.value"
-          :error="session.subtitleError.value"
+          :error="''"
           :on-retry="retrySubtitle"
           :update-scroll-state="timeline.updateScrollState"
           :scroll-to-latest-if-needed="timeline.scrollToLatestIfNeeded"
@@ -27,6 +27,8 @@
           :chat-input-disabled="chatInputDisabled"
           :chat-send-disabled="chatSendDisabled"
           :chat-status-text="chatStatusText"
+          :translation-enabled="translationEnabled"
+          :primary-language="consultationLang"
           :on-chat-input="handleChatInput"
           :on-chat-send="handleChatSend"
         />
@@ -377,6 +379,11 @@ const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId
 const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
+const consultationLang = computed<'lo' | 'cn'>(() => {
+  const rawLang = queryValue('consultationLang') || sessionStore.consultationLang
+  return rawLang === 'cn' || rawLang === 'zh-cn' ? 'cn' : 'lo'
+})
+const translationEnabled = computed(() => consultationLang.value === 'lo')
 
 const aideName = computed(() => {
   return (
@@ -566,7 +573,8 @@ const resolveTranslationText = (payload: unknown) => {
 const timeline = usePatientSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || userId.value,
   getCurrentUserName: () => aideName.value,
-  getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value)
+  getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value),
+  getTranslationEnabled: () => translationEnabled.value
 })
 
 const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
@@ -597,13 +605,14 @@ const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
 const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
   items.forEach((item) => {
     const speaker = resolveHistorySpeaker(item)
+    const sourceText = translationEnabled.value ? item.contentLo : item.contentCn || item.contentLo
     timeline.appendHistoryMessage({
       ...speaker,
       messageType: item.messageType,
-      sourceText: item.contentLo,
-      translatedText: item.contentCn,
-      sourceLanguage: 'lo',
-      targetLanguage: 'cn',
+      sourceText,
+      translatedText: translationEnabled.value ? item.contentCn : '',
+      sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -643,7 +652,8 @@ const notifyPatientVideoRoomCreated = () => {
     doctorName: consultationDoctorName.value || doctorTitle.value,
     goodAt: consultationDoctorGoodAt.value,
     caseId: takeOptionalText(consultationCaseId.value),
-    roomId
+    roomId,
+    consultationLang: consultationLang.value
   })
 }
 
@@ -759,8 +769,10 @@ const chat = createPatientConsultationChatService({
 
     timeline.appendManualMessage({
       ...sender,
-      sourceText: contentLo,
-      translatedText: contentCn
+      sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
+      translatedText: translationEnabled.value ? contentCn : '',
+      sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : 'cn'
     })
   },
   onError: (error) => {
@@ -768,7 +780,7 @@ const chat = createPatientConsultationChatService({
   }
 })
 
-const chatInputDisabled = computed(() => chatSending.value)
+const chatInputDisabled = computed(() => false)
 const chatSendDisabled = computed(() => {
   return (
     chatSending.value ||
@@ -819,8 +831,10 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerId: currentUserId,
     speakerName: aideName.value,
     side: 'self',
-    sourceText: payload.contentLo,
-    translatedText: payload.contentCn
+    sourceText: translationEnabled.value ? payload.contentLo : payload.contentCn || payload.contentLo,
+    translatedText: translationEnabled.value ? payload.contentCn : '',
+    sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
+    targetLanguage: translationEnabled.value ? 'cn' : 'cn'
   })
 }
 
@@ -850,22 +864,23 @@ const handleChatSend = async () => {
     return
   }
 
+  chatDraft.value = ''
   chatSending.value = true
 
   try {
-    const translationResponse = await translateConsultationText({
-      source: 'lo',
-      to: 'cn',
-      text: normalizedText
-    })
-    const contentCn = resolveTranslationText(translationResponse?.data)
+    const contentCn = translationEnabled.value
+      ? resolveTranslationText((await translateConsultationText({
+          source: 'lo',
+          to: 'cn',
+          text: normalizedText
+        }))?.data)
+      : normalizedText
     const payload = {
-      contentLo: normalizedText,
+      contentLo: translationEnabled.value ? normalizedText : '',
       contentCn
     }
 
     appendLocalManualMessage(payload)
-    chatDraft.value = ''
 
     const [sendResult, saveResult] = await Promise.allSettled([
       chat.sendTranslatedMessage({
@@ -878,7 +893,7 @@ const handleChatSend = async () => {
         caseId,
         isDoctor: 2,
         contentCn,
-        contentLo: normalizedText
+        contentLo: translationEnabled.value ? normalizedText : ''
       })
     ])
 
@@ -893,6 +908,9 @@ const handleChatSend = async () => {
     }
   } catch (error) {
     console.warn('Failed to translate aide consultation chat message.', error)
+    if (!chatDraft.value) {
+      chatDraft.value = normalizedText
+    }
     ElMessage.warning(t('assistant.patientVideo.consultation.chatTranslateFailed'))
   } finally {
     chatSending.value = false
@@ -925,7 +943,7 @@ const ensurePatientProfile = async () => {
 const bootstrapConsultation = async () => {
   if (
     !token.value ||
-    !secondaryToken.value ||
+    (translationEnabled.value && !secondaryToken.value) ||
     !channelId.value ||
     !userId.value ||
     !consultationPatientId.value ||
@@ -955,7 +973,8 @@ const bootstrapConsultation = async () => {
       userName: aideName.value,
       token: token.value,
       secondaryToken: secondaryToken.value,
-      language: 'lo',
+      language: consultationLang.value,
+      translationEnabled: translationEnabled.value,
       publishLocalMedia: false,
       playRemoteAudio: false
     })
@@ -971,7 +990,8 @@ const bootstrapConsultation = async () => {
     await notifyAideVideoRoomDoctor({
       patientId: consultationPatientId.value,
       caseId: consultationCaseId.value,
-      doctorId: consultationDoctorId.value
+      doctorId: consultationDoctorId.value,
+      consultationLang: consultationLang.value
     })
 
     await loadConversationHistory(consultationVideoId.value)
@@ -1041,6 +1061,20 @@ const handleLeave = async () => {
   }
 
   leavingInProgress = true
+  const confirmed = await showConfirmDialog({
+    title: t('assistant.aideVideo.consultation.leaveConfirmTitle'),
+    description: t('assistant.aideVideo.consultation.leaveConfirmDescription'),
+    cancelText: t('assistant.aideVideo.consultation.leaveConfirmCancel'),
+    confirmText: t('assistant.aideVideo.consultation.leaveConfirmConfirm'),
+    type: 'danger',
+    icon: 'warning'
+  })
+
+  if (!confirmed) {
+    leavingInProgress = false
+    return
+  }
+
   try {
     await cleanupConsultationRoom()
     notifyPatientConsultationEnded()
@@ -1099,7 +1133,8 @@ const handleConsultationCompleted = async (event: { patientId: string; caseId: s
     caseId
   })
 
-  await router.push({
+
+  await router.replace({
     path: '/assistant/case-result',
     query: {
       caseId
@@ -1134,7 +1169,8 @@ const handleResendRequest = async () => {
     const roomId = await createAideVideoRoom({
       patientId: context.patientId,
       caseId: context.caseId,
-      doctorId
+      doctorId,
+      consultationLang: consultationLang.value
     })
 
     await cleanupConsultationRoom()
@@ -1147,7 +1183,8 @@ const handleResendRequest = async () => {
       doctorName: context.doctorName,
       goodAt: consultationDoctorGoodAt.value,
       roomId,
-      caseId: context.caseId
+      caseId: context.caseId,
+      consultationLang: consultationLang.value
     }, {
       replace: true
     })

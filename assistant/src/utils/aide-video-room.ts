@@ -4,6 +4,7 @@ interface AideVideoRoomDoctorParams {
   patientId: string
   caseId: string
   doctorId: string
+  consultationLang?: 'lo' | 'cn'
 }
 
 const takeOptionalText = (value: unknown) => {
@@ -14,10 +15,12 @@ const takeOptionalText = (value: unknown) => {
   return String(value).trim()
 }
 
-const buildVideoRoomRequest = ({ patientId, caseId, doctorId }: AideVideoRoomDoctorParams) => {
+const buildVideoRoomRequest = (params: AideVideoRoomDoctorParams) => {
+  const { patientId, caseId, doctorId } = params
   const normalizedPatientId = takeOptionalText(patientId)
   const normalizedCaseId = takeOptionalText(caseId)
   const normalizedDoctorId = takeOptionalText(doctorId)
+  const consultationLang = params.consultationLang || 'lo'
 
   if (!normalizedPatientId || !normalizedCaseId || !normalizedDoctorId) {
     throw new Error('missingParams')
@@ -26,12 +29,16 @@ const buildVideoRoomRequest = ({ patientId, caseId, doctorId }: AideVideoRoomDoc
   return {
     patientId: normalizedPatientId,
     caseId: normalizedCaseId,
-    userId: normalizedDoctorId
+    userId: normalizedDoctorId,
+    consultationLang
   }
 }
 
 export const createAideVideoRoom = async (params: AideVideoRoomDoctorParams) => {
-  const requestData = buildVideoRoomRequest(params)
+  const requestData = {
+    ...buildVideoRoomRequest(params),
+    channelType: (params.consultationLang === 'cn' ? 1 : 2) as 1 | 2
+  }
   const roomResponse = await createVideoRoom(requestData)
   const roomId = takeOptionalText(roomResponse?.data)
 

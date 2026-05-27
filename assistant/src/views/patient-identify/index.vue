@@ -31,9 +31,10 @@
           <div class="verify-body">
             <div class="verify-input-wrap">
               <input
-                v-model.trim="verifyCode"
+                :value="verifyCode"
                 class="verify-input"
                 :placeholder="currentPlaceholder"
+                @input="handleVerifyCodeInput"
                 @keyup.enter="handleVerify"
               />
             </div>
@@ -98,6 +99,20 @@ const currentPlaceholder = computed(() => {
   return placeholderMap[activeType.value]
 })
 
+const normalizeVerifyCode = (value: unknown) => {
+  return String(value ?? '').replace(/[^0-9]/g, '')
+  // return String(value ?? '').replace(/[^0-9a-zA-Z]/g, '')
+}
+
+const handleVerifyCodeInput = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const normalizedValue = normalizeVerifyCode(input.value)
+  verifyCode.value = normalizedValue
+  if (input.value !== normalizedValue) {
+    input.value = normalizedValue
+  }
+}
+
 const changeType = (type: PatientVerifyType) => {
   activeType.value = type
   verifyCode.value = ''
@@ -142,7 +157,8 @@ const getQueryPatientId = (value: unknown) => {
 }
 
 const handleVerify = async () => {
-  const code = verifyCode.value.trim()
+  const code = normalizeVerifyCode(verifyCode.value)
+  verifyCode.value = code
   if (!code) {
     ElMessage.warning(currentPlaceholder.value)
     return

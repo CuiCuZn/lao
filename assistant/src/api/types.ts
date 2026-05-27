@@ -232,6 +232,8 @@ export interface VideoCreateRoomParams {
   patientId: string | number;
   caseId?: string | number;
   userId?: string | number;
+  consultationLang?: 'lo' | 'cn';
+  channelType?: 1 | 2;
 }
 
 export interface VideoGetTokenParams {

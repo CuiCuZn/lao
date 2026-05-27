@@ -139,9 +139,7 @@
 
         <div class="doctor-top">
           <div class="doctor-avatar-wrap">
-            <div class="doctor-avatar" :style="{ background: getAvatarGradient(doctorDisplayName) }">
-              {{ doctorInitial }}
-            </div>
+            <img class="doctor-avatar" :src="doctorAvatarImage" alt="" />
           </div>
 
           <h3 class="doctor-name">{{ doctorDisplayName }}</h3>
@@ -222,6 +220,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import callNoIcon from '@/assets/call_no.svg'
+import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { switchWorkbenchOnlineStatus, getDepartmentList, getDiagnosisStats, getCurrentReceptionList } from '@/api/workbench'
 import { getPatientDetail } from '@/api/patient'
 import { getBasicInfo, getVideoChannelId, rejectVideo } from '@/api/video'
@@ -240,6 +239,7 @@ import {
   showDesktopNotification
 } from '@/utils/desktop-notification'
 import { connectSse, type SseMessage } from '@/utils/sse'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 import CaseDetail from './components/CaseDetail.vue'
 
 type SseStatus = 'offline' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -256,6 +256,11 @@ interface MetricCard {
 
 const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
 const DOCTOR_RTC_CONTEXT_KEY = 'doctor_rtc_context'
+const RELOAD_RESTORE_ONLINE_KEY = 'doctor_reload_restore_online'
+const RELOAD_RESTORE_ONLINE_TTL = 10_000
+const RELOAD_RESTORE_ONLINE_DELAY = 800
+const SSE_HEARTBEAT_TIMEOUT = 60_000
+const SSE_WATCHDOG_INTERVAL = 10_000
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -353,6 +358,66 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function normalizeConsultationLang(value: unknown): 'lo' | 'cn' | undefined {
+  const normalizedValue = value !== null && value !== undefined ? String(value).trim().toLowerCase() : ''
+  if (normalizedValue === 'cn' || normalizedValue === 'zh-cn' || normalizedValue === 'zh') return 'cn'
+  if (normalizedValue === 'lo' || normalizedValue === 'lo-la' || normalizedValue === 'lao') return 'lo'
+  return undefined
+}
+
+function normalizeChannelType(value: unknown): 'lo' | 'cn' | undefined {
+  const normalizedValue = value !== null && value !== undefined ? String(value).trim() : ''
+  if (normalizedValue === '1') return 'cn'
+  if (normalizedValue === '2') return 'lo'
+  return undefined
+}
+
+function inferConsultationLang(record: Record<string, unknown>): 'lo' | 'cn' | undefined {
+  const explicitLang = normalizeConsultationLang(
+    pickString(record, ['consultationLang', 'languageMode', 'roomLanguage', 'consultationLanguage'])
+  )
+
+  if (explicitLang) {
+    return explicitLang
+  }
+
+  const channelTypeLang = normalizeChannelType(pickString(record, ['channelType', 'channel_type']))
+  if (channelTypeLang) {
+    return channelTypeLang
+  }
+
+  const translationEnabled = record.translationEnabled ?? record.enableTranslation ?? record.needTranslation
+  if (typeof translationEnabled === 'boolean') {
+    return translationEnabled ? 'lo' : 'cn'
+  }
+
+  const channelValues = [
+    'channelId',
+    'roomId',
+    'primaryChannelId',
+    'secondaryChannelId',
+    'translationChannelId',
+    'sourceChannelId',
+    'targetChannelId',
+    'loChannelId',
+    'cnChannelId'
+  ]
+    .map((key) => pickString(record, [key]).toLowerCase())
+    .filter(Boolean)
+
+  if (channelValues.some((value) => value.endsWith('_lo'))) {
+    return 'lo'
+  }
+
+  const secondaryChannelKeys = ['secondaryChannelId', 'translationChannelId', 'loChannelId']
+  const hasEmptySecondaryChannel = secondaryChannelKeys.some((key) => key in record && !pickString(record, [key]))
+  if (hasEmptySecondaryChannel && channelValues.some((value) => value.endsWith('_cn'))) {
+    return 'cn'
+  }
+
+  return undefined
+}
+
 function buildConsultationNavigationContext(
   seedData: Partial<ConsultationNavigationContext>,
   consultationMode: ConsultationMode,
@@ -387,6 +452,7 @@ function buildConsultationNavigationContext(
   const doctorAideId =
     pickString(mergedRecord, ['doctorAideId', 'doctorAidId']) ||
     (seedData.doctorAideId !== null && seedData.doctorAideId !== undefined ? String(seedData.doctorAideId).trim() : '')
+  const consultationLang = inferConsultationLang(mergedRecord) || normalizeConsultationLang(seedData.consultationLang)
 
   return {
     patientName,
@@ -404,6 +470,7 @@ function buildConsultationNavigationContext(
     patientId,
     doctorAideId,
     roomId,
+    consultationLang,
     consultationMode,
     raw: mergedRecord
   }
@@ -442,6 +509,7 @@ async function prepareConsultationNavigation(
     shouldFetchPatientDetail ? getPatientDetail(resolvedPatientId).catch(() => null) : Promise.resolve(null)
   ])
 
+  const channelData = isObjectRecord(channelResponse?.data) ? channelResponse.data : {}
   const roomId = resolveChannelId(channelResponse?.data)
 
   if (!roomId) {
@@ -453,6 +521,7 @@ async function prepareConsultationNavigation(
   const navigationContext = buildConsultationNavigationContext(
     {
       ...seedData,
+      ...channelData,
       ...basicInfo,
       ...patientDetail,
       caseId: resolvedCaseId,
@@ -462,6 +531,7 @@ async function prepareConsultationNavigation(
         pickString({ ...basicInfo, ...patientDetail }, ['doctorAideId', 'doctorAidId']),
       raw: {
         ...rawRecord,
+        ...channelData,
         ...basicInfo,
         ...patientDetail,
         ...(resolvedDoctorAideId ? { doctorAideId: resolvedDoctorAideId } : {})
@@ -499,6 +569,11 @@ async function prepareConsultationNavigation(
     if (normalizedDoctorAideId) {
       nextQuery.doctorAideId = normalizedDoctorAideId
     }
+  }
+
+  const normalizedConsultationLang = normalizeConsultationLang(navigationContext.consultationLang)
+  if (normalizedConsultationLang) {
+    nextQuery.consultationLang = normalizedConsultationLang
   }
 
   await router.push({
@@ -542,6 +617,7 @@ const unfinishedConsultations = computed<IncompleteConsultation[]>(() =>
     videoId: pickString(item as Record<string, unknown>, ['videoId', 'videoID']),
     doctorAideId: pickString(item as Record<string, unknown>, ['doctorAideId', 'doctorAidId']),
     roomId: pickString(item as Record<string, unknown>, ['roomId', 'channelId']),
+    consultationLang: inferConsultationLang(item as Record<string, unknown>),
     raw: item
   }))
 )
@@ -563,16 +639,18 @@ const handleContinueConsultation = async (item: IncompleteConsultation) => {
 }
 
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+let sseWatchdogTimer: ReturnType<typeof setInterval> | undefined
 let sseConnection: ReturnType<typeof connectSse> | undefined
+let reloadRestoreTimer: ReturnType<typeof setTimeout> | undefined
 let manualClose = false
 let activeStreamId = 0
 let isOnlineSwitchRequestRunning = false
+let lastSseActivityAt = 0
 
 const doctorProfile = computed(() => userStore.profile)
 const doctorDisplayName = computed(() => {
   return doctorProfile.value?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
-const doctorInitial = computed(() => doctorDisplayName.value.slice(0, 1).toUpperCase())
 const doctorInstitution = computed(() => {
   return (
     doctorProfile.value?.deptName ||
@@ -702,8 +780,20 @@ async function loadCurrentReceptionList() {
 }
 
 onMounted(async () => {
+  await loadSexDict()
+
+  const shouldRestoreOnlineAfterReload = consumeReloadOnlineRestoreIntent()
+
   if (isOnlineRequested.value) {
     startSse()
+  } else if (shouldRestoreOnlineAfterReload) {
+    sseStatus.value = 'offline'
+    reloadRestoreTimer = setTimeout(() => {
+      reloadRestoreTimer = undefined
+      if (!isOnlineRequested.value) {
+        void handleOnlineChange(true)
+      }
+    }, RELOAD_RESTORE_ONLINE_DELAY)
   } else {
     sseStatus.value = 'offline'
   }
@@ -729,11 +819,41 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  clearReloadRestoreTimer()
   closeSse(true)
 })
 
+function clearReloadRestoreTimer() {
+  if (reloadRestoreTimer) {
+    clearTimeout(reloadRestoreTimer)
+    reloadRestoreTimer = undefined
+  }
+}
+
+function isReloadNavigation() {
+  const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+  console.log(nav?.type === 'reload' ? '刚才是刷新' : '不是刷新进入')
+  return nav?.type === 'reload'
+}
+
+function consumeReloadOnlineRestoreIntent() {
+  if (!isReloadNavigation()) {
+    return false
+  }
+
+  const timestamp = Number(sessionStorage.getItem(RELOAD_RESTORE_ONLINE_KEY))
+  sessionStorage.removeItem(RELOAD_RESTORE_ONLINE_KEY)
+
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return false
+  }
+
+  return Date.now() - timestamp <= RELOAD_RESTORE_ONLINE_TTL
+}
+
 function persistOnlineState(value: boolean) {
   isOnline.value = value
+  userStore.setOnlineStatus(value)
   localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, String(value))
 }
 
@@ -743,6 +863,11 @@ function resolveInitialOnlineState() {
     const resolved = String(onlineValue) === '1'
     localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, String(resolved))
     return resolved
+  }
+
+  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
+  if (cachedOnlineStatus !== null) {
+    return cachedOnlineStatus === 'true'
   }
 
   return localStorage.getItem(ONLINE_STATUS_STORAGE_KEY) !== 'false'
@@ -778,6 +903,7 @@ const handleOnlineChange = async (value: string | number | boolean) => {
   isSwitchingOnlineStatus.value = true
   try {
     await switchWorkbenchOnlineStatus()
+    sessionStorage.removeItem(RELOAD_RESTORE_ONLINE_KEY)
     persistOnlineState(false)
     closeSse(false)
     sseStatus.value = 'offline'
@@ -824,12 +950,13 @@ function startSse() {
   sseStatus.value = reconnectAttempts.value > 0 ? 'reconnecting' : 'connecting'
   activeStreamId += 1
   const streamId = activeStreamId
+  markSseAlive(streamId, 'start')
+  startSseWatchdog(streamId)
 
   const token = getToken()
   const langMap: Record<string, string> = {
     'zh-cn': 'zh_CN',
-    lo: 'lo_LA',
-    en: 'en_US'
+    lo: 'lo_LA'
   }
   const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
   const streamUrl = `${baseUrl}/resource/sse`
@@ -842,13 +969,19 @@ function startSse() {
     },
     onOpen: () => {
       if (streamId !== activeStreamId) return
+      markSseAlive(streamId, 'open')
       sseStatus.value = 'connected'
       reconnectAttempts.value = 0
       void finalizeOnlineActivation()
     },
     onMessage: (message) => {
       if (streamId !== activeStreamId) return
+      markSseAlive(streamId, 'message')
       handleSseMessage(message)
+    },
+    onHeartbeat: () => {
+      if (streamId !== activeStreamId) return
+      markSseAlive(streamId, 'heartbeat')
     },
     onError: () => {
       if (streamId !== activeStreamId) return
@@ -863,6 +996,7 @@ function startSse() {
 function closeSse(isUnmount: boolean) {
   manualClose = true
   activeStreamId += 1
+  clearSseWatchdog()
   if (reconnectTimer) {
     clearTimeout(reconnectTimer)
     reconnectTimer = undefined
@@ -872,6 +1006,50 @@ function closeSse(isUnmount: boolean) {
   if (isUnmount) {
     manualClose = true
   }
+}
+
+function clearSseWatchdog() {
+  if (sseWatchdogTimer) {
+    clearInterval(sseWatchdogTimer)
+    sseWatchdogTimer = undefined
+  }
+}
+
+function markSseAlive(streamId: number, reason: string) {
+  if (streamId !== activeStreamId) return
+  lastSseActivityAt = Date.now()
+  console.log('[doctor-sse] alive', {
+    reason,
+    streamId,
+    at: new Date(lastSseActivityAt).toISOString()
+  })
+}
+
+function startSseWatchdog(streamId: number) {
+  clearSseWatchdog()
+  sseWatchdogTimer = setInterval(() => {
+    if (streamId !== activeStreamId || manualClose || !isOnlineRequested.value || !lastSseActivityAt) {
+      return
+    }
+
+    const inactiveMs = Date.now() - lastSseActivityAt
+    if (inactiveMs <= SSE_HEARTBEAT_TIMEOUT) {
+      return
+    }
+
+    console.warn('[doctor-sse] heartbeat timeout, reconnecting', {
+      streamId,
+      inactiveMs,
+      timeout: SSE_HEARTBEAT_TIMEOUT
+    })
+    sseStatus.value = 'error'
+    manualClose = false
+    activeStreamId += 1
+    sseConnection?.close()
+    sseConnection = undefined
+    clearSseWatchdog()
+    scheduleReconnect()
+  }, SSE_WATCHDOG_INTERVAL)
 }
 
 function scheduleReconnect() {
@@ -1017,6 +1195,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
   const caseId = pickString(item, ['caseId', 'caseID', 'medicalCaseId'])
   const doctorAideId = pickString(item, ['doctorAideId', 'doctorAidId'])
   const roomId = pickString(item, ['roomId', 'channelId'])
+  const consultationLang = inferConsultationLang(item)
   const queueNo = pickString(item, ['queueNo', 'queueNumber', 'serialNo', 'number', 'code']) || '--'
   const complaint =
     pickString(item, ['mainSuit', 'chiefComplaint', 'complaint', 'summary', 'reason', 'purpose']) ||
@@ -1052,6 +1231,7 @@ function normalizePendingItem(item: Record<string, unknown>, message: SseMessage
     caseId,
     doctorAideId,
     roomId,
+    consultationLang,
     historyIllness,
     previousHistory,
     allergichistory,
@@ -1086,10 +1266,7 @@ function formatReceptionPatientName(item: CurrentReceptionItem): string {
 }
 
 function formatPatientSex(value?: string): string {
-  const normalizedValue = value?.trim().toLowerCase()
-  if (normalizedValue === '0' || normalizedValue === 'male' || normalizedValue === '男') return t('workbench.male')
-  if (normalizedValue === '1' || normalizedValue === 'female' || normalizedValue === '女') return t('workbench.female')
-  return value?.trim() || ''
+  return formatSexByDict(value)
 }
 
 function formatDiagnosisStatus(value?: string): string {
@@ -1836,15 +2013,11 @@ function getAvatarGradient(name: string): string {
 }
 
 .doctor-avatar {
-  width: 84px;
-  height: 84px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 100px;
+  height: 100px;
   border-radius: 999px;
-  color: #fff;
-  font-size: 32px;
-  font-weight: 700;
+  display: block;
+  object-fit: cover;
 }
 
 .doctor-name {

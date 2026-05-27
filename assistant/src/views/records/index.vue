@@ -135,6 +135,7 @@ import type { TagProps } from 'element-plus'
 import { getCaseRecordList } from '@/api/record'
 import type { CaseRecordItem } from '@/api/types'
 import AppPage from '@/components/AppPage.vue'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 
 type FilterKey = 'all' | 'recent7' | 'recent30' | 'completed' | 'incomplete'
 type RecordStatus = 'completed' | 'incomplete'
@@ -198,19 +199,7 @@ const formatDate = (value: unknown) => {
   return `${year}-${month}-${day}`
 }
 
-const normalizeGenderKey = (value: unknown) => {
-  const text = takeOptionalText(value).toLowerCase()
-
-  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
-    return 'male'
-  }
-
-  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
-    return 'female'
-  }
-
-  return ''
-}
+const formatGenderText = (value: unknown) => formatSexByDict(value, '--')
 
 const normalizeStatus = (item: CaseRecordItem): RecordStatus => {
   const rawStatus = takeOptionalText(item.status).toLowerCase()
@@ -242,15 +231,15 @@ const buildDoctorMeta = (item: CaseRecordItem) => {
 }
 
 const normalizeRecordRow = (item: CaseRecordItem, index: number): RecordRow => {
-  const genderKey = normalizeGenderKey(item.patientSex)
+  const genderText = formatGenderText(item.patientSex)
   const ageText = takeOptionalText(item.patientAge) || '--'
   const status = normalizeStatus(item)
   const patientMeta =
-    ageText === '--' && !genderKey
+    ageText === '--' && genderText === '--'
       ? '--'
       : t('assistant.records.patientAgeGender', {
           age: ageText,
-          gender: genderKey ? t(`assistant.records.${genderKey}`) : '--'
+          gender: genderText
         })
 
   return {
@@ -287,6 +276,7 @@ const fetchRecords = async () => {
   loading.value = true
 
   try {
+    await loadSexDict()
     const response = await getCaseRecordList({
       searchInfo: keyword.value.trim(),
       checkInfo: resolveCheckInfo(activeFilter.value),
@@ -341,6 +331,7 @@ watch(locale, () => {
 })
 
 onMounted(() => {
+  void loadSexDict()
   void fetchRecords()
 })
 

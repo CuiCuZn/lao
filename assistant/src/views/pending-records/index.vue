@@ -126,6 +126,7 @@ import AppPage from '@/components/AppPage.vue'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
 import { createAideVideoRoom } from '@/utils/aide-video-room'
 import { broadcastPatientContextSync, broadcastReconnectFailed } from '@/utils/patient-channel'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
 
 type FilterKey = 'all' | 'recent7' | 'recent30'
 type DetailRecord = Record<string, unknown>
@@ -246,19 +247,7 @@ const formatDate = (value: unknown) => {
   return `${year}-${month}-${day}`
 }
 
-const normalizeGenderKey = (value: unknown) => {
-  const text = takeOptionalText(value).toLowerCase()
-
-  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
-    return 'male'
-  }
-
-  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
-    return 'female'
-  }
-
-  return ''
-}
+const formatGenderText = (value: unknown) => formatSexByDict(value, '--')
 
 const buildDoctorMeta = (item: CaseRecordItem) => {
   const parts = [takeOptionalText(item.title)]
@@ -288,14 +277,14 @@ const resolveOriginalDoctorGoodAt = (item: CaseRecordItem) => {
 }
 
 const normalizePendingRecordRow = (item: CaseRecordItem, index: number): PendingRecordRow => {
-  const genderKey = normalizeGenderKey(item.patientSex)
+  const genderText = formatGenderText(item.patientSex)
   const ageText = takeOptionalText(item.patientAge) || '--'
   const patientMeta =
-    ageText === '--' && !genderKey
+    ageText === '--' && genderText === '--'
       ? '--'
       : t('assistant.pendingRecords.patientAgeGender', {
           age: ageText,
-          gender: genderKey ? t(`assistant.pendingRecords.${genderKey}`) : '--'
+          gender: genderText
         })
 
   return {
@@ -328,6 +317,7 @@ const fetchPendingRecords = async () => {
   loading.value = true
 
   try {
+    await loadSexDict()
     const response = await getUndoneCaseList({
       searchInfo: keyword.value.trim(),
       checkInfo: resolveCheckInfo(activeFilter.value),
@@ -455,10 +445,12 @@ const handleReconnect = async (row: PendingRecordRow) => {
       throw new Error(t('assistant.pendingRecords.reconnectFailed'))
     }
 
+    const consultationLang = localStorage.getItem('lang') === 'zh-cn' ? 'cn' : 'lo'
     const roomId = await createAideVideoRoom({
       patientId: resolvedPatientId,
       caseId: resolvedCaseId,
-      doctorId: reconnectTargets.originalDoctorId
+      doctorId: reconnectTargets.originalDoctorId,
+      consultationLang
     })
 
     try {
@@ -468,7 +460,8 @@ const handleReconnect = async (row: PendingRecordRow) => {
         doctorName: reconnectTargets.originalDoctorName,
         goodAt: reconnectTargets.originalDoctorGoodAt,
         roomId,
-        caseId: resolvedCaseId
+        caseId: resolvedCaseId,
+        consultationLang
       })
     } catch (error) {
       const message =
@@ -534,6 +527,7 @@ watch(locale, () => {
 })
 
 onMounted(() => {
+  void loadSexDict()
   void fetchPendingRecords()
 })
 

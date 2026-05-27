@@ -52,6 +52,23 @@ export interface UserInfoResult {
   permissions: string[];
 }
 
+export interface DictDataVO {
+  dictCode?: number | string;
+  dictLabel: string;
+  dictValue: string;
+  dictType?: string;
+  [key: string]: unknown;
+}
+
+export interface DictDataListResponse {
+  code?: number;
+  msg?: string;
+  rows?: DictDataVO[] | null;
+  data?: DictDataVO[] | null;
+  total?: number;
+  [key: string]: unknown;
+}
+
 export interface AppRouteMeta {
   title?: string;
   icon?: string;
@@ -86,6 +103,7 @@ export interface PendingConsultation {
   caseId?: string;
   doctorAideId?: string;
   roomId?: string;
+  consultationLang?: 'lo' | 'cn';
   historyIllness?: string;
   previousHistory?: string;
   allergichistory?: string;
@@ -111,6 +129,7 @@ export interface ConsultationNavigationContext {
   patientId?: string | number;
   doctorAideId?: string;
   roomId?: string | number;
+  consultationLang?: 'lo' | 'cn';
   consultationMode?: ConsultationMode;
   raw?: unknown;
 }
@@ -129,6 +148,7 @@ export interface IncompleteConsultation {
   videoId?: string | number;
   doctorAideId?: string;
   roomId?: string;
+  consultationLang?: 'lo' | 'cn';
   raw?: unknown;
 }
 
@@ -178,7 +198,11 @@ export interface VideoGetTokenResponse {
 export interface VideoGetChannelIdResponse {
   code?: number;
   msg?: string;
-  data?: string | number | null;
+  data?: {
+    channelType?: string | number;
+    channelId?: string | number;
+    [key: string]: unknown;
+  } | string | number | null;
   [key: string]: unknown;
 }
 

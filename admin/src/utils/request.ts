@@ -8,7 +8,7 @@ import i18n from '@/locales'
 
 // 标记是否正在显示重新登录对话框，避免并发请求时重复弹出
 let isReloginShow = false
-const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+const supportedLocales = ['zh-cn', 'lo'] as const
 type SupportedLocale = typeof supportedLocales[number]
 
 /**
@@ -39,8 +39,7 @@ class Request {
         }
         const langMap: Record<string, string> = {
           'zh-cn': 'zh_CN',
-          lo: 'lo_LA',
-          en: 'en_US'
+          lo: 'lo_LA'
         }
         config.headers['content-language'] = langMap[currentLang] || 'zh_CN'
 

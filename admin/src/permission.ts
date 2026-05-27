@@ -45,7 +45,7 @@ router.beforeEach(async (to, from) => {
           
           // 获取并缓存系统必要的字典数据
           // 此处提前加载科室字典：sys_dept 和 职称字典：sys_user_title
-          await dictStore.loadDicts(['sys_dept', 'sys_user_title', 'sys_normal_disable'])
+          await dictStore.loadDicts(['sys_dept', 'sys_user_title', 'sys_normal_disable', 'sys_user_sex'])
           
           // 2. 根据获取的用户信息动态生成可访问路由
           const accessRoutes = await permissionStore.generateRoutes()

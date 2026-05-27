@@ -12,8 +12,10 @@
             <h2>{{ t('assistant.intake.pageTitle') }}</h2>
           </div>
 
-          <div class="save-status" :class="`is-${saveState}`">
-            {{ saveStatusText }}
+          <div style="width: 100px; display: flex; justify-content: flex-end;">
+            <div class="save-status" :class="`is-${saveState}`">
+              {{ saveStatusText }}
+            </div>
           </div>
         </div>
 
@@ -33,13 +35,9 @@
               <div class="field field-half">
                 <span class="field-label">{{ t('assistant.intake.fields.sex') }}<i>*</i></span>
                 <div class="gender-group">
-                  <label class="gender-option">
-                    <input v-model="form.patientSex" type="radio" value="0" @change="triggerImmediateSave" />
-                    <span>{{ t('assistant.intake.sexOptions.male') }}</span>
-                  </label>
-                  <label class="gender-option">
-                    <input v-model="form.patientSex" type="radio" value="1" @change="triggerImmediateSave" />
-                    <span>{{ t('assistant.intake.sexOptions.female') }}</span>
+                  <label v-for="item in sexOptions" :key="item.dictValue" class="gender-option">
+                    <input v-model="form.patientSex" type="radio" :value="item.dictValue" @change="triggerImmediateSave" />
+                    <span>{{ item.dictLabel }}</span>
                   </label>
                 </div>
               </div>
@@ -190,6 +188,7 @@ import { listDictData } from '@/api/dict'
 import { getPatientDetail, savePatient } from '@/api/patient'
 import type { DictDataVO, PatientSaveParams } from '@/api/types'
 import { usePatientSessionStore } from '@/stores/patient-session'
+import { loadSexDict, sexDictOptions } from '@/utils/sex-dict'
 import zhuImage from '@/assets/zhu.png'
 
 const { t } = useI18n()
@@ -333,6 +332,8 @@ const maritalStatusOptions = computed(() => {
     { dictLabel: t('assistant.intake.maritalStatusOptions.married'), dictValue: '1' }
   ]
 })
+
+const sexOptions = computed(() => sexDictOptions.value)
 
 const tongueDemoRows = computed(() => [
   [
@@ -648,6 +649,7 @@ watch(
 )
 
 onMounted(() => {
+  void loadSexDict()
   void loadMaritalStatusDict()
 })
 

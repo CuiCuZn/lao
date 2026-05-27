@@ -9,6 +9,7 @@ interface ConnectSseOptions {
   signal?: AbortSignal
   onOpen?: (response: Response) => void
   onMessage?: (message: SseMessage) => void
+  onHeartbeat?: (message: SseMessage) => void
   onError?: (error: Error) => void
   onClose?: () => void
 }
@@ -72,6 +73,9 @@ async function startStream(url: string, controller: AbortController, options: Co
         buffer = buffer.slice(separatorIndex + 2)
         if (block) {
           const message = parseSseBlock(block)
+          if (isHeartbeatBlock(message, block)) {
+            options.onHeartbeat?.(message)
+          }
           if (message.data) {
             options.onMessage?.(message)
           }
@@ -82,6 +86,9 @@ async function startStream(url: string, controller: AbortController, options: Co
 
     if (buffer.trim()) {
       const message = parseSseBlock(buffer.trim())
+      if (isHeartbeatBlock(message, buffer.trim())) {
+        options.onHeartbeat?.(message)
+      }
       if (message.data) {
         options.onMessage?.(message)
       }
@@ -132,4 +139,20 @@ function normalizeError(error: unknown) {
   }
 
   return new Error(typeof error === 'string' ? error : 'Unknown SSE error')
+}
+
+function isHeartbeatBlock(message: SseMessage, block: string) {
+  const normalizedEvent = message.event.toLowerCase()
+  const normalizedData = message.data.toLowerCase()
+
+  if (normalizedEvent.includes('heartbeat') || normalizedEvent.includes('ping') || normalizedEvent.includes('pong')) {
+    return true
+  }
+
+  if (normalizedData.includes('heartbeat') || normalizedData.includes('ping') || normalizedData.includes('pong')) {
+    return true
+  }
+
+  const lines = block.split('\n').map((line) => line.trim()).filter(Boolean)
+  return lines.length > 0 && lines.every((line) => line.startsWith(':'))
 }

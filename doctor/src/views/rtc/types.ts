@@ -13,6 +13,7 @@ import type {
 } from 'dingrtc'
 
 export type ConsultationLanguage = 'cn' | 'lo'
+export type ConsultationRoomLanguage = ConsultationLanguage
 export type ConsultationMessageType = 'subtitle' | 'manual'
 export type ConsultationChatConnectionStatus = 'idle' | 'connecting' | 'connected' | 'error' | 'closed'
 export type ConsultationSubtitleTaskPolicy = 'auto' | 'force' | 'skip'
@@ -26,6 +27,7 @@ export interface PatientConsultationJoinParams {
   token: string
   secondaryToken?: string
   language: ConsultationLanguage
+  translationEnabled?: boolean
   gslb?: string
 }
 
@@ -36,12 +38,13 @@ export interface RtcChannelTokenResult {
 
 export interface ConsultationJoinRoomResult {
   primaryChannelId: string
-  secondaryChannelId: string
-  secondaryLanguage: ConsultationLanguage
+  secondaryChannelId?: string
+  secondaryLanguage?: ConsultationLanguage
+  translationEnabled: boolean
   primaryTokenResult: RtcChannelTokenResult
-  secondaryTokenResult: RtcChannelTokenResult
+  secondaryTokenResult?: RtcChannelTokenResult
   primaryResult: Awaited<ReturnType<DingRTCClient['join']>>
-  secondaryResult: Awaited<ReturnType<DingRTCClient['join']>>
+  secondaryResult?: Awaited<ReturnType<DingRTCClient['join']>>
 }
 
 export interface ConsultationTrackStats {
@@ -71,23 +74,23 @@ export interface ConsultationSubtitleBinding {
 
 export interface ConsultationRtcClients {
   primaryClient: DingRTCClient
-  secondaryClient: DingRTCClient
+  secondaryClient: DingRTCClient | null
 }
 
 export interface ConsultationStreamSubscriptionOptions {
   primaryResult: Awaited<ReturnType<DingRTCClient['join']>>
-  secondaryResult: Awaited<ReturnType<DingRTCClient['join']>>
+  secondaryResult?: Awaited<ReturnType<DingRTCClient['join']>>
   onPrimaryAudioTrack: (track: RemoteAudioTrack) => void
-  onSecondaryAudioTrack: (track: RemoteAudioTrack) => void
+  onSecondaryAudioTrack?: (track: RemoteAudioTrack) => void
   onPrimaryRemoteUsersChanged: (users: RemoteUser[]) => void
-  onSecondaryRemoteUsersChanged: (users: RemoteUser[]) => void
+  onSecondaryRemoteUsersChanged?: (users: RemoteUser[]) => void
   onPrimaryTrackStatsNeeded: (uid: string) => void
-  onSecondaryTrackStatsNeeded: (uid: string) => void
+  onSecondaryTrackStatsNeeded?: (uid: string) => void
 }
 
 export interface ConsultationAsrRegistrationResult {
   primaryAsr: ASR
-  secondaryAsr: ASR
+  secondaryAsr: ASR | null
   bindings: ConsultationSubtitleBinding[]
 }
 
@@ -98,9 +101,10 @@ export interface ConsultationChannelContext {
   userName: string
   baseChannelName: string
   primaryChannelId: string
-  secondaryChannelId: string
+  secondaryChannelId?: string
   language: ConsultationLanguage
-  secondaryLanguage: ConsultationLanguage
+  secondaryLanguage?: ConsultationLanguage
+  translationEnabled: boolean
   token: string
 }
 
@@ -129,6 +133,7 @@ export interface DoctorRtcContext {
   patientId?: string | number
   doctorAideId?: string
   roomId?: string | number
+  consultationLang?: ConsultationRoomLanguage
   consultationMode?: ConsultationMode
 }
 
@@ -182,6 +187,7 @@ export interface SubtitleTimelineOptions {
   getCurrentUserId: () => string
   getCurrentUserName: () => string
   getRemoteUsers: () => RemoteUser[]
+  getTranslationEnabled?: () => boolean
   onFinalizedItem?: (item: SubtitleTimelineItem) => void | Promise<void>
 }
 

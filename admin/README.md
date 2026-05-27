@@ -60,7 +60,7 @@ admin/
 - `VITE_APP_ENCRYPT`：接口加密开关。
 - `VITE_APP_RSA_PUBLIC_KEY`：接口加密 RSA 公钥。
 
-开发服务会将 `/lao-api` 代理到后端服务，并在转发时移除 `/lao-api` 前缀。
+开发服务会将 `/lao-api` 代理到后端服务，并在转发时移除 `/lao-api` 前缀。管理端当前不接入 `/resource` WebSocket 通道，也不包含视频问诊聊天心跳逻辑。
 
 ## 安装与启动
 

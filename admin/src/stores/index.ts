@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 
-const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+const supportedLocales = ['zh-cn', 'lo'] as const
 type SupportedLocale = typeof supportedLocales[number]
 const resolveStoredLanguage = (): SupportedLocale => {
   const storedLang = localStorage.getItem('lang')

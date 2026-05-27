@@ -104,6 +104,12 @@ npm run preview  # 本地预览生产构建结果
 
 开发环境下，Vite 代理会将 `/lao-api` 转发到后端服务。医生端和医助端还包含 `/resource` WebSocket 代理，医助端额外包含 `/api-rtc` RTC 相关代理。
 
+## 实时通信说明
+
+- 管理端当前仅使用 `/lao-api` HTTP 接口代理。
+- 医生端和医助/患者端的视频问诊聊天使用 `/resource/websocket` WebSocket 通道。
+- 聊天 WebSocket 连接成功后，前端每 10 秒发送一次 `{"type":"ping"}` 作为保活心跳；该心跳只负责保持连接活跃，不依赖后端响应，也不触发自动重连。
+
 ## 功能概览
 
 ### 管理端

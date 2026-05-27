@@ -104,7 +104,7 @@ const resolveChatPayload = (
     takeOptionalText(payloadRecord?.recordCn) ||
     takeOptionalText(payloadRecord?.translation)
 
-  if (!contentLo || !contentCn) {
+  if (!contentLo && !contentCn) {
     return null
   }
 
@@ -354,7 +354,7 @@ export const createPatientConsultationChatService = (options: ConsultationChatSe
     const normalizedContentLo = takeOptionalText(contentLo)
     const normalizedContentCn = takeOptionalText(contentCn)
 
-    if (!normalizedDoctorId || normalizedRole === undefined || !normalizedContentLo || !normalizedContentCn) {
+    if (!normalizedDoctorId || normalizedRole === undefined || (!normalizedContentLo && !normalizedContentCn)) {
       throw new Error('Consultation chat payload is incomplete.')
     }
 

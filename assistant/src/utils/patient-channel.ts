@@ -16,6 +16,7 @@ export type VideoRoomCreatedMessage = {
     doctorName: string
     goodAt?: string
     roomId: string
+    consultationLang?: 'lo' | 'cn'
   }
 }
 
@@ -150,7 +151,10 @@ const isPatientChannelMessage = (value: unknown): value is PatientChannelMessage
       typeof value.payload.doctorId === 'string' &&
       typeof value.payload.doctorName === 'string' &&
       (value.payload.goodAt === undefined || typeof value.payload.goodAt === 'string') &&
-      typeof value.payload.roomId === 'string'
+      typeof value.payload.roomId === 'string' &&
+      (value.payload.consultationLang === undefined ||
+        value.payload.consultationLang === 'lo' ||
+        value.payload.consultationLang === 'cn')
     )
   }
 

@@ -12,6 +12,7 @@ export default {
       completedDescription: 'The doctor has issued the diagnosis and prescription. Review and archive the documents.',
       visitDate: 'Visit Date',
       visitDuration: 'Visit Duration',
+      callDuration: 'Call Duration',
       durationMinuteSecond: '{minutes} min {seconds} sec',
       visitId: 'Visit ID',
       patientInfo: 'Patient Info',
@@ -68,8 +69,6 @@ export default {
       chi: 'Chi',
       drugName: 'Herbal Medicine Name',
       dosage: 'Dosage',
-      male: 'Male',
-      female: 'Female',
       notAvailable: 'N/A',
       noDiagnosisData: 'No TCM four diagnostics data',
       noPrescription: 'No prescription for this visit'

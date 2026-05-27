@@ -101,9 +101,7 @@ export default {
       incomplete: 'Incomplete',
       viewDetail: 'View Details',
       patientAgeGender: '{age} years / {gender}',
-      doctorMeta: '{title} - {department}',
-      male: 'Male',
-      female: 'Female'
+      doctorMeta: '{title} - {department}'
     },
     pendingRecords: {
       pageTitle: 'Incomplete List',
@@ -127,9 +125,7 @@ export default {
       reconnectFailed: 'Session reconnect failed. Please try again later.',
       reconnectMissingTargets: 'Original physician or patient demographics could not be located; reconnection is unavailable.',
       patientAgeGender: '{age} years / {gender}',
-      doctorMeta: '{title} - {department}',
-      male: 'Male',
-      female: 'Female'
+      doctorMeta: '{title} - {department}'
     },
     caseResult: {
       pageTitle: 'Visit Report',
@@ -144,6 +140,7 @@ export default {
       completedDescription: 'The doctor has issued the diagnosis and prescription. Review and archive the documents.',
       visitDate: 'Visit Date',
       visitDuration: 'Visit Duration',
+      callDuration: 'Call Duration',
       durationMinuteSecond: '{minutes} min {seconds} sec',
       visitId: 'Visit ID',
       patientInfo: 'Patient Info',
@@ -201,8 +198,6 @@ export default {
       chi: 'Chi',
       drugName: 'Herbal Medicine Name',
       dosage: 'Dosage',
-      male: 'Male',
-      female: 'Female',
       notAvailable: 'N/A',
       noDiagnosisData: 'No TCM four diagnostics data',
       noPrescription: 'No prescription for this visit',
@@ -263,10 +258,6 @@ export default {
         maritalStatus: 'Marital Status',
         medicalAccount: 'Insurance Information',
         address: 'Residential Address'
-      },
-      sexOptions: {
-        male: 'Male',
-        female: 'Female'
       },
       maritalStatusOptions: {
         unmarried: 'Unmarried',
@@ -424,6 +415,10 @@ export default {
         resendRequestFailed: 'Failed to request again. Please handle it later.',
         handleLater: 'Handle Later',
         completedMessage: 'This visit has ended',
+        leaveConfirmTitle: 'The consultation is not finished. Hang up?',
+        leaveConfirmDescription: 'You can reconnect after hanging up',
+        leaveConfirmCancel: 'Return',
+        leaveConfirmConfirm: 'Hang Up',
         cameraLabels: {
           sideScanner: 'Side Document Camera',
           patientCamera: 'Patient Camera',

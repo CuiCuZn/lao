@@ -72,70 +72,56 @@
               <span>{{ t('assistant.caseResult.diagnosisData') }}</span>
             </header>
 
-            <div v-if="hasDiagnosisData" class="diagnosis-content">
-              <section class="constitution-panel">
-                <div class="bar-chart">
-                  <div v-for="item in constitutionItems" :key="item.label" class="bar-column">
-                    <span class="bar-value">{{ item.value }}</span>
-                    <div class="bar-track">
-                      <span class="bar-fill" :style="{ height: `${item.percent}%` }" />
-                    </div>
-                    <span class="bar-label">{{ item.label }}</span>
-                  </div>
-                </div>
-
-                <div class="constitution-summary">{{ constitutionSummary }}</div>
-              </section>
-
-              <div class="result-table-stack">
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.tongueResult') }}</div>
-                  <table class="result-table">
-                    <tbody>
-                      <tr v-for="row in tongueRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.value }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.faceResult') }}</div>
-                  <table class="result-table">
-                    <tbody>
-                      <tr v-for="row in faceRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.value }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
-
-                <section class="result-table-card">
-                  <div class="result-table-card__title">{{ t('assistant.caseResult.pulseResult') }}</div>
-                  <table class="result-table result-table--pulse">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>{{ t('assistant.caseResult.leftHand') }}</th>
-                        <th>{{ t('assistant.caseResult.rightHand') }}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr v-for="row in pulseRows" :key="row.label">
-                        <th>{{ row.label }}</th>
-                        <td>{{ row.left }}</td>
-                        <td>{{ row.right }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </section>
+            <div class="diagnosis-device-content">
+              <div class="diagnosis-image-panel">
+                <img class="diagnosis-image diagnosis-image-zhu" :src="zhuImage" alt="" />
               </div>
-            </div>
 
-            <div v-else class="empty-block">
-              {{ t('assistant.caseResult.noDiagnosisData') }}
+              <table class="diagnosis-table diagnosis-table--tongue">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="6">{{ t('assistant.caseResult.tongueResult') }}</th>
+                  </tr>
+                  <tr v-for="(row, rowIndex) in tongueDemoRows" :key="`tongue-${rowIndex}`">
+                    <template v-for="item in row" :key="item.label">
+                      <th>{{ item.label }}</th>
+                      <td>{{ item.value }}</td>
+                    </template>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table class="diagnosis-table diagnosis-table--face">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="4">{{ t('assistant.caseResult.faceResult') }}</th>
+                  </tr>
+                  <tr v-for="(row, rowIndex) in faceDemoRows" :key="`face-${rowIndex}`">
+                    <template v-for="item in row" :key="item.label">
+                      <th>{{ item.label }}</th>
+                      <td>{{ item.value }}</td>
+                    </template>
+                  </tr>
+                </tbody>
+              </table>
+
+              <table class="diagnosis-table diagnosis-table--pulse">
+                <tbody>
+                  <tr>
+                    <th class="table-title" colspan="3">{{ t('assistant.caseResult.pulseResult') }}</th>
+                  </tr>
+                  <tr>
+                    <th></th>
+                    <td>{{ t('assistant.caseResult.leftHand') }}</td>
+                    <td>{{ t('assistant.caseResult.rightHand') }}</td>
+                  </tr>
+                  <tr v-for="row in pulseDemoRows" :key="row.label">
+                    <th>{{ row.label }}</th>
+                    <td>{{ row.left }}</td>
+                    <td>{{ row.right }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </section>
 
@@ -152,7 +138,7 @@
               </div>
             </div>
 
-            <section class="prescription-section">
+            <!-- <section class="prescription-section">
               <div class="result-table-card__title">{{ t('assistant.caseResult.prescription') }}</div>
 
               <table v-if="prescriptionRows.length" class="result-table result-table--prescription">
@@ -173,7 +159,7 @@
               <div v-else class="empty-block empty-block--compact">
                 {{ t('assistant.caseResult.noPrescription') }}
               </div>
-            </section>
+            </section> -->
           </section>
         </section>
 
@@ -195,6 +181,8 @@ import {
   UserFilled
 } from '@element-plus/icons-vue'
 import { getCaseDetail } from '@/api/record'
+import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
+import zhuImage from '@/assets/zhu.png'
 
 type DetailRecord = Record<string, unknown>
 
@@ -297,17 +285,7 @@ const formatDuration = (value: unknown) => {
 }
 
 const formatGender = (value: unknown) => {
-  const text = takeOptionalText(value).toLowerCase()
-
-  if (text === '1' || text === '男' || text === 'male' || text === 'm') {
-    return t('assistant.caseResult.male')
-  }
-
-  if (text === '0' || text === '女' || text === 'female' || text === 'f') {
-    return t('assistant.caseResult.female')
-  }
-
-  return takeOptionalText(value)
+  return formatSexByDict(value)
 }
 
 const formatMarriage = (value: unknown) => {
@@ -378,6 +356,21 @@ const pickText = (keys: string[], fallback = '') => {
   return fallback
 }
 
+const pickValue = (keys: string[]) => {
+  const records = getCandidateRecords()
+
+  for (const record of records) {
+    for (const key of keys) {
+      const value = record[key]
+      if (takeOptionalText(value)) {
+        return value
+      }
+    }
+  }
+
+  return undefined
+}
+
 const pickNumber = (keys: string[]) => {
   const records = getCandidateRecords()
 
@@ -408,9 +401,68 @@ const pickNestedRecord = (keys: string[]) => {
   return null
 }
 
+const parseVideoTime = (value: unknown) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value < 10000000000 ? value * 1000 : value
+  }
+
+  const text = takeOptionalText(value)
+  if (!text) {
+    return Number.NaN
+  }
+
+  const numericValue = Number(text)
+  if (Number.isFinite(numericValue)) {
+    return numericValue < 10000000000 ? numericValue * 1000 : numericValue
+  }
+
+  return Date.parse(text)
+}
+
+const formatCallDuration = () => {
+  const startTime = parseVideoTime(pickValue(['videoStartTime']))
+  const endTime = parseVideoTime(pickValue(['videoEndTime']))
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return t('assistant.caseResult.notAvailable')
+  }
+
+  return formatDuration((endTime - startTime) / 1000)
+}
+
 const resolveDisplayText = (value: string) => {
   return value || t('assistant.caseResult.notAvailable')
 }
+
+const tongueDemoRows = computed(() => [
+  [
+    { label: t('assistant.caseResult.tongueColor'), value: t('assistant.caseResult.demoPaleTongue') },
+    { label: t('assistant.caseResult.tongueShape'), value: t('assistant.caseResult.demoSpottedToothMarkedTongue') },
+    { label: t('assistant.caseResult.tongueState'), value: t('assistant.caseResult.demoNormal') }
+  ],
+  [
+    { label: t('assistant.caseResult.tongueCoatingColor'), value: t('assistant.caseResult.demoYellowWhiteCoating') },
+    { label: t('assistant.caseResult.tongueCoatingQuality'), value: t('assistant.caseResult.demoThickCoating') },
+    { label: t('assistant.caseResult.sublingualVein'), value: t('assistant.caseResult.demoNormal') }
+  ]
+])
+
+const faceDemoRows = computed(() => [
+  [
+    { label: t('assistant.caseResult.complexion'), value: t('assistant.caseResult.demoPaleYellowComplexion') },
+    { label: t('assistant.caseResult.faceLuster'), value: t('assistant.caseResult.demoSlightLuster') }
+  ],
+  [
+    { label: t('assistant.caseResult.lipColor'), value: t('assistant.caseResult.demoBluishPurple') },
+    { label: t('assistant.caseResult.localFeature'), value: '-' }
+  ]
+])
+
+const pulseDemoRows = computed(() => [
+  { label: t('assistant.caseResult.cun'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoModeratePulse') },
+  { label: t('assistant.caseResult.guan'), left: t('assistant.caseResult.demoModeratePulse'), right: t('assistant.caseResult.demoDeficientPulse') },
+  { label: t('assistant.caseResult.chi'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoDeficientPulse') }
+])
 
 const resolvePatientId = () => {
   return pickText(['patientNumber', 'patientId', 'visitNo', 'medicalNo', 'caseNo']) || caseId.value
@@ -481,6 +533,10 @@ const consultationInfoItems = computed<DetailItem[]>(() => [
   {
     label: t('assistant.caseResult.doctor'),
     value: resolveDisplayText(pickText(['doctorName', 'nickName', 'userName']))
+  },
+  {
+    label: t('assistant.caseResult.callDuration'),
+    value: formatCallDuration()
   }
 ])
 
@@ -745,6 +801,7 @@ const fetchDetail = async () => {
 }
 
 onMounted(() => {
+  void loadSexDict()
   void fetchDetail()
 })
 </script>
@@ -1029,6 +1086,79 @@ onMounted(() => {
   color: #ef7c2f;
   font-size: 15px;
   font-weight: 700;
+}
+
+.diagnosis-device-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+  padding: 16px;
+  border: 1px solid #e7eef8;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fbfcff 0%, #f5f8fd 100%);
+  overflow-x: auto;
+}
+
+.diagnosis-image-panel {
+  min-width: 0;
+  min-height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid #e6ebf3;
+}
+
+.diagnosis-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.diagnosis-image-zhu {
+  max-height: 230px;
+}
+
+.diagnosis-table {
+  width: 100%;
+  min-width: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.diagnosis-table th,
+.diagnosis-table td {
+  height: 34px;
+  padding: 6px 8px;
+  border: 1px solid #e5e9f0;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.diagnosis-table th {
+  background: #f0f2ff;
+  font-weight: 700;
+}
+
+.diagnosis-table td {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.diagnosis-table .table-title {
+  height: 36px;
+  background: #f5f5f5;
+  color: #1d2a44;
+  font-size: 18px;
 }
 
 .result-table-stack {

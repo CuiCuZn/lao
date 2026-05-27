@@ -1,5 +1,5 @@
 interface ConfirmDialogOptions {
-  message?: string
+  message: string
   title?: string
   description?: string
   confirmText: string
@@ -12,7 +12,7 @@ interface ConfirmDialogOptions {
 const createButton = (text: string, className: string) => {
   const button = document.createElement('button')
   button.type = 'button'
-  button.className = `assistant-confirm-dialog__button ${className}`
+  button.className = `doctor-confirm-dialog__button ${className}`
   button.textContent = text
   return button
 }
@@ -20,40 +20,35 @@ const createButton = (text: string, className: string) => {
 export const showConfirmDialog = (options: ConfirmDialogOptions) => {
   return new Promise<boolean>((resolve) => {
     const mask = document.createElement('div')
-    mask.className = 'assistant-confirm-dialog__mask'
+    mask.className = 'doctor-confirm-dialog__mask'
 
     const dialog = document.createElement('section')
-    const dialogClasses = ['assistant-confirm-dialog']
-    if (options.type === 'danger') {
-      dialogClasses.push('assistant-confirm-dialog--danger')
-    }
-    if (options.icon === 'warning') {
-      dialogClasses.push('assistant-confirm-dialog--warning')
-    }
-    dialog.className = dialogClasses.join(' ')
+    dialog.className = options.type === 'danger'
+      ? 'doctor-confirm-dialog doctor-confirm-dialog--danger'
+      : 'doctor-confirm-dialog'
     dialog.setAttribute('role', 'dialog')
     dialog.setAttribute('aria-modal', 'true')
 
     const icon = document.createElement('div')
-    icon.className = 'assistant-confirm-dialog__icon'
+    icon.className = 'doctor-confirm-dialog__icon'
     icon.textContent = '!'
 
     const title = document.createElement('h2')
-    title.className = 'assistant-confirm-dialog__title'
+    title.className = 'doctor-confirm-dialog__title'
     title.textContent = options.title || ''
 
     const message = document.createElement('p')
-    message.className = 'assistant-confirm-dialog__message'
-    message.textContent = options.message || ''
+    message.className = 'doctor-confirm-dialog__message'
+    message.textContent = options.message
 
     const description = document.createElement('p')
-    description.className = 'assistant-confirm-dialog__description'
+    description.className = 'doctor-confirm-dialog__description'
     description.textContent = options.description || ''
 
     const actions = document.createElement('div')
     actions.className = options.showCancel === false
-      ? 'assistant-confirm-dialog__actions assistant-confirm-dialog__actions--single'
-      : 'assistant-confirm-dialog__actions'
+      ? 'doctor-confirm-dialog__actions doctor-confirm-dialog__actions--single'
+      : 'doctor-confirm-dialog__actions'
 
     const cleanup = (result: boolean) => {
       mask.remove()
@@ -63,28 +58,18 @@ export const showConfirmDialog = (options: ConfirmDialogOptions) => {
     if (options.showCancel !== false) {
       const cancelButton = createButton(
         options.cancelText || '',
-        'assistant-confirm-dialog__button--ghost'
+        'doctor-confirm-dialog__button--ghost'
       )
       cancelButton.addEventListener('click', () => cleanup(false))
       actions.append(cancelButton)
     }
 
-    const confirmButton = createButton(options.confirmText, 'assistant-confirm-dialog__button--primary')
+    const confirmButton = createButton(options.confirmText, 'doctor-confirm-dialog__button--primary')
     confirmButton.addEventListener('click', () => cleanup(true))
     actions.append(confirmButton)
 
-    if (options.icon === 'warning') {
-      dialog.append(icon)
-      if (options.title) {
-        dialog.append(title)
-      }
-      if (options.message) {
-        dialog.append(message)
-      }
-      if (options.description) {
-        dialog.append(description)
-      }
-      dialog.append(actions)
+    if (options.type === 'danger' && options.icon === 'warning') {
+      dialog.append(icon, title, message, description, actions)
     } else if (options.description) {
       dialog.append(message, description, actions)
     } else {

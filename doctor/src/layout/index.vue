@@ -3,7 +3,7 @@
     <app-header class="header-container" />
 
     <div class="app-body">
-      <sidebar v-if="!isRtcPage" class="sidebar-container" />
+      <!-- <sidebar v-if="!isRtcPage" class="sidebar-container" /> -->
 
       <div class="main-container">
         <div class="app-main">
@@ -28,6 +28,7 @@ import Sidebar from './components/Sidebar.vue'
 import AppHeader from './components/Header.vue'
 
 const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
+const RELOAD_RESTORE_ONLINE_KEY = 'doctor_reload_restore_online'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -36,15 +37,15 @@ const isRtcPage = computed(() => route.path === '/doctor-rtc')
 let isUnloadOfflineRequestSent = false
 
 function isDoctorOnline() {
-  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
-  if (cachedOnlineStatus !== null) {
-    return cachedOnlineStatus === 'true'
+  const profileOnlineStatus = userStore.profile?.isOnLine
+  if (profileOnlineStatus !== undefined && profileOnlineStatus !== null) {
+    const resolved = String(profileOnlineStatus) === '1'
+    localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, String(resolved))
+    return resolved
   }
 
-  const profileOnlineStatus = userStore.profile?.isOnLine
-  return profileOnlineStatus !== undefined && profileOnlineStatus !== null
-    ? String(profileOnlineStatus) === '1'
-    : false
+  const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
+  return cachedOnlineStatus === 'true'
 }
 
 function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -64,13 +65,14 @@ function handlePageHide() {
   }
 
   isUnloadOfflineRequestSent = true
+  sessionStorage.setItem(RELOAD_RESTORE_ONLINE_KEY, String(Date.now()))
   localStorage.setItem(ONLINE_STATUS_STORAGE_KEY, 'false')
+  userStore.setOnlineStatus(false)
 
   const token = getToken()
   const langMap: Record<string, string> = {
     'zh-cn': 'zh_CN',
-    lo: 'lo_LA',
-    en: 'en_US'
+    lo: 'lo_LA'
   }
   const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
 

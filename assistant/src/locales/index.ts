@@ -1,9 +1,8 @@
 import { createI18n } from 'vue-i18n'
 import zhCn from './lang/zh-cn'
 import lo from './lang/lo'
-import en from './lang/en'
 
-const supportedLocales = ['zh-cn', 'lo', 'en'] as const
+const supportedLocales = ['zh-cn', 'lo'] as const
 type SupportedLocale = typeof supportedLocales[number]
 
 const resolveLocale = () => {
@@ -25,8 +24,7 @@ const i18n = createI18n({
   fallbackWarn: false,
   messages: {
     'zh-cn': zhCn,
-    lo,
-    en
+    lo
   }
 })
 

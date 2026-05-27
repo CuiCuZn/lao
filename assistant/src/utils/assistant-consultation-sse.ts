@@ -36,6 +36,10 @@ let lastCompletedEvent: ConsultationCompletedEvent | null = null
 const rejectedListeners = new Set<(event: ConsultationRejectedEvent) => void>()
 const completedListeners = new Set<(event: ConsultationCompletedEvent) => void>()
 const SSE_OPEN_TIMEOUT = 10_000
+const SSE_HEARTBEAT_TIMEOUT = 60_000
+const SSE_WATCHDOG_INTERVAL = 10_000
+let sseWatchdogTimer: ReturnType<typeof setInterval> | undefined
+let lastSseActivityAt = 0
 
 const normalizeText = (value: unknown) => {
   if (value === null || value === undefined) {
@@ -145,6 +149,26 @@ const clearReconnectTimer = () => {
   }
 }
 
+const clearSseWatchdog = () => {
+  if (sseWatchdogTimer) {
+    clearInterval(sseWatchdogTimer)
+    sseWatchdogTimer = undefined
+  }
+}
+
+const markSseAlive = (streamId: number, reason: string) => {
+  if (streamId !== activeStreamId) {
+    return
+  }
+
+  lastSseActivityAt = Date.now()
+  console.log('[assistant-sse] alive', {
+    reason,
+    streamId,
+    at: new Date(lastSseActivityAt).toISOString()
+  })
+}
+
 const scheduleReconnect = () => {
   if (manualClose || !activeRouter || !getToken()) {
     return
@@ -157,6 +181,35 @@ const scheduleReconnect = () => {
       void startAssistantConsultationSse(activeRouter).catch(() => undefined)
     }
   }, Math.min(3000 + reconnectAttempts * 1000, 10000))
+}
+
+const startSseWatchdog = (streamId: number) => {
+  clearSseWatchdog()
+  sseWatchdogTimer = setInterval(() => {
+    if (streamId !== activeStreamId || manualClose || !activeRouter || !getToken() || !lastSseActivityAt) {
+      return
+    }
+
+    const inactiveMs = Date.now() - lastSseActivityAt
+    if (inactiveMs <= SSE_HEARTBEAT_TIMEOUT) {
+      return
+    }
+
+    console.warn('[assistant-sse] heartbeat timeout, reconnecting', {
+      streamId,
+      inactiveMs,
+      timeout: SSE_HEARTBEAT_TIMEOUT
+    })
+    activeStreamId += 1
+    sseOpened = false
+    openPromise = undefined
+    rejectOpenPromise?.(new Error('sseHeartbeatTimeout'))
+    rejectOpenPromise = undefined
+    sseConnection?.close()
+    sseConnection = undefined
+    clearSseWatchdog()
+    scheduleReconnect()
+  }, SSE_WATCHDOG_INTERVAL)
 }
 
 export function setAssistantConsultationSseContext(context: ConsultationSseContext, router: Router) {
@@ -182,6 +235,7 @@ export function stopAssistantConsultationSse() {
   clearAssistantConsultationSseContext()
   activeRouter = null
   clearReconnectTimer()
+  clearSseWatchdog()
   sseConnection?.close()
   sseConnection = undefined
 }
@@ -206,11 +260,12 @@ export function startAssistantConsultationSse(router: Router) {
   clearReconnectTimer()
   activeStreamId += 1
   const streamId = activeStreamId
+  markSseAlive(streamId, 'start')
+  startSseWatchdog(streamId)
 
   const langMap: Record<string, string> = {
     'zh-cn': 'zh_CN',
-    lo: 'lo_LA',
-    en: 'en_US'
+    lo: 'lo_LA'
   }
   const baseUrl = (import.meta.env.VITE_API_URL || '/lao-api').replace(/\/$/, '')
   const streamUrl = `${baseUrl}/resource/sse`
@@ -260,12 +315,18 @@ export function startAssistantConsultationSse(router: Router) {
       },
       onOpen: () => {
         if (streamId !== activeStreamId) return
+        markSseAlive(streamId, 'open')
         reconnectAttempts = 0
         settleOpen()
       },
       onMessage: (message) => {
         if (streamId !== activeStreamId) return
+        markSseAlive(streamId, 'message')
         handleSseMessage(message)
+      },
+      onHeartbeat: () => {
+        if (streamId !== activeStreamId) return
+        markSseAlive(streamId, 'heartbeat')
       },
       onError: (error) => {
         if (streamId !== activeStreamId) return
@@ -279,6 +340,7 @@ export function startAssistantConsultationSse(router: Router) {
         sseOpened = false
         openPromise = undefined
         rejectOpenPromise = undefined
+        clearSseWatchdog()
 
         if (!manualClose) {
           scheduleReconnect()
