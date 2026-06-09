@@ -71,7 +71,16 @@ export default {
       dosage: 'ປະລິມານ',
       notAvailable: 'ບໍ່ມີຂໍ້ມູນ',
       noDiagnosisData: 'ຍັງບໍ່ມີຜົນຈາກເຄື່ອງວິນິດໄສ 4 ດ້ານ',
-      noPrescription: 'ການກວດຄັ້ງນີ້ບໍ່ມີໃບສັ່ງຢາ'
+      noDiagnosisDataTitle: 'ຍັງບໍ່ໄດ້ເກັບຂໍ້ມູນ 4 ດ້ານ',
+      noDiagnosisDataDescription: 'ການກວດຄັ້ງນີ້ຍັງບໍ່ໄດ້ກວດດ້ວຍເຄື່ອງວິນິດໄສ 4 ດ້ານ ຈຶ່ງຍັງບໍ່ມີຂໍ້ມູນ',
+      noPrescription: 'ການກວດຄັ້ງນີ້ບໍ່ມີໃບສັ່ງຢາ',
+      prescriptionDrugName: 'ຊື່ໃບສັ່ງຢາ',
+      prescriptionDrugModel: 'ຮູບແບບຢາ',
+      prescriptionDrugType: 'ປະເພດໃບສັ່ງຢາ',
+      prescriptionDrugUsage: 'ວິທີໃຊ້',
+      prescriptionDrugEffect: 'ສັບພະຄຸນ',
+      prescriptionDrugCure: 'ຮັກສາ',
+      prescriptionDrugAttention: 'ຂໍ້ຄວນລະວັງ'
     },
   },
   language: {

@@ -46,8 +46,8 @@
       </el-form>
     </el-card>
 
-    <el-card class="table-card" shadow="never" style="margin-top: 20px">
-      <el-table v-loading="loading" :data="recordList" style="width: 100%; margin-top: 15px" border>
+    <el-card class="table-card" shadow="never">
+      <el-table v-loading="loading" :data="recordList" height="100%" style="width: 100%; margin-top: 15px" border>
         <el-table-column :label="t('record.caseId')" align="center" min-width="120">
           <template #default="scope">
             <span>{{ displayValue(scope.row.caseId ?? scope.row.recordId) }}</span>
@@ -138,7 +138,7 @@ const queryParams = reactive<DiagnosisRecordQuery>({
   departmentName: '',
   visitDate: '',
   pageNum: 1,
-  pageSize: 10
+  pageSize: 20
 })
 
 const displayValue = (value: unknown) => {
@@ -196,7 +196,7 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryRef.value?.resetFields()
   queryParams.pageNum = 1
-  queryParams.pageSize = 10
+  queryParams.pageSize = 20
   getList()
 }
 
@@ -211,10 +211,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  padding: 20px;
-}
-
 .search-card {
   margin-bottom: 0;
 }

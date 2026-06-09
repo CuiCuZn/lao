@@ -198,7 +198,7 @@
       </div>
     </el-dialog>
 
-    <el-drawer v-model="drawerVisible" :title="t('workbench.viewDetail')" size="60%" destroy-on-close
+    <el-drawer v-model="drawerVisible" :title="t('workbench.viewDetail')" size="48%" destroy-on-close
       append-to-body>
       <case-detail v-if="drawerVisible" :case-id="currentCaseId" />
     </el-drawer>
@@ -452,6 +452,9 @@ function buildConsultationNavigationContext(
   const doctorAideId =
     pickString(mergedRecord, ['doctorAideId', 'doctorAidId']) ||
     (seedData.doctorAideId !== null && seedData.doctorAideId !== undefined ? String(seedData.doctorAideId).trim() : '')
+  const fourApparatusUrl =
+    pickString(mergedRecord, ['fourApparatusUrl']) ||
+    (seedData.fourApparatusUrl !== null && seedData.fourApparatusUrl !== undefined ? String(seedData.fourApparatusUrl).trim() : '')
   const consultationLang = inferConsultationLang(mergedRecord) || normalizeConsultationLang(seedData.consultationLang)
 
   return {
@@ -470,6 +473,7 @@ function buildConsultationNavigationContext(
     patientId,
     doctorAideId,
     roomId,
+    fourApparatusUrl,
     consultationLang,
     consultationMode,
     raw: mergedRecord
@@ -490,6 +494,9 @@ async function prepareConsultationNavigation(
   const resolvedDoctorAideId =
     (seedData.doctorAideId !== null && seedData.doctorAideId !== undefined ? String(seedData.doctorAideId).trim() : '') ||
     pickString(rawRecord, ['doctorAideId', 'doctorAidId'])
+  const resolvedFourApparatusUrl =
+    (seedData.fourApparatusUrl !== null && seedData.fourApparatusUrl !== undefined ? String(seedData.fourApparatusUrl).trim() : '') ||
+    pickString(rawRecord, ['fourApparatusUrl'])
 
   if (!resolvedCaseId) {
     throw new Error(t('workbench.missingCaseId'))
@@ -500,7 +507,8 @@ async function prepareConsultationNavigation(
     !seedData.patientName ||
     !seedData.complaint ||
     !seedData.historyIllness ||
-    !seedData.sexText
+    !seedData.sexText ||
+    !resolvedFourApparatusUrl
   const shouldFetchPatientDetail = consultationMode === 'continue' && Boolean(resolvedPatientId)
 
   const [channelResponse, basicResponse, patientResponse] = await Promise.all([

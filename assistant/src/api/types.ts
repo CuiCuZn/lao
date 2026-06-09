@@ -90,6 +90,7 @@ export interface PatientSaveResponse {
   data?: {
     patientId?: number | string;
     caseId?: number | string;
+    patientIdCard?: string;
     [key: string]: unknown;
   } | null;
   [key: string]: unknown;
@@ -219,6 +220,39 @@ export interface CaseDetailResponse {
   [key: string]: unknown;
 }
 
+export interface CaseDrugDetailItem {
+  caseDrugDetailId?: string | number;
+  videoId?: string | number;
+  caseId?: string | number;
+  drugId?: string | number;
+  drugDetailName?: string;
+  drugDetailUnit?: string;
+  drugDetailShare?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailData {
+  caseId?: string | number;
+  videoId?: string | number;
+  drugId?: string | number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+  drugUsage?: string;
+  drugEffect?: string;
+  drugCure?: string;
+  drugAttention?: string;
+  detailList?: CaseDrugDetailItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailResponse {
+  code?: number;
+  msg?: string;
+  data?: CaseDrugDetailData | null;
+  [key: string]: unknown;
+}
+
 export interface DoctorListResponse {
   code?: number;
   msg?: string;
@@ -318,5 +352,94 @@ export interface VideoCloseSubtitleResponse {
   code?: number;
   msg?: string;
   data?: Record<string, unknown> | string | null;
+  [key: string]: unknown;
+}
+
+export interface OssStsData {
+  accessKeyId: string;
+  accessKeySecret: string;
+  token: string;
+  bucket: string;
+  region: string;
+  time?: number;
+  folder?: string;
+  [key: string]: unknown;
+}
+
+export interface OssStsResponse {
+  code?: number;
+  msg?: string;
+  data?: OssStsData | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchSubmitParams {
+  caseId: string | number;
+  fileUrlList: string[];
+}
+
+export interface InspectionRecognizedItem {
+  item_name?: string;
+  result_value?: string;
+  reference_range?: string;
+  unit?: string;
+  abnormal_flag?: string;
+  result_status?: string;
+  is_abnormal?: boolean;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchSubmitData {
+  batchId?: string | number;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchSubmitResponse {
+  code?: number;
+  msg?: string;
+  data?: InspectionBatchSubmitData | string | number | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchReportItem {
+  reportId?: string | number;
+  batchId?: string | number;
+  caseId?: string | number;
+  sortNo?: string | number;
+  fileUrl?: string;
+  recognizeStatus?: string | number;
+  errorMsg?: string;
+  confidenceScore?: string | number;
+  recognizedItems?: InspectionRecognizedItem[] | null;
+  itemsConfirmStatus?: string | number;
+  analysisStatus?: string | number;
+  analysisErrorMsg?: string;
+  analysisAdvice?: string[] | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchListByBatchIdResponse {
+  code?: number;
+  msg?: string;
+  data?: InspectionBatchReportItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionReportSaveItemsParams {
+  reportId: string | number;
+  items: InspectionRecognizedItem[];
+}
+
+export interface InspectionReportSaveItemsResponse {
+  code?: number;
+  msg?: string;
+  data?: unknown;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchConfirmUploadResponse {
+  code?: number;
+  msg?: string;
+  data?: unknown;
   [key: string]: unknown;
 }

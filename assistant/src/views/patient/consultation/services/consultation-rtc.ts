@@ -117,11 +117,13 @@ export const fetchConsultationTokens = async (
   secondaryChannelId?: string
   secondaryLanguage?: ConsultationLanguage
   translationEnabled: boolean
+  subtitleTranslationEnabled: boolean
   primaryTokenResult: RtcChannelTokenResult
   secondaryTokenResult?: RtcChannelTokenResult
 }> => {
   const primaryChannelId = `${params.channelName}_${params.language}`
   const translationEnabled = params.translationEnabled !== false
+  const subtitleTranslationEnabled = params.subtitleTranslationEnabled !== false
   const secondaryLanguage = params.language === 'cn' ? 'lo' : 'cn'
   const secondaryChannelId = `${params.channelName}_${secondaryLanguage}`
 
@@ -156,8 +158,10 @@ export const fetchConsultationTokens = async (
 
   return {
     primaryChannelId,
-    ...(translationEnabled ? { secondaryChannelId, secondaryLanguage } : {}),
+    ...(translationEnabled ? { secondaryChannelId } : {}),
+    ...(translationEnabled || subtitleTranslationEnabled ? { secondaryLanguage } : {}),
     translationEnabled,
+    subtitleTranslationEnabled,
     primaryTokenResult,
     ...(secondaryTokenResult ? { secondaryTokenResult } : {})
   }
@@ -285,7 +289,8 @@ export const registerConsultationAsr = (
   primaryClient: DingRTCClient,
   secondaryClient: DingRTCClient | null,
   language: ConsultationLanguage,
-  translationEnabled = true
+  translationEnabled = true,
+  subtitleTranslationEnabled = translationEnabled
 ): ConsultationAsrRegistrationResult => {
   const secondaryLanguage = language === 'cn' ? 'lo' : 'cn'
   const primaryAsr = new ASR()
@@ -296,8 +301,8 @@ export const registerConsultationAsr = (
     secondaryClient.register(secondaryAsr)
   }
 
-  primaryAsr.setCurrentTranslateLanguages(translationEnabled ? [secondaryLanguage, 'source'] : ['source'])
-  secondaryAsr?.setCurrentTranslateLanguages([language, 'source'])
+  primaryAsr.setCurrentTranslateLanguages(subtitleTranslationEnabled ? [secondaryLanguage, 'source'] : ['source'])
+  secondaryAsr?.setCurrentTranslateLanguages(subtitleTranslationEnabled ? [language, 'source'] : ['source'])
 
   return {
     primaryAsr,
@@ -306,18 +311,18 @@ export const registerConsultationAsr = (
       {
         asr: primaryAsr,
         sourceLanguage: language,
-        targetLanguage: secondaryLanguage
+        targetLanguage: subtitleTranslationEnabled ? secondaryLanguage : language
       },
       {
         asr: secondaryAsr,
         sourceLanguage: secondaryLanguage,
-        targetLanguage: language
+        targetLanguage: subtitleTranslationEnabled ? language : secondaryLanguage
       }
     ] : [
       {
         asr: primaryAsr,
         sourceLanguage: language,
-        targetLanguage: language
+        targetLanguage: subtitleTranslationEnabled ? secondaryLanguage : language
       }
     ]
   }

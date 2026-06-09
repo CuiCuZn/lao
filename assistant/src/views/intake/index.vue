@@ -24,6 +24,10 @@
             <div class="panel-title">
               <el-icon><tickets /></el-icon>
               <h3>{{ t('assistant.intake.basicTitle') }}</h3>
+              <div v-if="displayPatientRecordId" class="patient-record-id">
+                <span>{{ t('assistant.intake.medicalRecordId') }}：</span>
+                <strong>{{ displayPatientRecordId }}</strong>
+              </div>
             </div>
 
             <div class="form-grid">
@@ -113,56 +117,33 @@
             <div class="panel-title">
               <el-icon><document /></el-icon>
               <h3>{{ t('assistant.intake.fourDiagnosis.displayTitle') }}</h3>
+              <button
+                v-if="fourApparatusUrl"
+                type="button"
+                class="four-fullscreen-btn"
+                :title="t('assistant.intake.fourDiagnosis.fullscreen')"
+                @click="pdfPreviewVisible = true"
+              >
+                <el-icon><full-screen /></el-icon>
+              </button>
             </div>
 
             <div class="placeholder-body">
-              <img class="diagnosis-image diagnosis-image-zhu" :src="zhuImage" alt="" />
-              <div class="diagnosis-table-wrap">
-                <table class="diagnosis-table">
-                  <tbody>
-                    <tr>
-                      <th class="table-title" colspan="6">{{ t('assistant.caseResult.tongueResult') }}</th>
-                    </tr>
-                    <tr v-for="(row, rowIndex) in tongueDemoRows" :key="`tongue-${rowIndex}`">
-                      <template v-for="item in row" :key="item.label">
-                        <th>{{ item.label }}</th>
-                        <td>{{ item.value }}</td>
-                      </template>
-                    </tr>
-                  </tbody>
-                </table>
+              <iframe
+                v-if="fourApparatusUrl"
+                class="four-apparatus-pdf"
+                :src="fourApparatusUrl"
+                :title="t('assistant.intake.fourDiagnosis.displayTitle')"
+              ></iframe>
 
-                <table class="diagnosis-table">
-                  <tbody>
-                    <tr>
-                      <th class="table-title" colspan="4">{{ t('assistant.caseResult.faceResult') }}</th>
-                    </tr>
-                    <tr v-for="(row, rowIndex) in faceDemoRows" :key="`face-${rowIndex}`">
-                      <template v-for="item in row" :key="item.label">
-                        <th>{{ item.label }}</th>
-                        <td>{{ item.value }}</td>
-                      </template>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <table class="diagnosis-table">
-                  <tbody>
-                    <tr>
-                      <th class="table-title" colspan="3">{{ t('assistant.caseResult.pulseResult') }}</th>
-                    </tr>
-                    <tr>
-                      <th></th>
-                      <td>{{ t('assistant.caseResult.leftHand') }}</td>
-                      <td>{{ t('assistant.caseResult.rightHand') }}</td>
-                    </tr>
-                    <tr v-for="row in pulseDemoRows" :key="row.label">
-                      <th>{{ row.label }}</th>
-                      <td>{{ row.left }}</td>
-                      <td>{{ row.right }}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div v-else class="four-diagnosis-empty">
+                <el-icon class="four-empty-icon"><first-aid-kit /></el-icon>
+                <h4>{{ t('assistant.intake.fourDiagnosis.emptyTitle') }}</h4>
+                <p>{{ t('assistant.intake.fourDiagnosis.emptyDescription') }}</p>
+                <button type="button" class="fetch-four-btn" :disabled="fetchingFourData" @click="fetchFourDiagnosisData">
+                  <el-icon><download /></el-icon>
+                  <span>{{ t('assistant.intake.fourDiagnosis.fetchData') }}</span>
+                </button>
               </div>
             </div>
           </section>
@@ -175,6 +156,48 @@
         </div>
       </div>
     </section>
+
+    <div v-if="basicInfoDialogVisible" class="basic-info-dialog-mask">
+      <div class="basic-info-dialog">
+        <div class="basic-info-dialog-icon">!</div>
+        <h3>{{ t('assistant.intake.fourDiagnosis.completeBasicInfo') }}</h3>
+        <button type="button" @click="basicInfoDialogVisible = false">
+          {{ t('assistant.intake.fourDiagnosis.dialogConfirm') }}
+        </button>
+      </div>
+    </div>
+
+    <div v-if="fourCollectionDialogVisible" class="four-collection-dialog-mask">
+      <div class="four-collection-dialog">
+        <div class="four-collection-icon">!</div>
+        <h3>{{ t('assistant.intake.fourDiagnosis.collectionMissingTitle') }}</h3>
+        <p>{{ t('assistant.intake.fourDiagnosis.collectionMissingDescription') }}</p>
+        <div class="four-collection-actions">
+          <button type="button" class="four-collection-secondary" @click="skipFourCollection">
+            {{ t('assistant.intake.fourDiagnosis.skipCollection') }}
+          </button>
+          <button type="button" class="four-collection-primary" @click="goCollectFourDiagnosisData">
+            {{ t('assistant.intake.fourDiagnosis.goCollection') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="pdfPreviewVisible" class="pdf-preview-mask" @click.self="pdfPreviewVisible = false">
+      <div class="pdf-preview-dialog">
+        <div class="pdf-preview-header">
+          <h3>{{ t('assistant.intake.fourDiagnosis.displayTitle') }}</h3>
+          <button type="button" :title="t('common.cancel')" @click="pdfPreviewVisible = false">
+            <el-icon><close /></el-icon>
+          </button>
+        </div>
+        <iframe
+          class="pdf-preview-frame"
+          :src="fourApparatusUrl"
+          :title="t('assistant.intake.fourDiagnosis.displayTitle')"
+        ></iframe>
+      </div>
+    </div>
   </app-page>
 </template>
 
@@ -182,14 +205,14 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Document, Tickets } from '@element-plus/icons-vue'
+import { ArrowLeft, Close, Document, Download, FirstAidKit, FullScreen, Tickets } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import AppPage from '@/components/AppPage.vue'
 import { listDictData } from '@/api/dict'
 import { getPatientDetail, savePatient } from '@/api/patient'
 import type { DictDataVO, PatientSaveParams } from '@/api/types'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { loadSexDict, sexDictOptions } from '@/utils/sex-dict'
-import zhuImage from '@/assets/zhu.png'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -201,6 +224,7 @@ interface IntakePatientData {
   patientNumber?: string
   caseId?: string | number
   patientIdCard?: string
+  fourApparatusUrl?: string
   patientPhone?: string
   patientName?: string
   patientSex?: string
@@ -310,6 +334,7 @@ const createEmptyForm = () => ({
 
 const patientId = ref<number | undefined>(undefined)
 const caseId = ref<number | undefined>(undefined)
+const patientRecordId = ref('')
 
 const form = reactive(createEmptyForm())
 
@@ -320,6 +345,11 @@ const lastSavedSnapshot = ref('')
 const queuedSave = ref(false)
 const loadingDetail = ref(false)
 const maritalStatusDict = ref<DictDataVO[]>([])
+const fourApparatusUrl = ref('')
+const fetchingFourData = ref(false)
+const basicInfoDialogVisible = ref(false)
+const fourCollectionDialogVisible = ref(false)
+const pdfPreviewVisible = ref(false)
 let savingPromise: Promise<boolean> | null = null
 
 const maritalStatusOptions = computed(() => {
@@ -335,35 +365,7 @@ const maritalStatusOptions = computed(() => {
 
 const sexOptions = computed(() => sexDictOptions.value)
 
-const tongueDemoRows = computed(() => [
-  [
-    { label: t('assistant.caseResult.tongueColor'), value: t('assistant.caseResult.demoPaleTongue') },
-    { label: t('assistant.caseResult.tongueShape'), value: t('assistant.caseResult.demoSpottedToothMarkedTongue') },
-    { label: t('assistant.caseResult.tongueState'), value: t('assistant.caseResult.demoNormal') }
-  ],
-  [
-    { label: t('assistant.caseResult.tongueCoatingColor'), value: t('assistant.caseResult.demoYellowWhiteCoating') },
-    { label: t('assistant.caseResult.tongueCoatingQuality'), value: t('assistant.caseResult.demoThickCoating') },
-    { label: t('assistant.caseResult.sublingualVein'), value: t('assistant.caseResult.demoNormal') }
-  ]
-])
-
-const faceDemoRows = computed(() => [
-  [
-    { label: t('assistant.caseResult.complexion'), value: t('assistant.caseResult.demoPaleYellowComplexion') },
-    { label: t('assistant.caseResult.faceLuster'), value: t('assistant.caseResult.demoSlightLuster') }
-  ],
-  [
-    { label: t('assistant.caseResult.lipColor'), value: t('assistant.caseResult.demoBluishPurple') },
-    { label: t('assistant.caseResult.localFeature'), value: '-' }
-  ]
-])
-
-const pulseDemoRows = computed(() => [
-  { label: t('assistant.caseResult.cun'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoModeratePulse') },
-  { label: t('assistant.caseResult.guan'), left: t('assistant.caseResult.demoModeratePulse'), right: t('assistant.caseResult.demoDeficientPulse') },
-  { label: t('assistant.caseResult.chi'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoDeficientPulse') }
-])
+const displayPatientRecordId = computed(() => patientRecordId.value.trim())
 
 const buildSavePayload = (): PatientSaveParams => ({
   ...(patientId.value !== undefined ? { patientId: patientId.value } : {}),
@@ -428,6 +430,8 @@ const hydrateForm = (data?: IntakePatientData | null) => {
     sessionStore.setCaseId(caseId.value)
   }
 
+  patientRecordId.value = takeText(data.patientIdCard, patientRecordId.value)
+  fourApparatusUrl.value = takeText(data.fourApparatusUrl, fourApparatusUrl.value)
   form.patientName = takeText(data.patientName, form.patientName)
   form.patientSex = takeText(data.patientSex, form.patientSex)
   form.patientBirthday = takeText(formatBirthday(String(data.patientBirthday || '')), form.patientBirthday)
@@ -482,6 +486,7 @@ const submitSave = async (): Promise<boolean> => {
         caseId.value = toNumber(response.data.caseId)
         sessionStore.setCaseId(caseId.value)
       }
+      patientRecordId.value = takeText(response?.data?.patientIdCard, patientRecordId.value)
       lastSavedSnapshot.value = JSON.stringify(buildSavePayload())
       saveState.value = 'saved'
       return true
@@ -521,6 +526,59 @@ const triggerImmediateSave = () => {
 
   clearSaveTimer()
   void submitSave()
+}
+
+const refreshFourDiagnosisDetail = async () => {
+  const currentPatientId = patientId.value ?? getRoutePatientId()
+  if (currentPatientId === undefined || fetchingFourData.value) {
+    return false
+  }
+
+  fetchingFourData.value = true
+
+  try {
+    const response = await getPatientDetail(currentPatientId)
+    const detail = (response?.data || null) as IntakePatientData | null
+    hydrateForm(detail)
+    return Boolean(fourApparatusUrl.value)
+  } finally {
+    fetchingFourData.value = false
+  }
+}
+
+const fetchFourDiagnosisData = async () => {
+  if (!displayPatientRecordId.value) {
+    basicInfoDialogVisible.value = true
+    return
+  }
+
+  const hasFourData = await refreshFourDiagnosisDetail()
+  if (!hasFourData) {
+    ElMessage.warning(t('assistant.intake.fourDiagnosis.noData'))
+  }
+}
+
+const goCollectFourDiagnosisData = async () => {
+  fourCollectionDialogVisible.value = false
+  await fetchFourDiagnosisData()
+}
+
+const goNextStep = () => {
+  const currentPatientId = patientId.value ?? getRoutePatientId()
+
+  if (currentPatientId === undefined) {
+    return
+  }
+
+  router.push({
+    path: '/assistant/doctor-select',
+    query: { patientId: String(currentPatientId) }
+  })
+}
+
+const skipFourCollection = () => {
+  fourCollectionDialogVisible.value = false
+  goNextStep()
 }
 
 const handleAgeInput = () => {
@@ -612,6 +670,10 @@ const initializeFromRouteQuery = async () => {
 
   patientId.value = getRoutePatientId()
   caseId.value = undefined
+  patientRecordId.value = ''
+  fourApparatusUrl.value = ''
+  fourCollectionDialogVisible.value = false
+  pdfPreviewVisible.value = false
   sessionStore.setCaseId(undefined)
   resetForm()
 
@@ -663,18 +725,21 @@ const goBack = () => {
 
 const goToDoctorSelect = async () => {
   clearSaveTimer()
-  await submitSave()
-
-  const currentPatientId = patientId.value ?? getRoutePatientId()
-
-  if (currentPatientId === undefined) {
+  const saved = await submitSave()
+  if (!saved) {
     return
   }
 
-  router.push({
-    path: '/assistant/doctor-select',
-    query: { patientId: String(currentPatientId) }
-  })
+  if ((patientId.value ?? getRoutePatientId()) === undefined) {
+    return
+  }
+
+  if (fourApparatusUrl.value) {
+    goNextStep()
+    return
+  }
+
+  fourCollectionDialogVisible.value = true
 }
 </script>
 
@@ -864,6 +929,7 @@ const goToDoctorSelect = async () => {
 .panel-title {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 22px;
   color: #4b79ee;
@@ -885,6 +951,53 @@ const goToDoctorSelect = async () => {
   color: #172033;
   font-size: 23px;
   font-weight: 800;
+}
+
+.patient-record-id {
+  min-width: 0;
+  max-width: 100%;
+  margin-left: auto;
+  padding: 7px 12px;
+  color: #4b79ee;
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.patient-record-id span {
+  flex: none;
+}
+
+.patient-record-id strong {
+  min-width: 0;
+  color: #4b79ee;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.four-fullscreen-btn {
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(237, 244, 255, 0.96);
+  color: #4b79ee;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.four-fullscreen-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(222, 235, 255, 0.98);
 }
 
 .form-grid {
@@ -929,70 +1042,306 @@ const goToDoctorSelect = async () => {
   min-height: 0;
   border: 1px solid #dbe8f4;
   border-radius: 22px;
-  background: linear-gradient(180deg, rgba(248, 251, 255, 0.96) 0%, rgba(240, 246, 253, 0.92) 100%);
+  background: rgba(255, 255, 255, 0.96);
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.four-apparatus-pdf {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.four-diagnosis-empty {
+  width: 100%;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #8294aa;
+}
+
+.four-empty-icon {
+  color: #d4dae2;
+  font-size: 72px;
+  line-height: 1;
+}
+
+.four-diagnosis-empty h4 {
+  margin: 26px 0 0;
+  color: #71849a;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.four-diagnosis-empty p {
+  margin: 22px 0 0;
+  color: #9aabba;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.fetch-four-btn {
+  min-width: 210px;
+  height: 54px;
+  margin-top: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #2f66ee;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(47, 102, 238, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.fetch-four-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 28px rgba(47, 102, 238, 0.26);
+}
+
+.fetch-four-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.basic-info-dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.basic-info-dialog {
+  width: min(548px, 100%);
+  min-height: 350px;
+  border-radius: 22px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 30px 42px;
+  box-shadow: 0 24px 70px rgba(54, 78, 108, 0.16);
+}
+
+.basic-info-dialog-icon {
+  width: 76px;
+  height: 76px;
+  border: 4px solid #ff9130;
+  border-radius: 50%;
+  color: #ff9b1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.basic-info-dialog h3 {
+  margin: 28px 0 0;
+  color: #1d2a3d;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.basic-info-dialog button {
+  min-width: 170px;
+  height: 66px;
+  margin-top: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: #2f66ee;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(47, 102, 238, 0.2);
+}
+
+.four-collection-dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.four-collection-dialog {
+  width: min(548px, 100%);
+  min-height: 350px;
+  border-radius: 22px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 30px 42px;
+  box-shadow: 0 24px 70px rgba(54, 78, 108, 0.16);
+}
+
+.four-collection-icon {
+  width: 76px;
+  height: 76px;
+  border: 4px solid #ff9130;
+  border-radius: 50%;
+  color: #ff9b1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.four-collection-dialog h3 {
+  margin: 28px 0 0;
+  color: #1d2a3d;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.28;
+  text-align: center;
+}
+
+.four-collection-dialog p {
+  margin: 28px 0 0;
+  color: #98a8bc;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.four-collection-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  padding: 22px;
-  overflow: auto;
-  overscroll-behavior: contain;
+  margin-top: 36px;
 }
 
-.diagnosis-image {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
+.four-collection-actions button {
+  height: 58px;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
-.diagnosis-image-zhu {
-  max-height: 230px;
+.four-collection-actions button:hover {
+  transform: translateY(-1px);
 }
 
-.diagnosis-table-wrap {
-  width: 100%;
-  overflow: visible;
+.four-collection-secondary {
+  border: 1px solid #dce5ef;
+  background: #f8fafc;
+  color: #617083;
+}
+
+.four-collection-primary {
+  border: 1px solid #2f66ee;
+  background: #2f66ee;
+  color: #ffffff;
+  box-shadow: 0 16px 32px rgba(47, 102, 238, 0.22);
+}
+
+.pdf-preview-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.pdf-preview-dialog {
+  width: min(1180px, 100%);
+  height: min(820px, 92vh);
+  min-height: 420px;
+  border-radius: 18px;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.pdf-preview-header {
+  flex: none;
+  height: 58px;
+  padding: 0 14px 0 22px;
+  border-bottom: 1px solid #e4edf7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 14px;
 }
 
-.diagnosis-table {
-  width: 100%;
-  min-width: 420px;
-  border-collapse: collapse;
-  table-layout: fixed;
-  background: rgba(255, 255, 255, 0.92);
-  color: #111827;
-  font-size: 17px;
-  line-height: 1.45;
-}
-
-.diagnosis-table th,
-.diagnosis-table td {
-  height: 34px;
-  padding: 6px 8px;
-  border: 1px solid #e5e9f0;
-  text-align: center;
-  vertical-align: middle;
+.pdf-preview-header h3 {
+  min-width: 0;
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.diagnosis-table th {
-  background: #f0f2ff;
-  font-weight: 700;
+.pdf-preview-header button {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #71849a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  cursor: pointer;
 }
 
-.diagnosis-table td {
-  background: rgba(255, 255, 255, 0.96);
+.pdf-preview-header button:hover {
+  background: #eef4fb;
+  color: #2f66ee;
 }
 
-.diagnosis-table .table-title {
-  height: 36px;
-  background: #f5f5f5;
-  font-size: 18px;
+.pdf-preview-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #ffffff;
 }
 
 .field {
@@ -1175,6 +1524,38 @@ const goToDoctorSelect = async () => {
     min-height: 0;
     padding: 24px 18px;
     gap: 14px;
+  }
+
+  .four-collection-dialog {
+    min-height: 350px;
+    padding: 36px 22px 38px;
+  }
+
+  .four-collection-icon {
+    width: 76px;
+    height: 76px;
+    font-size: 50px;
+  }
+
+  .four-collection-dialog h3 {
+    margin-top: 28px;
+    font-size: 28px;
+  }
+
+  .four-collection-dialog p {
+    margin-top: 24px;
+    font-size: 18px;
+  }
+
+  .four-collection-actions {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 30px;
+  }
+
+  .four-collection-actions button {
+    height: 54px;
+    font-size: 20px;
   }
 }
 </style>

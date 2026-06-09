@@ -27,7 +27,7 @@
           :chat-input-disabled="chatInputDisabled"
           :chat-send-disabled="chatSendDisabled"
           :chat-status-text="chatStatusText"
-          :translation-enabled="translationEnabled"
+          :translation-enabled="subtitleTranslationEnabled"
           :primary-language="consultationLang"
           :on-chat-input="handleChatInput"
           :on-chat-send="handleChatSend"
@@ -79,23 +79,36 @@
                 </div>
 
                 <p class="doctor-good-at">
-                  <span>{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
-                  {{ consultationDoctorGoodAt || t('common.notAvailable') }}
+                  <span class="doctor-good-at__label">{{ t('assistant.patientVideo.consultation.goodAt') }}:</span>
+                  <el-tooltip
+                    effect="dark"
+                    placement="top-start"
+                    :content="doctorGoodAtText"
+                    :show-after="300"
+                  >
+                    <span class="doctor-good-at__text">{{ doctorGoodAtText }}</span>
+                  </el-tooltip>
                 </p>
               </div>
             </div>
 
-            <consult-room-controls
-              :camera-enabled="patientMediaState.cameraEnabled"
-              :mic-enabled="patientMediaState.micEnabled"
-              :on-toggle-camera="handleTogglePatientCamera"
-              :on-switch-camera="openPatientCameraDialog"
-              :on-toggle-mic="handleTogglePatientMic"
-              :on-leave="handleLeave"
-              :camera-switching="patientMediaState.cameraSwitching"
-              :controls-disabled="patientMediaControlsDisabled"
-              show-camera
-            />
+            <div class="consultation-controls">
+              <consult-room-controls
+                :camera-enabled="patientMediaState.cameraEnabled"
+                :mic-enabled="patientMediaState.micEnabled"
+                :on-toggle-camera="handleTogglePatientCamera"
+                :on-switch-camera="openPatientCameraDialog"
+                :on-toggle-mic="handleTogglePatientMic"
+                :on-capture="openSideScannerCapture"
+                :on-leave="handleLeave"
+                :camera-switching="patientMediaState.cameraSwitching"
+                :controls-disabled="patientMediaControlsDisabled"
+                :capture-controls-disabled="sideScannerCaptureControlsDisabled"
+                :capture-label="t('assistant.aideVideo.consultation.captureButton')"
+                :show-capture="showSideScannerCaptureButton"
+                show-camera
+              />
+            </div>
           </footer>
         </section>
       </div>
@@ -108,6 +121,24 @@
         :switching="patientMediaState.cameraSwitching"
         @confirm="handlePatientCameraSelectionConfirm"
         @refresh="requestPatientMediaState"
+      />
+
+      <aide-camera-capture-dialog
+        v-model="sideScannerCaptureVisible"
+        v-model:recognition-reports="inspectionEditableReports"
+        :device="sideScannerCaptureDevice"
+        :uploaded-photos="uploadedInspectionPhotos"
+        :max-count="SIDE_SCANNER_MAX_PHOTO_COUNT"
+        :uploading="sideScannerPhotoUploading"
+        :recognizing="inspectionRecognizing"
+        :recognition-saving="inspectionSaveLoading"
+        :recognition-progress="inspectionRecognitionProgress"
+        :recognition-status-text="inspectionRecognitionStatusText"
+        :recognition-error="inspectionRecognitionError"
+        :has-recognition="Boolean(inspectionBatchId || inspectionEditableReports.length)"
+        @capture-confirm="handleSideScannerPhotoConfirm"
+        @recognize="handleInspectionRecognize"
+        @save="handleInspectionSave"
       />
 
       <div v-if="doctorRejectedDialogVisible" class="rejected-dialog-mask">
@@ -164,10 +195,18 @@
 <script setup lang="ts">
 import { WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
+import {
+  confirmInspectionBatchUpload,
+  getInspectionBatchByBatchId,
+  retryInspectionBatch,
+  saveInspectionReportItems,
+  submitInspectionBatch
+} from '@/api/inspection'
+import type { InspectionBatchReportItem, InspectionRecognizedItem } from '@/api/types'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
 import { getVideoConversation, getVideoTime } from '@/api/video'
 import { usePatientSessionStore } from '@/stores/patient-session'
@@ -192,6 +231,7 @@ import {
   type PatientMediaControlDevice,
   type PatientMediaControlStateMessage
 } from '@/utils/patient-channel'
+import AideCameraCaptureDialog from '@/views/aide/components/AideCameraCaptureDialog.vue'
 import ConsultCameraSelectDialog from '@/views/patient/consultation/components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from '@/views/patient/consultation/components/ConsultParticipantCard.vue'
 import ConsultRoomControls from '@/views/patient/consultation/components/ConsultRoomControls.vue'
@@ -201,9 +241,50 @@ import { usePatientSubtitleTimeline } from '@/views/patient/consultation/composa
 import { createPatientConsultationChatService } from '@/views/patient/consultation/services/consultation-chat'
 import { normalizeConversationHistory, type ConsultationHistoryItem } from '@/views/patient/consultation/services/consultation-history'
 import type { ConsultationChatPayload } from '@/views/patient/consultation/types'
+import { uploadConsultationCaptureFiles } from '@/utils/oss-upload'
 
 const RTC_APP_ID = 'bkbbxxzy'
 const RTC_APP_KEY = 'da88a821450548b6a5758f0d442d59d9'
+const SIDE_SCANNER_MAX_PHOTO_COUNT = 10
+const SIDE_SCANNER_SOURCE_LABEL = 'Document Camera (1bcf:3288)'
+const SIDE_SCANNER_LABEL_KEY = 'assistant.aideVideo.consultation.cameraLabels.sideScanner'
+const SIDE_SCANNER_CAPTURE_DEV_ENABLED = import.meta.env.DEV
+
+interface AideCapturePhoto {
+  id: string
+  name: string
+  previewUrl: string
+  file: File
+  createdAt: number
+}
+
+interface UploadedInspectionPhoto {
+  id: string
+  name: string
+  previewUrl: string
+  fileUrl: string
+  objectName: string
+  createdAt: number
+}
+
+interface EditableInspectionItem {
+  item_name: string
+  result_value: string
+  reference_range: string
+  unit: string
+  abnormal_flag: string
+  result_status: string
+  is_abnormal: boolean
+}
+
+interface EditableInspectionReport {
+  reportId?: string | number
+  batchId?: string | number
+  fileUrl?: string
+  recognizeStatus?: string | number
+  errorMsg?: string
+  items: EditableInspectionItem[]
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -221,12 +302,27 @@ let consultationCompletedHandled = false
 let stopRejectedListening: (() => void) | null = null
 let stopCompletedListening: (() => void) | null = null
 let stopPatientChannelListening: (() => void) | null = null
+let inspectionPollTimer = 0
+let inspectionPollRequestId = 0
+let inspectionProgressTimer = 0
+let inspectionProgressCeiling = 82
 
 const pageError = ref('')
 const consultationDuration = ref('00:00:00')
 const chatDraft = ref('')
 const chatSending = ref(false)
 const patientCameraDialogVisible = ref(false)
+const sideScannerCaptureVisible = ref(false)
+const uploadedInspectionPhotos = ref<UploadedInspectionPhoto[]>([])
+const sideScannerPhotoUploading = ref(false)
+const inspectionBatchId = ref<string | number>('')
+const inspectionSubmittedFileUrls = ref<string[]>([])
+const inspectionRecognizing = ref(false)
+const inspectionSaveLoading = ref(false)
+const inspectionEditableReports = ref<EditableInspectionReport[]>([])
+const inspectionRecognitionProgress = ref(0)
+const inspectionRecognitionStatusText = ref('')
+const inspectionRecognitionError = ref('')
 const doctorRejectedDialogVisible = ref(false)
 const rejectedDoctorName = ref('')
 const resendRequestLoading = ref(false)
@@ -244,10 +340,10 @@ const patientMediaState = ref({
   error: ''
 })
 
-const aideCameraDeviceLabelKeys: Record<string, string> = {
-  f85077a229286adbac6903ac768f68354ec19b8cdb294944bf969f0ff8a91aee: 'assistant.aideVideo.consultation.cameraLabels.sideScanner',
-  f5f2c0457a05f0af8d7d6e9aa9a434d04367c040f529cbc7e06a7925b5d9417c: 'assistant.aideVideo.consultation.cameraLabels.patientCamera',
-  '36d678e2e8dc5761d04198cdddb80df5244dc3dedff300a077c9e1c1cd0577ef': 'assistant.aideVideo.consultation.cameraLabels.doctorCamera'
+const aideCameraLabelKeys: Record<string, string> = {
+  'Front Camera (0bda:d581)': 'assistant.aideVideo.consultation.cameraLabels.doctorCamera',
+  'Rear Camera (0bda:d581)': 'assistant.aideVideo.consultation.cameraLabels.patientCamera',
+  [SIDE_SCANNER_SOURCE_LABEL]: SIDE_SCANNER_LABEL_KEY
 }
 
 const takeText = (source: Record<string, unknown> | null | undefined, keys: string[]) => {
@@ -379,11 +475,14 @@ const consultationVideoId = computed(() => takeOptionalText(sessionStore.videoId
 const consultationDoctorId = computed(() => queryValue('doctorId') || takeOptionalText(sessionStore.doctorId))
 const consultationDoctorName = computed(() => queryValue('doctorName') || takeOptionalText(sessionStore.doctorName))
 const consultationDoctorGoodAt = computed(() => queryValue('goodAt') || takeOptionalText(sessionStore.doctorGoodAt))
+const doctorGoodAtText = computed(() => consultationDoctorGoodAt.value || t('common.notAvailable'))
 const consultationLang = computed<'lo' | 'cn'>(() => {
   const rawLang = queryValue('consultationLang') || sessionStore.consultationLang
   return rawLang === 'cn' || rawLang === 'zh-cn' ? 'cn' : 'lo'
 })
 const translationEnabled = computed(() => consultationLang.value === 'lo')
+const subtitleTranslationEnabled = computed(() => true)
+const manualChatTranslationEnabled = computed(() => translationEnabled.value || subtitleTranslationEnabled.value)
 
 const aideName = computed(() => {
   return (
@@ -412,11 +511,57 @@ const patientMediaControlsDisabled = computed(() => {
   return !patientMediaStateReady.value || patientMediaState.value.cameraSwitching
 })
 
+const sideScannerCaptureControlsDisabled = computed(() => {
+  if (SIDE_SCANNER_CAPTURE_DEV_ENABLED) {
+    return false
+  }
+
+  return patientMediaControlsDisabled.value
+})
+
+const normalizeAideCameraLabel = (label: string) => {
+  return label.trim().replace(/（/g, '(').replace(/）/g, ')')
+}
+
+const resolveAideCameraDeviceLabel = (device: PatientMediaControlDevice) => {
+  const labelKey = aideCameraLabelKeys[normalizeAideCameraLabel(device.label)]
+  return labelKey ? t(labelKey) : device.label
+}
+
 const patientCameraDevices = computed(() => {
   return patientMediaState.value.cameraDevices.map((device) => ({
     ...device,
-    label: aideCameraDeviceLabelKeys[device.deviceId] ? t(aideCameraDeviceLabelKeys[device.deviceId]) : device.label
+    label: resolveAideCameraDeviceLabel(device)
   })) as unknown as MediaDeviceInfo[]
+})
+
+const isSideScannerDevice = (device: PatientMediaControlDevice) => {
+  return normalizeAideCameraLabel(device.label) === SIDE_SCANNER_SOURCE_LABEL
+}
+
+const sideScannerCaptureDevice = computed(() => {
+  const device =
+    patientMediaState.value.cameraDevices.find(isSideScannerDevice) ||
+    (SIDE_SCANNER_CAPTURE_DEV_ENABLED
+      ? patientMediaState.value.cameraDevices.find((item) => Boolean(item.deviceId))
+      : null)
+
+  if (!device) {
+    return null
+  }
+
+  return {
+    ...device,
+    label: resolveAideCameraDeviceLabel(device)
+  }
+})
+
+const showSideScannerCaptureButton = computed(() => {
+  if (SIDE_SCANNER_CAPTURE_DEV_ENABLED) {
+    return true
+  }
+
+  return patientMediaStateReady.value && Boolean(sideScannerCaptureDevice.value)
 })
 
 const doctorTitle = computed(() => {
@@ -574,7 +719,7 @@ const timeline = usePatientSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || userId.value,
   getCurrentUserName: () => aideName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value),
-  getTranslationEnabled: () => translationEnabled.value
+  getTranslationEnabled: () => subtitleTranslationEnabled.value
 })
 
 const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
@@ -606,13 +751,16 @@ const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
   items.forEach((item) => {
     const speaker = resolveHistorySpeaker(item)
     const sourceText = translationEnabled.value ? item.contentLo : item.contentCn || item.contentLo
+    const translatedText = translationEnabled.value
+      ? item.contentCn
+      : subtitleTranslationEnabled.value ? item.contentLo : ''
     timeline.appendHistoryMessage({
       ...speaker,
       messageType: item.messageType,
       sourceText,
-      translatedText: translationEnabled.value ? item.contentCn : '',
+      translatedText,
       sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-      targetLanguage: translationEnabled.value ? 'cn' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : subtitleTranslationEnabled.value ? 'lo' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -745,6 +893,379 @@ const handlePatientCameraSelectionConfirm = (deviceId: string) => {
   patientCameraDialogVisible.value = false
 }
 
+const clearInspectionPollTimer = () => {
+  if (inspectionPollTimer) {
+    window.clearTimeout(inspectionPollTimer)
+    inspectionPollTimer = 0
+  }
+}
+
+const clearInspectionProgressTimer = () => {
+  if (inspectionProgressTimer) {
+    window.clearInterval(inspectionProgressTimer)
+    inspectionProgressTimer = 0
+  }
+}
+
+const startInspectionProgressAnimation = () => {
+  clearInspectionProgressTimer()
+  inspectionProgressTimer = window.setInterval(() => {
+    if (!inspectionRecognizing.value) {
+      return
+    }
+
+    const currentProgress = inspectionRecognitionProgress.value
+    const remainingProgress = inspectionProgressCeiling - currentProgress
+    if (remainingProgress <= 0.1) {
+      return
+    }
+
+    const progressStep =
+      currentProgress < 30
+        ? 1.4
+        : currentProgress < 60
+          ? 0.9
+          : currentProgress < 80
+            ? 0.5
+            : 0.2
+
+    inspectionRecognitionProgress.value = Number(
+      Math.min(inspectionProgressCeiling, currentProgress + progressStep, currentProgress + remainingProgress * 0.08).toFixed(1)
+    )
+  }, 450)
+}
+
+const stopInspectionPolling = () => {
+  inspectionPollRequestId += 1
+  clearInspectionPollTimer()
+  clearInspectionProgressTimer()
+  inspectionRecognizing.value = false
+}
+
+const clearInspectionRecognitionDisplay = () => {
+  stopInspectionPolling()
+  inspectionEditableReports.value = []
+  inspectionRecognitionProgress.value = 0
+  inspectionRecognitionStatusText.value = ''
+  inspectionRecognitionError.value = ''
+}
+
+const resetInspectionResultState = () => {
+  clearInspectionRecognitionDisplay()
+  inspectionBatchId.value = ''
+  inspectionSubmittedFileUrls.value = []
+}
+
+const resetInspectionCaptureState = () => {
+  resetInspectionResultState()
+  uploadedInspectionPhotos.value = []
+  sideScannerPhotoUploading.value = false
+  inspectionSaveLoading.value = false
+}
+
+const extractInspectionBatchId = (response: unknown) => {
+  if (!isObjectRecord(response)) {
+    return ''
+  }
+
+  const data = response.data
+  if (typeof data === 'string' || typeof data === 'number') {
+    return data
+  }
+
+  if (isObjectRecord(data)) {
+    return data.batchId as string | number | undefined
+  }
+
+  return response.batchId as string | number | undefined
+}
+
+const normalizeInspectionItem = (item: InspectionRecognizedItem | null | undefined): EditableInspectionItem => ({
+  item_name: takeOptionalText(item?.item_name),
+  result_value: takeOptionalText(item?.result_value),
+  reference_range: takeOptionalText(item?.reference_range),
+  unit: takeOptionalText(item?.unit),
+  abnormal_flag: takeOptionalText(item?.abnormal_flag),
+  result_status: takeOptionalText(item?.result_status),
+  is_abnormal: Boolean(item?.is_abnormal)
+})
+
+const normalizeInspectionReports = (reports: InspectionBatchReportItem[]): EditableInspectionReport[] => {
+  return reports.map((report) => ({
+    reportId: report.reportId,
+    batchId: report.batchId,
+    fileUrl: takeOptionalText(report.fileUrl),
+    recognizeStatus: report.recognizeStatus,
+    errorMsg: takeOptionalText(report.errorMsg),
+    items: Array.isArray(report.recognizedItems)
+      ? report.recognizedItems.map(normalizeInspectionItem)
+      : []
+  }))
+}
+
+const buildInspectionSaveItem = (item: EditableInspectionItem): InspectionRecognizedItem => ({
+  item_name: item.item_name,
+  result_value: item.result_value,
+  reference_range: item.reference_range,
+  unit: item.unit,
+  abnormal_flag: item.abnormal_flag,
+  result_status: item.result_status,
+  is_abnormal: item.is_abnormal
+})
+
+const getInspectionStatusNumber = (status: unknown) => {
+  const statusNumber = Number(status)
+  return Number.isFinite(statusNumber) ? statusNumber : -1
+}
+
+const resolveInspectionPollingText = (reports: InspectionBatchReportItem[]) => {
+  if (!reports.length) {
+    return t('assistant.aideVideo.consultation.recognitionWaiting')
+  }
+
+  const statuses = reports.map((report) => getInspectionStatusNumber(report.recognizeStatus))
+  return statuses.some((status) => status === 1)
+    ? t('assistant.aideVideo.consultation.recognitionProcessing')
+    : t('assistant.aideVideo.consultation.recognitionPending')
+}
+
+const pollInspectionBatchResult = async (batchId: string | number, requestId: number) => {
+  try {
+    const response = await getInspectionBatchByBatchId(batchId)
+    if (requestId !== inspectionPollRequestId) {
+      return
+    }
+
+    const reports = Array.isArray(response?.data) ? response.data : []
+    const failedReport = reports.find((report) => getInspectionStatusNumber(report.recognizeStatus) === 3)
+
+    if (failedReport) {
+      stopInspectionPolling()
+      inspectionEditableReports.value = normalizeInspectionReports(reports)
+      inspectionRecognitionProgress.value = 100
+      inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionFailedStatus')
+      inspectionRecognitionError.value = failedReport.errorMsg || t('assistant.aideVideo.consultation.recognitionFailed')
+      ElMessage.error(t('assistant.aideVideo.consultation.recognitionFailed'))
+      return
+    }
+
+    const recognized = reports.length > 0 && reports.every((report) => getInspectionStatusNumber(report.recognizeStatus) === 2)
+    if (recognized) {
+      clearInspectionPollTimer()
+      clearInspectionProgressTimer()
+      inspectionRecognizing.value = false
+      inspectionEditableReports.value = normalizeInspectionReports(reports)
+      inspectionRecognitionProgress.value = 100
+      inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionSuccess')
+      inspectionRecognitionError.value = ''
+      return
+    }
+
+    inspectionEditableReports.value = normalizeInspectionReports(reports)
+    inspectionProgressCeiling = reports.some((report) => getInspectionStatusNumber(report.recognizeStatus) === 1) ? 94 : 82
+    inspectionRecognitionStatusText.value = resolveInspectionPollingText(reports)
+    inspectionRecognitionError.value = ''
+    clearInspectionPollTimer()
+    inspectionPollTimer = window.setTimeout(() => {
+      void pollInspectionBatchResult(batchId, requestId)
+    }, 3000)
+  } catch (error) {
+    if (requestId !== inspectionPollRequestId) {
+      return
+    }
+
+    console.warn('Failed to poll inspection recognition result.', error)
+    stopInspectionPolling()
+    inspectionRecognitionProgress.value = 100
+    inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionFailedStatus')
+    inspectionRecognitionError.value = t('assistant.aideVideo.consultation.recognitionFailed')
+    ElMessage.error(t('assistant.aideVideo.consultation.recognitionFailed'))
+  }
+}
+
+const startInspectionPolling = (batchId: string | number) => {
+  const requestId = inspectionPollRequestId + 1
+  inspectionPollRequestId = requestId
+  clearInspectionPollTimer()
+  inspectionRecognizing.value = true
+  inspectionProgressCeiling = 82
+  inspectionRecognitionProgress.value = Math.max(inspectionRecognitionProgress.value, 8)
+  inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionWaiting')
+  inspectionRecognitionError.value = ''
+  startInspectionProgressAnimation()
+  void pollInspectionBatchResult(batchId, requestId)
+}
+
+const openSideScannerCapture = () => {
+  resetInspectionCaptureState()
+
+  if (!sideScannerCaptureDevice.value) {
+    requestPatientMediaState()
+
+    if (!SIDE_SCANNER_CAPTURE_DEV_ENABLED) {
+      return
+    }
+  }
+
+  sideScannerCaptureVisible.value = true
+}
+
+const handleSideScannerPhotoConfirm = async (photo: AideCapturePhoto) => {
+  if (!photo || sideScannerPhotoUploading.value || uploadedInspectionPhotos.value.length >= SIDE_SCANNER_MAX_PHOTO_COUNT) {
+    return
+  }
+
+  const caseId = takeOptionalText(consultationCaseId.value)
+  if (!caseId) {
+    ElMessage.warning(t('assistant.aideVideo.consultation.captureCaseUnavailable'))
+    return
+  }
+
+  sideScannerPhotoUploading.value = true
+
+  try {
+    const uploadResults = await uploadConsultationCaptureFiles({
+      caseId,
+      videoId: consultationVideoId.value,
+      files: [{
+        file: photo.file,
+        name: photo.name
+      }]
+    })
+    const uploadResult = uploadResults[0]
+    const fileUrl = takeOptionalText(uploadResult?.url)
+
+    if (!uploadResult || !fileUrl) {
+      throw new Error('Missing OSS upload URL.')
+    }
+
+    clearInspectionRecognitionDisplay()
+    uploadedInspectionPhotos.value = [
+      ...uploadedInspectionPhotos.value,
+      {
+        id: photo.id,
+        name: photo.name,
+        previewUrl: photo.previewUrl,
+        fileUrl,
+        objectName: uploadResult.objectName,
+        createdAt: photo.createdAt
+      }
+    ]
+    ElMessage.success(t('assistant.aideVideo.consultation.captureUploadComplete'))
+  } catch (error) {
+    console.warn('Failed to upload side scanner photo.', error)
+    ElMessage.error(t('assistant.aideVideo.consultation.captureUploadFailed'))
+  } finally {
+    sideScannerPhotoUploading.value = false
+  }
+}
+
+const handleInspectionRecognize = async () => {
+  if (inspectionRecognizing.value) {
+    return
+  }
+
+  const caseId = takeOptionalText(consultationCaseId.value)
+  if (!caseId) {
+    ElMessage.warning(t('assistant.aideVideo.consultation.captureCaseUnavailable'))
+    return
+  }
+
+  const fileUrlList = uploadedInspectionPhotos.value.map((photo) => takeOptionalText(photo.fileUrl)).filter(Boolean)
+  if (!fileUrlList.length) {
+    ElMessage.warning(t('assistant.aideVideo.consultation.captureUploadedEmpty'))
+    return
+  }
+
+  const existingBatchId = inspectionBatchId.value || undefined
+  const submittedFileUrls = inspectionSubmittedFileUrls.value
+  const hasUploadedPhotoChanges =
+    fileUrlList.length !== submittedFileUrls.length ||
+    fileUrlList.some((fileUrl) => !submittedFileUrls.includes(fileUrl))
+  const shouldSubmitBatch = !existingBatchId || hasUploadedPhotoChanges
+
+  inspectionRecognizing.value = true
+  inspectionEditableReports.value = []
+  inspectionProgressCeiling = 45
+  inspectionRecognitionProgress.value = 5
+  inspectionRecognitionError.value = ''
+  inspectionRecognitionStatusText.value = shouldSubmitBatch
+    ? t('assistant.aideVideo.consultation.recognitionSubmitting')
+    : t('assistant.aideVideo.consultation.recognitionRetrying')
+  startInspectionProgressAnimation()
+
+  try {
+    let batchId: string | number | undefined = existingBatchId
+
+    if (shouldSubmitBatch) {
+      const submitResponse = await submitInspectionBatch({
+        caseId,
+        fileUrlList
+      })
+      batchId = extractInspectionBatchId(submitResponse)
+    } else if (batchId) {
+      const retryResponse = await retryInspectionBatch(batchId)
+      batchId = extractInspectionBatchId(retryResponse) || batchId
+    }
+
+    if (!batchId) {
+      throw new Error('Missing inspection batchId.')
+    }
+
+    inspectionBatchId.value = batchId
+    if (shouldSubmitBatch) {
+      inspectionSubmittedFileUrls.value = [...fileUrlList]
+    }
+    startInspectionPolling(batchId)
+  } catch (error) {
+    console.warn('Failed to start inspection recognition.', error)
+    stopInspectionPolling()
+    inspectionRecognitionProgress.value = 100
+    inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionFailedStatus')
+    inspectionRecognitionError.value = t('assistant.aideVideo.consultation.recognitionFailed')
+    ElMessage.error(t('assistant.aideVideo.consultation.recognitionFailed'))
+  }
+}
+
+const handleInspectionSave = async () => {
+  if (inspectionSaveLoading.value || inspectionRecognizing.value) {
+    return
+  }
+
+  const batchId = inspectionBatchId.value
+  const reports = inspectionEditableReports.value.filter((report) => takeOptionalText(report.reportId))
+  if (!batchId || !reports.length) {
+    ElMessage.warning(t('assistant.aideVideo.consultation.recognitionSaveUnavailable'))
+    return
+  }
+
+  inspectionSaveLoading.value = true
+
+  try {
+    await Promise.all(reports.map((report) => {
+      return saveInspectionReportItems({
+        reportId: report.reportId as string | number,
+        items: report.items.map(buildInspectionSaveItem)
+      })
+    }))
+    await confirmInspectionBatchUpload(batchId)
+    ElMessage.success(t('assistant.aideVideo.consultation.confirmUploadComplete'))
+    sideScannerCaptureVisible.value = false
+    resetInspectionCaptureState()
+  } catch (error) {
+    console.warn('Failed to save inspection recognized items.', error)
+    ElMessage.error(t('assistant.aideVideo.consultation.recognitionSaveFailed'))
+  } finally {
+    inspectionSaveLoading.value = false
+  }
+}
+
+watch(sideScannerCaptureVisible, (visible) => {
+  if (!visible) {
+    stopInspectionPolling()
+  }
+})
+
 const chat = createPatientConsultationChatService({
   onMessage: ({ contentLo, contentCn, role }) => {
     const doctorId = takeOptionalText(consultationDoctorId.value) || 'doctor'
@@ -770,9 +1291,9 @@ const chat = createPatientConsultationChatService({
     timeline.appendManualMessage({
       ...sender,
       sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
-      translatedText: translationEnabled.value ? contentCn : '',
+      translatedText: translationEnabled.value ? contentCn : manualChatTranslationEnabled.value ? contentLo : '',
       sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-      targetLanguage: translationEnabled.value ? 'cn' : 'cn'
+      targetLanguage: translationEnabled.value ? 'cn' : manualChatTranslationEnabled.value ? 'lo' : 'cn'
     })
   },
   onError: (error) => {
@@ -832,9 +1353,9 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerName: aideName.value,
     side: 'self',
     sourceText: translationEnabled.value ? payload.contentLo : payload.contentCn || payload.contentLo,
-    translatedText: translationEnabled.value ? payload.contentCn : '',
+    translatedText: translationEnabled.value ? payload.contentCn : manualChatTranslationEnabled.value ? payload.contentLo : '',
     sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-    targetLanguage: translationEnabled.value ? 'cn' : 'cn'
+    targetLanguage: translationEnabled.value ? 'cn' : manualChatTranslationEnabled.value ? 'lo' : 'cn'
   })
 }
 
@@ -875,8 +1396,17 @@ const handleChatSend = async () => {
           text: normalizedText
         }))?.data)
       : normalizedText
+    const contentLo = translationEnabled.value
+      ? normalizedText
+      : manualChatTranslationEnabled.value
+        ? resolveTranslationText((await translateConsultationText({
+            source: 'cn',
+            to: 'lo',
+            text: normalizedText
+          }))?.data)
+        : ''
     const payload = {
-      contentLo: translationEnabled.value ? normalizedText : '',
+      contentLo,
       contentCn
     }
 
@@ -893,7 +1423,7 @@ const handleChatSend = async () => {
         caseId,
         isDoctor: 2,
         contentCn,
-        contentLo: translationEnabled.value ? normalizedText : ''
+        contentLo
       })
     ])
 
@@ -975,6 +1505,7 @@ const bootstrapConsultation = async () => {
       secondaryToken: secondaryToken.value,
       language: consultationLang.value,
       translationEnabled: translationEnabled.value,
+      subtitleTranslationEnabled: subtitleTranslationEnabled.value,
       publishLocalMedia: false,
       playRemoteAudio: false
     })
@@ -1042,6 +1573,8 @@ const cleanupConsultationRoom = async () => {
   stopConsultationDuration()
   chatDraft.value = ''
   patientCameraDialogVisible.value = false
+  sideScannerCaptureVisible.value = false
+  resetInspectionCaptureState()
   clearAssistantConsultationSseContext()
   chat.disconnect()
   timeline.clearTimeline()
@@ -1230,6 +1763,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(async () => {
+  stopInspectionPolling()
   stopRejectedListening?.()
   stopRejectedListening = null
   stopCompletedListening?.()
@@ -1350,10 +1884,10 @@ onBeforeUnmount(async () => {
 }
 
 .consultation-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 16px;
   padding: 8px 10px;
   border-radius: 10px;
   background: #ffffff;
@@ -1364,6 +1898,7 @@ onBeforeUnmount(async () => {
   display: flex;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
   gap: 8px;
 }
 
@@ -1383,18 +1918,23 @@ onBeforeUnmount(async () => {
 
 .doctor-copy {
   min-width: 0;
+  overflow: hidden;
 }
 
 .doctor-heading {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  min-width: 0;
   gap: 5px;
 }
 
 .doctor-heading strong {
+  min-width: 0;
+  overflow: hidden;
   color: #22395f;
   font-size: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .doctor-status {
@@ -1407,15 +1947,47 @@ onBeforeUnmount(async () => {
 }
 
 .doctor-good-at {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
   margin: 2px 0 0;
+  overflow: hidden;
   color: #6d7d96;
   font-size: 20px;
   line-height: 1.5;
+  white-space: nowrap;
 }
 
-.doctor-good-at span {
+.doctor-good-at__label {
+  flex: 0 0 auto;
   color: #415678;
   font-weight: 700;
+}
+
+.doctor-good-at__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consultation-controls {
+  justify-self: end;
+  width: max-content;
+}
+
+.consultation-controls :deep(.consult-room-controls) {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
+
+.consultation-controls :deep(.control-button) {
+  flex: 0 0 auto;
+}
+
+.consultation-controls :deep(.label) {
+  white-space: nowrap;
 }
 
 .consultation-error-state {
@@ -1606,8 +2178,18 @@ onBeforeUnmount(async () => {
   }
 
   .consultation-footer {
-    align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .consultation-controls {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .consultation-controls :deep(.consult-room-controls) {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .rejected-dialog {

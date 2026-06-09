@@ -26,7 +26,8 @@
         :chat-input-disabled="chatInputDisabled"
         :chat-send-disabled="chatSendDisabled"
         :chat-status-text="chatStatusText"
-        :translation-enabled="translationEnabled"
+        :translation-enabled="subtitleTranslationEnabled"
+        primary-language="cn"
         :on-chat-input="handleChatInput"
         :on-chat-send="handleChatSend"
       />
@@ -50,7 +51,6 @@
               :muted="previewParticipant.muted"
               :speaking="previewParticipant.speaking"
               :badge="previewParticipant.track ? '' : previewParticipant.placeholderBadge"
-              :mirror="previewParticipantRole === 'doctor'"
               compact
               @click="toggleFeaturedParticipant"
             />
@@ -63,7 +63,6 @@
             :muted="featuredParticipant.muted"
             :speaking="featuredParticipant.speaking"
             :badge="featuredParticipant.track ? '' : featuredParticipant.placeholderBadge"
-            :mirror="featuredParticipantRole === 'doctor'"
             :show-status="false"
           />
 
@@ -197,15 +196,119 @@
                     :placeholder="resolveInputPlaceholder(t('doctorVideo.consultation.check'))"
                   />
                 </el-form-item>
-                <el-form-item :label="t('doctorVideo.consultation.therapy')" prop="therapyCn" class="compact-form-item">
-                  <el-input
-                    type="textarea"
-                    :rows="2"
-                    resize="none"
-                    v-model="diagnosisForm.therapyCn"
-                    :placeholder="resolveTextareaPlaceholder(t('doctorVideo.consultation.therapy'))"
-                  />
+                <el-form-item :label="t('doctorVideo.consultation.therapy')" prop="prescriptionId" class="compact-form-item" required>
+                  <el-select
+                    v-model="diagnosisForm.prescriptionId"
+                    filterable
+                    clearable
+                    remote
+                    reserve-keyword
+                    class="prescription-select"
+                    popper-class="prescription-select-popper"
+                    :placeholder="t('doctorVideo.consultation.prescriptionSelectPlaceholder')"
+                    :loading="prescriptionSelectLoading"
+                    :remote-method="handlePrescriptionRemoteSearch"
+                    :validate-event="false"
+                    @visible-change="handlePrescriptionVisibleChange"
+                    @popup-scroll="handlePrescriptionPopupScroll"
+                    @change="onPrescriptionSelect"
+                  >
+                    <el-option
+                      v-for="prescription in prescriptionOptions"
+                      :key="String(prescription.drugId)"
+                      :label="resolvePrescriptionName(prescription)"
+                      :value="String(prescription.drugId)"
+                    >
+                      <span class="prescription-option">
+                        <span>{{ resolvePrescriptionName(prescription) }}</span>
+                      </span>
+                    </el-option>
+                  </el-select>
                 </el-form-item>
+
+                <div v-if="selectedPrescription" class="prescription-detail-block">
+                  <div class="prescription-preview">
+                    <div v-loading="prescriptionDetailLoading" class="prescription-info-list">
+                      <div class="prescription-info-row">
+                        <span>{{ t('doctorVideo.consultation.prescriptionEffect') }}</span>
+                        <p>{{ resolvePrescriptionEffect(selectedPrescription) || t('doctorVideo.consultation.notFilled') }}</p>
+                      </div>
+                      <div class="prescription-info-row">
+                        <span>{{ t('doctorVideo.consultation.prescriptionIndication') }}</span>
+                        <p>{{ resolvePrescriptionIndication(selectedPrescription) || t('doctorVideo.consultation.notFilled') }}</p>
+                      </div>
+                      <div class="prescription-info-row">
+                        <span>{{ t('doctorVideo.consultation.prescriptionUsage') }}</span>
+                        <p>{{ resolvePrescriptionUsage(selectedPrescription) || t('doctorVideo.consultation.notFilled') }}</p>
+                      </div>
+                      <div v-if="resolvePrescriptionNotes(selectedPrescription)" class="prescription-info-row prescription-info-row--warning">
+                        <span>{{ t('doctorVideo.consultation.prescriptionNotes') }}</span>
+                        <p>{{ resolvePrescriptionNotes(selectedPrescription) }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="prescription-herbs">
+                    <div class="prescription-herb-header">
+                      <strong>{{ t('doctorVideo.consultation.prescriptionHerbs') }}</strong>
+                      <div>
+                        <span v-if="selectedPrescription">{{ activePrescriptionHerbs.length }}{{ t('doctorVideo.consultation.herbCountUnit') }}</span>
+                        <el-button
+                          type="primary"
+                          size="small"
+                          :icon="Plus"
+                          :disabled="!selectedPrescription"
+                          @click="addPrescriptionHerb"
+                        >
+                          {{ t('doctorVideo.consultation.addHerb') }}
+                        </el-button>
+                      </div>
+                    </div>
+
+                    <el-table
+                      :data="editablePrescriptionHerbs"
+                      size="small"
+                      stripe
+                      class="prescription-herb-table"
+                      :empty-text="t('doctorVideo.consultation.prescriptionEmptyHerbs')"
+                    >
+                      <el-table-column :label="t('doctorVideo.consultation.herbName')" min-width="92">
+                        <template #default="{ row }">
+                          <el-input v-model="row.herb" size="small" :placeholder="t('doctorVideo.consultation.herbName')" />
+                        </template>
+                      </el-table-column>
+                      <el-table-column :label="t('doctorVideo.consultation.herbDose')" width="70">
+                        <template #default="{ row }">
+                          <el-input v-model="row.dose" size="small" :placeholder="t('doctorVideo.consultation.herbDose')" />
+                        </template>
+                      </el-table-column>
+                      <el-table-column :label="t('doctorVideo.consultation.herbUnit')" width="72">
+                        <template #default="{ row }">
+                          <el-select v-model="row.unit" size="small">
+                            <el-option
+                              v-for="unit in prescriptionUnitOptions"
+                              :key="unit.dictValue"
+                              :label="unit.dictLabel"
+                              :value="unit.dictValue"
+                            />
+                          </el-select>
+                        </template>
+                      </el-table-column>
+                      <el-table-column :label="t('doctorVideo.consultation.herbAction')" width="52" align="center">
+                        <template #default="{ $index }">
+                          <el-button
+                            type="danger"
+                            link
+                            :icon="Delete"
+                            :title="t('doctorVideo.consultation.removeHerb')"
+                            :aria-label="t('doctorVideo.consultation.removeHerb')"
+                            @click="removePrescriptionHerb($index)"
+                          />
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                </div>
                 <el-form-item :label="t('doctorVideo.consultation.advice')" prop="adviceCn" class="compact-form-item">
                   <el-input
                     type="textarea"
@@ -258,12 +361,165 @@
             </div>
           </div>
 
-          <div v-else class="empty-record-state">
-            <h3>{{ t('doctorVideo.consultation.noCaseTitle') }}</h3>
-            <p>{{ t('doctorVideo.consultation.noCaseDescription') }}</p>
+          <div v-else-if="activeTab === 'fourDiagnoses'" class="record-content four-diagnosis-content">
+            <div v-if="fourApparatusUrl" class="four-diagnosis-report-card">
+              <div class="four-report-main">
+                <el-icon><document /></el-icon>
+                <strong>{{ t('doctorVideo.consultation.fourDiagnosisReportTitle') }}</strong>
+              </div>
+              <button type="button" @click="fourDiagnosisPdfVisible = true">
+                {{ t('doctorVideo.consultation.fourDiagnosisViewReport') }}
+              </button>
+            </div>
+
+            <div v-else class="four-diagnosis-empty-state">
+              <el-icon><document /></el-icon>
+              <h3>{{ t('doctorVideo.consultation.fourDiagnosisEmptyTitle') }}</h3>
+            </div>
+
+            <div class="four-diagnosis-report-card inspection-report-card">
+              <div class="four-report-main">
+                <el-icon><document /></el-icon>
+                <strong>{{ t('doctorVideo.consultation.inspectionReportTitle') }}</strong>
+              </div>
+              <button
+                type="button"
+                :disabled="inspectionReportLoading"
+                @click="handleInspectionReportView"
+              >
+                {{ inspectionReportLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.fourDiagnosisViewReport') }}
+              </button>
+            </div>
           </div>
         </div>
       </aside>
+    </div>
+
+    <div v-if="fourDiagnosisPdfVisible" class="four-pdf-preview-mask" @click.self="fourDiagnosisPdfVisible = false">
+      <div class="four-pdf-preview-dialog">
+        <div class="four-pdf-preview-header">
+          <h3>{{ t('doctorVideo.consultation.fourDiagnosisPdfTitle') }}</h3>
+          <button type="button" :title="t('common.cancel')" @click="fourDiagnosisPdfVisible = false">
+            <el-icon><close /></el-icon>
+          </button>
+        </div>
+        <iframe
+          class="four-pdf-preview-frame"
+          :src="fourApparatusUrl"
+          :title="t('doctorVideo.consultation.fourDiagnosisPdfTitle')"
+        ></iframe>
+      </div>
+    </div>
+
+    <div v-if="inspectionReportVisible" class="four-pdf-preview-mask" @click.self="closeInspectionReportDialog">
+      <div class="four-pdf-preview-dialog inspection-report-dialog">
+        <div class="four-pdf-preview-header">
+          <h3>{{ t('doctorVideo.consultation.inspectionReportDialogTitle') }}</h3>
+          <button type="button" :title="t('common.cancel')" @click="closeInspectionReportDialog">
+            <el-icon><close /></el-icon>
+          </button>
+        </div>
+
+        <div class="inspection-report-body">
+          <div v-if="inspectionReportList.length && activeInspectionReport" class="inspection-report-workspace">
+            <aside class="inspection-report-visual">
+              <div class="inspection-report-main-image">
+                <el-image
+                  v-if="activeInspectionReport.fileUrl"
+                  :src="activeInspectionReport.fileUrl"
+                  :preview-src-list="[activeInspectionReport.fileUrl]"
+                  :z-index="3200"
+                  fit="contain"
+                  preview-teleported
+                />
+                <el-empty
+                  v-else
+                  :image-size="72"
+                  :description="t('doctorVideo.consultation.inspectionReportImageUnavailable')"
+                />
+              </div>
+
+              <div class="inspection-report-thumbnails" role="tablist">
+                <button
+                  v-for="(item, index) in inspectionReportList"
+                  :key="resolveInspectionReportKey(item, index)"
+                  type="button"
+                  class="inspection-report-thumbnail"
+                  :class="{ 'is-active': index === selectedInspectionReportIndex }"
+                  :title="t('doctorVideo.consultation.inspectionReportImageIndex', { index: index + 1 })"
+                  @click="selectInspectionReport(index)"
+                >
+                  <el-image v-if="item.fileUrl" :src="item.fileUrl" fit="cover" />
+                  <span v-else>{{ index + 1 }}</span>
+                </button>
+              </div>
+            </aside>
+
+            <main class="inspection-report-content">
+              <section class="inspection-analysis-panel">
+                <header class="inspection-panel-header">
+                  <h4>{{ t('doctorVideo.consultation.inspectionReportAnalysis') }}</h4>
+                  <span class="inspection-analysis-status" :class="`is-status-${activeInspectionAnalysisStatus}`">
+                    {{ inspectionAnalysisStatusText }}
+                  </span>
+                </header>
+
+                <el-progress
+                  v-if="inspectionAnalysisPolling || inspectionAnalysisProgress > 0"
+                  class="inspection-analysis-progress"
+                  :percentage="inspectionAnalysisProgress"
+                  :format="formatInspectionAnalysisProgress"
+                  :status="inspectionAnalysisProgressStatus"
+                />
+
+                <p v-if="activeInspectionAnalysisError" class="inspection-report-error">
+                  {{ activeInspectionAnalysisError }}
+                </p>
+
+                <ul v-if="activeInspectionAdvice.length" class="inspection-report-advice-list">
+                  <li v-for="(advice, adviceIndex) in activeInspectionAdvice" :key="adviceIndex">
+                    {{ advice }}
+                  </li>
+                </ul>
+                <p v-else class="inspection-report-empty-line">
+                  {{
+                    inspectionAnalysisPolling
+                      ? t('doctorVideo.consultation.inspectionAnalysisWaitingAdvice')
+                      : t('doctorVideo.consultation.inspectionReportNoAdvice')
+                  }}
+                </p>
+              </section>
+
+              <section class="inspection-items-panel">
+                <header class="inspection-panel-header">
+                  <h4>{{ t('doctorVideo.consultation.inspectionReportItems') }}</h4>
+                </header>
+
+                <el-table
+                  v-if="activeInspectionItems.length"
+                  :data="activeInspectionItems"
+                  :row-class-name="getInspectionItemRowClassName"
+                  size="small"
+                  border
+                  class="inspection-report-table"
+                >
+                  <el-table-column prop="item_name" :label="t('doctorVideo.consultation.inspectionReportItemName')" min-width="150" />
+                  <el-table-column prop="result_value" :label="t('doctorVideo.consultation.inspectionReportResultValue')" min-width="120" />
+                  <el-table-column prop="reference_range" :label="t('doctorVideo.consultation.inspectionReportReferenceRange')" min-width="140" />
+                  <el-table-column prop="unit" :label="t('doctorVideo.consultation.inspectionReportUnit')" min-width="100" />
+                </el-table>
+                <p v-else class="inspection-report-empty-line">
+                  {{ t('doctorVideo.consultation.inspectionReportNoItems') }}
+                </p>
+              </section>
+            </main>
+          </div>
+
+          <div v-else class="empty-record-state">
+            <h3>{{ t('doctorVideo.consultation.inspectionReportEmptyTitle') }}</h3>
+          </div>
+        </div>
+      </div>
     </div>
 
     <consult-camera-select-dialog
@@ -280,13 +536,25 @@
 </template>
 
 <script setup lang="ts">
-import { WarningFilled } from '@element-plus/icons-vue'
+import { Close, Delete, Document, Plus, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { listDictData } from '@/api/dict'
 import { addWrittenRecord, translateConsultationText } from '@/api/patient'
-import type { ConsultationMode, GenerateMedicalRecordData } from '@/api/types'
+import { getDrugPrescription, listDrugPrescription, saveCaseDrugDetail } from '@/api/prescription'
+import { getInspectionBatchByBatchId, getInspectionBatchByCaseId } from '@/api/record'
+import type {
+  CaseDrugDetailSaveParams,
+  ConsultationMode,
+  DictDataVO,
+  DrugPrescriptionListResponse,
+  DrugPrescriptionVO,
+  GenerateMedicalRecordData,
+  InspectionRecognizedItem,
+  InspectionReportItem
+} from '@/api/types'
 import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
 import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { useUserStore } from '@/stores/user'
@@ -325,6 +593,22 @@ interface HistoryCaseRecord {
   date: string
 }
 
+interface PrescriptionHerb {
+  herb: string
+  dose: string
+  unit: string
+  note?: string
+}
+
+interface PrescriptionPopupScrollPayload {
+  scrollTop: number
+  scrollLeft?: number
+}
+
+const PRESCRIPTION_UNIT_DICT_TYPE = 'drug_detail_unit'
+const PRESCRIPTION_PAGE_SIZE = 20
+const PRESCRIPTION_SCROLL_PRELOAD_DISTANCE = 50
+
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -343,10 +627,23 @@ const historyCaseError = ref('')
 const generatingMedicalRecord = ref(false)
 const cameraDialogVisible = ref(false)
 const cameraDialogRequired = ref(false)
+const fourDiagnosisPdfVisible = ref(false)
+const inspectionReportVisible = ref(false)
+const inspectionReportLoading = ref(false)
+const inspectionReportList = ref<InspectionReportItem[]>([])
+const selectedInspectionReportIndex = ref(0)
+const inspectionAnalysisPolling = ref(false)
+const inspectionAnalysisProgress = ref(0)
+const inspectionAnalysisError = ref('')
 const featuredParticipantRole = ref<'doctor' | 'patient'>('patient')
 let durationTimer = 0
 let durationStartedAt = 0
 let durationRequestId = 0
+let inspectionReportRequestId = 0
+let inspectionAnalysisPollTimer = 0
+let inspectionAnalysisProgressTimer = 0
+let inspectionAnalysisPollRequestId = 0
+let inspectionAnalysisProgressCeiling = 72
 let pendingInitialCameraSelection: ((deviceId: string) => void) | null = null
 let leavingInProgress = false
 
@@ -454,6 +751,9 @@ const consultationLang = computed<'lo' | 'cn'>(() => {
   )
 })
 const translationEnabled = computed(() => consultationLang.value === 'lo')
+const subtitleTranslationEnabled = computed(() => true)
+const manualChatTranslationEnabled = computed(() => translationEnabled.value || subtitleTranslationEnabled.value)
+const fourApparatusUrl = computed(() => resolveContextText(consultationContext.value.fourApparatusUrl))
 
 const patientName = computed(() => {
   return consultationContext.value.patientName || queryValue('patientId') || t('workbench.unknownPatient')
@@ -635,14 +935,349 @@ const diagnosisFormRef = ref<FormInstance>()
 const diagnosisForm = ref({
   diseaseNameCn: '',
   syndromeTypeCn: '',
-  therapyCn: '',
+  prescriptionId: '',
   adviceCn: ''
 })
+
+const prescriptionOptions = ref<DrugPrescriptionVO[]>([])
+const selectedPrescription = ref<DrugPrescriptionVO | null>(null)
+const editablePrescriptionHerbs = ref<PrescriptionHerb[]>([])
+const prescriptionListLoading = ref(false)
+const prescriptionSelectLoading = ref(false)
+const prescriptionDetailLoading = ref(false)
+const prescriptionListTotal = ref(0)
+const prescriptionHasMore = ref(true)
+const prescriptionListPageNum = ref(0)
+const prescriptionKeyword = ref('')
+const prescriptionUnitOptions = ref<DictDataVO[]>([])
+let prescriptionSearchTimer = 0
+let prescriptionListRequestId = 0
+let prescriptionDetailRequestId = 0
+let prescriptionUnitRequestId = 0
+
+const activePrescriptionHerbs = computed(() => {
+  return editablePrescriptionHerbs.value.filter((herb) => herb.herb.trim())
+})
+
+const hasMorePrescriptions = computed(() => {
+  return prescriptionHasMore.value
+})
+
+const resolvePrescriptionId = (prescription: DrugPrescriptionVO) => takeOptionalText(prescription.drugId)
+
+const resolvePrescriptionName = (prescription: DrugPrescriptionVO) => {
+  return takeOptionalText(prescription.drugName) || '--'
+}
+
+const resolvePrescriptionEffect = (prescription: DrugPrescriptionVO) => takeOptionalText(prescription.drugEffect)
+
+const resolvePrescriptionIndication = (prescription: DrugPrescriptionVO) => takeOptionalText(prescription.drugCure)
+
+const resolvePrescriptionUsage = (prescription: DrugPrescriptionVO) => takeOptionalText(prescription.drugUsage)
+
+const resolvePrescriptionNotes = (prescription: DrugPrescriptionVO) => takeOptionalText(prescription.drugAttention)
+
+const normalizeDictListPayload = (response: { rows?: DictDataVO[] | null; data?: DictDataVO[] | null }) => {
+  if (Array.isArray(response?.rows)) return response.rows
+  if (Array.isArray(response?.data)) return response.data
+  return []
+}
+
+const getDefaultPrescriptionUnit = () => {
+  return takeOptionalText(prescriptionUnitOptions.value[0]?.dictValue)
+}
+
+const findPrescriptionUnitOption = (value: unknown) => {
+  const text = takeOptionalText(value)
+  if (!text) return undefined
+
+  const exactValueMatched = prescriptionUnitOptions.value.find((item) => takeOptionalText(item.dictValue) === text)
+  if (exactValueMatched) return exactValueMatched
+
+  const normalizedText = text.toLowerCase()
+  const normalizedValueMatched = prescriptionUnitOptions.value.find((item) => takeOptionalText(item.dictValue).toLowerCase() === normalizedText)
+  if (normalizedValueMatched) return normalizedValueMatched
+
+  const exactLabelMatched = prescriptionUnitOptions.value.find((item) => takeOptionalText(item.dictLabel) === text)
+  if (exactLabelMatched) return exactLabelMatched
+
+  return prescriptionUnitOptions.value.find((item) => takeOptionalText(item.dictLabel).toLowerCase() === normalizedText)
+}
+
+const resolvePrescriptionUnitValue = (value: unknown) => {
+  return findPrescriptionUnitOption(value)?.dictValue || takeOptionalText(value) || getDefaultPrescriptionUnit()
+}
+
+const normalizeEditablePrescriptionHerbUnits = () => {
+  editablePrescriptionHerbs.value = editablePrescriptionHerbs.value.map((herb) => ({
+    ...herb,
+    unit: resolvePrescriptionUnitValue(herb.unit)
+  }))
+}
+
+const loadPrescriptionUnitDict = async () => {
+  const requestId = ++prescriptionUnitRequestId
+
+  try {
+    const response = await listDictData({ dictType: PRESCRIPTION_UNIT_DICT_TYPE })
+    if (requestId !== prescriptionUnitRequestId) return
+
+    prescriptionUnitOptions.value = normalizeDictListPayload(response)
+    normalizeEditablePrescriptionHerbUnits()
+  } catch (error) {
+    if (requestId !== prescriptionUnitRequestId) return
+    console.warn('Failed to load prescription unit dict.', error)
+    prescriptionUnitOptions.value = []
+  }
+}
+
+const normalizePrescriptionListPayload = (response: DrugPrescriptionListResponse) => {
+  const data = response?.data
+  let rows: DrugPrescriptionVO[] = []
+  let totalValue: unknown = response?.total
+
+  if (Array.isArray(response?.rows)) {
+    rows = response.rows
+  } else if (Array.isArray(data)) {
+    rows = data
+  } else if (isObjectRecord(data)) {
+    if (Array.isArray(data.rows)) {
+      rows = data.rows as DrugPrescriptionVO[]
+    } else if (Array.isArray(data.list)) {
+      rows = data.list as DrugPrescriptionVO[]
+    }
+
+    totalValue = data.total ?? totalValue
+  }
+
+  const parsedTotal = Number(totalValue)
+  return { rows, total: Number.isFinite(parsedTotal) ? parsedTotal : 0 }
+}
+
+const mergePrescriptionOptions = (currentOptions: DrugPrescriptionVO[], nextOptions: DrugPrescriptionVO[]) => {
+  const optionMap = new Map<string, DrugPrescriptionVO>()
+
+  ;[...currentOptions, ...nextOptions].forEach((item) => {
+    const drugId = resolvePrescriptionId(item)
+    if (drugId) {
+      optionMap.set(drugId, item)
+    }
+  })
+
+  return Array.from(optionMap.values())
+}
+
+const fetchPrescriptionList = async (reset = false) => {
+  const nextPageNum = reset ? 1 : prescriptionListPageNum.value + 1
+  const requestId = ++prescriptionListRequestId
+  prescriptionListLoading.value = true
+  if (reset) {
+    prescriptionSelectLoading.value = true
+  }
+
+  try {
+    const response = await listDrugPrescription({
+      pageNum: nextPageNum,
+      pageSize: PRESCRIPTION_PAGE_SIZE,
+      drugName: prescriptionKeyword.value || undefined
+    })
+
+    if (requestId !== prescriptionListRequestId) return
+
+    const previousOptionsLength = prescriptionOptions.value.length
+    const { rows, total } = normalizePrescriptionListPayload(response)
+    const nextOptions = reset ? rows : mergePrescriptionOptions(prescriptionOptions.value, rows)
+    const hasNewOptions = reset || nextOptions.length > previousOptionsLength
+    prescriptionOptions.value = nextOptions
+    prescriptionListTotal.value = total > 0 ? Math.max(total, nextOptions.length) : nextOptions.length
+    prescriptionHasMore.value = hasNewOptions && (rows.length >= PRESCRIPTION_PAGE_SIZE || (total > 0 && nextOptions.length < total))
+    prescriptionListPageNum.value = nextPageNum
+  } catch (error) {
+    if (requestId !== prescriptionListRequestId) return
+    console.warn('Failed to load prescription list.', error)
+    if (reset) {
+      prescriptionOptions.value = []
+      prescriptionListTotal.value = 0
+      prescriptionHasMore.value = true
+      prescriptionListPageNum.value = 0
+    }
+    ElMessage.warning(t('doctorVideo.consultation.prescriptionListLoadFailed'))
+  } finally {
+    if (requestId === prescriptionListRequestId) {
+      prescriptionListLoading.value = false
+      if (reset) {
+        prescriptionSelectLoading.value = false
+      }
+    }
+  }
+}
+
+const handlePrescriptionVisibleChange = (visible: boolean) => {
+  if (visible && !prescriptionOptions.value.length && !prescriptionListLoading.value) {
+    void fetchPrescriptionList(true)
+  }
+}
+
+const handlePrescriptionRemoteSearch = (keyword: string) => {
+  prescriptionKeyword.value = keyword.trim()
+  window.clearTimeout(prescriptionSearchTimer)
+  prescriptionSearchTimer = window.setTimeout(() => {
+    void fetchPrescriptionList(true)
+  }, 300)
+}
+
+const getPrescriptionPopupScrollWrap = () => {
+  return document.querySelector<HTMLElement>('.prescription-select-popper .el-select-dropdown__wrap')
+    || document.querySelector<HTMLElement>('.prescription-select-popper .el-scrollbar__wrap')
+}
+
+const handlePrescriptionPopupScroll = (payload: PrescriptionPopupScrollPayload) => {
+  const target = getPrescriptionPopupScrollWrap()
+  if (!target) return
+
+  const scrollTop = Number(payload?.scrollTop ?? target.scrollTop)
+  const distanceToBottom = target.scrollHeight - scrollTop - target.clientHeight
+  if (distanceToBottom > PRESCRIPTION_SCROLL_PRELOAD_DISTANCE) return
+
+  if (!hasMorePrescriptions.value || prescriptionListLoading.value) return
+  void fetchPrescriptionList(false)
+}
+
+const normalizePrescriptionHerbs = (prescription: DrugPrescriptionVO) => {
+  return (prescription.detailList || [])
+    .map((item) => ({
+      herb: takeOptionalText(item.drugDetailName),
+      dose: takeOptionalText(item.drugDetailShare),
+      unit: resolvePrescriptionUnitValue(item.drugDetailUnit)
+    }))
+    .filter((item) => item.herb || item.dose)
+}
+
+const clearPrescriptionValidation = () => {
+  diagnosisFormRef.value?.clearValidate('prescriptionId')
+}
+
+const refreshPrescriptionValidation = () => {
+  if (!diagnosisForm.value.prescriptionId) {
+    clearPrescriptionValidation()
+    return
+  }
+
+  void diagnosisFormRef.value?.validateField('prescriptionId').catch(() => undefined)
+}
+
+const onPrescriptionSelect = async (prescriptionId: string | number | boolean | undefined) => {
+  const normalizedId = prescriptionId !== null && prescriptionId !== undefined && prescriptionId !== false
+    ? String(prescriptionId).trim()
+    : ''
+  diagnosisForm.value.prescriptionId = normalizedId
+  clearPrescriptionValidation()
+
+  if (!normalizedId) {
+    prescriptionDetailRequestId++
+    prescriptionDetailLoading.value = false
+    selectedPrescription.value = null
+    editablePrescriptionHerbs.value = []
+    return
+  }
+
+  const listItem = prescriptionOptions.value.find((prescription) => resolvePrescriptionId(prescription) === normalizedId)
+  selectedPrescription.value = listItem || null
+  editablePrescriptionHerbs.value = []
+
+  const requestId = ++prescriptionDetailRequestId
+  prescriptionDetailLoading.value = true
+
+  try {
+    const response = await getDrugPrescription(normalizedId)
+    if (requestId !== prescriptionDetailRequestId) return
+
+    const detail = response?.data || listItem || null
+    selectedPrescription.value = detail
+    editablePrescriptionHerbs.value = detail ? normalizePrescriptionHerbs(detail) : []
+
+    if (detail) {
+      prescriptionOptions.value = mergePrescriptionOptions(prescriptionOptions.value, [detail])
+    }
+    refreshPrescriptionValidation()
+  } catch (error) {
+    if (requestId !== prescriptionDetailRequestId) return
+    console.warn('Failed to load prescription detail.', error)
+    selectedPrescription.value = listItem || null
+    editablePrescriptionHerbs.value = listItem ? normalizePrescriptionHerbs(listItem) : []
+    refreshPrescriptionValidation()
+    ElMessage.warning(t('doctorVideo.consultation.prescriptionDetailLoadFailed'))
+  } finally {
+    if (requestId === prescriptionDetailRequestId) {
+      prescriptionDetailLoading.value = false
+    }
+  }
+}
+
+const addPrescriptionHerb = () => {
+  if (!selectedPrescription.value) return
+  editablePrescriptionHerbs.value.push({ herb: '', dose: '', unit: getDefaultPrescriptionUnit(), note: '' })
+}
+
+const removePrescriptionHerb = (index: number) => {
+  editablePrescriptionHerbs.value.splice(index, 1)
+}
+
+const normalizeSubmitId = (value: unknown, fallback = 0) => {
+  const text = takeOptionalText(value)
+  if (!text) return fallback
+
+  const parsedValue = Number(text)
+  return Number.isFinite(parsedValue) ? parsedValue : text
+}
+
+const buildCaseDrugDetailPayload = (submitCaseId: number): CaseDrugDetailSaveParams | null => {
+  const prescription = selectedPrescription.value
+  if (!prescription) return null
+
+  const submitVideoId = normalizeSubmitId(videoId.value)
+  const submitDrugId = normalizeSubmitId(prescription.drugId)
+  const detailList = activePrescriptionHerbs.value.map((herb) => ({
+    caseDrugDetailId: 0,
+    videoId: submitVideoId,
+    caseId: submitCaseId,
+    drugId: submitDrugId,
+    drugDetailName: herb.herb.trim(),
+    drugDetailUnit: resolvePrescriptionUnitValue(herb.unit),
+    drugDetailShare: herb.dose.trim()
+  }))
+
+  return {
+    caseId: submitCaseId,
+    videoId: submitVideoId,
+    drugId: submitDrugId,
+    detailList
+  }
+}
+
+const buildPrescriptionContent = () => {
+  const prescription = selectedPrescription.value
+  return prescription ? resolvePrescriptionName(prescription) : ''
+}
+
+const validatePrescription = (_rule: unknown, _value: unknown, callback: (error?: Error) => void) => {
+  if (!selectedPrescription.value) {
+    callback(new Error(t('doctorVideo.consultation.prescriptionRequired')))
+    return
+  }
+
+  if (!activePrescriptionHerbs.value.length) {
+    callback(new Error(t('doctorVideo.consultation.prescriptionHerbRequired')))
+    return
+  }
+
+  callback()
+}
 
 const diagnosisRules = computed<FormRules>(() => ({
   diseaseNameCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.diagnosis')), trigger: 'blur' }],
   syndromeTypeCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.check')), trigger: 'blur' }],
-  therapyCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.therapy')), trigger: 'blur' }],
+  prescriptionId: [{ validator: validatePrescription, trigger: 'change' }],
   adviceCn: [{ required: true, message: resolveInputPlaceholder(t('doctorVideo.consultation.advice')), trigger: 'blur' }]
 }))
 
@@ -758,6 +1393,278 @@ const fetchHistoryCaseList = async () => {
   }
 }
 
+const resolveInspectionReportKey = (item: InspectionReportItem, index: number) => {
+  const reportId = takeOptionalText(item.reportId)
+  if (reportId) return `report-${reportId}`
+
+  const batchId = takeOptionalText(item.batchId)
+  if (batchId) return `batch-${batchId}-${index}`
+
+  return `inspection-${index}`
+}
+
+const activeInspectionReport = computed(() => {
+  return inspectionReportList.value[selectedInspectionReportIndex.value] || null
+})
+
+const activeInspectionItems = computed<InspectionRecognizedItem[]>(() => {
+  const report = activeInspectionReport.value
+  const items = report?.recognizedItems ?? report?.abnormalItems
+  return Array.isArray(items) ? items : []
+})
+
+const activeInspectionAdvice = computed(() => {
+  const report = activeInspectionReport.value
+  const advice = report?.analysisAdvice ?? report?.adviceItems
+  return Array.isArray(advice) ? advice.filter((item) => takeOptionalText(item)) : []
+})
+
+const getInspectionAnalysisStatusNumber = (status: unknown) => {
+  const statusNumber = Number(status)
+  return Number.isFinite(statusNumber) ? statusNumber : 0
+}
+
+const activeInspectionAnalysisStatus = computed(() => {
+  return getInspectionAnalysisStatusNumber(activeInspectionReport.value?.analysisStatus)
+})
+
+const inspectionAnalysisStatusText = computed(() => {
+  const statusTextMap: Record<number, string> = {
+    0: t('doctorVideo.consultation.inspectionAnalysisNotSubmitted'),
+    1: t('doctorVideo.consultation.inspectionAnalysisPending'),
+    2: t('doctorVideo.consultation.inspectionAnalysisProcessing'),
+    3: t('doctorVideo.consultation.inspectionAnalysisSuccess'),
+    4: t('doctorVideo.consultation.inspectionAnalysisFailed')
+  }
+  return statusTextMap[activeInspectionAnalysisStatus.value] || statusTextMap[0]
+})
+
+const activeInspectionAnalysisError = computed(() => {
+  return takeOptionalText(activeInspectionReport.value?.analysisErrorMsg) || inspectionAnalysisError.value
+})
+
+const inspectionAnalysisProgressStatus = computed(() => {
+  if (activeInspectionAnalysisStatus.value === 4 || inspectionAnalysisError.value) return 'exception'
+  if (activeInspectionAnalysisStatus.value === 3 && inspectionAnalysisProgress.value >= 100) return 'success'
+  return undefined
+})
+
+const formatInspectionAnalysisProgress = (percentage: number) => `${Math.round(percentage)}%`
+
+const getInspectionItemRowClassName = ({ row }: { row: InspectionRecognizedItem }) => {
+  return row.is_abnormal ? 'is-abnormal-row' : ''
+}
+
+const selectInspectionReport = (index: number) => {
+  selectedInspectionReportIndex.value = index
+}
+
+const clearInspectionAnalysisPollTimer = () => {
+  if (inspectionAnalysisPollTimer) {
+    window.clearTimeout(inspectionAnalysisPollTimer)
+    inspectionAnalysisPollTimer = 0
+  }
+}
+
+const clearInspectionAnalysisProgressTimer = () => {
+  if (inspectionAnalysisProgressTimer) {
+    window.clearInterval(inspectionAnalysisProgressTimer)
+    inspectionAnalysisProgressTimer = 0
+  }
+}
+
+const stopInspectionAnalysisPolling = () => {
+  inspectionAnalysisPollRequestId += 1
+  clearInspectionAnalysisPollTimer()
+  clearInspectionAnalysisProgressTimer()
+  inspectionAnalysisPolling.value = false
+}
+
+const finishInspectionAnalysisPolling = () => {
+  clearInspectionAnalysisPollTimer()
+  clearInspectionAnalysisProgressTimer()
+  inspectionAnalysisPolling.value = false
+}
+
+const startInspectionAnalysisProgress = () => {
+  clearInspectionAnalysisProgressTimer()
+  inspectionAnalysisProgressTimer = window.setInterval(() => {
+    if (!inspectionAnalysisPolling.value) return
+
+    const currentProgress = inspectionAnalysisProgress.value
+    const remainingProgress = inspectionAnalysisProgressCeiling - currentProgress
+    if (remainingProgress <= 0.1) return
+
+    const step =
+      currentProgress < 30
+        ? 1.2
+        : currentProgress < 60
+          ? 0.8
+          : currentProgress < 80
+            ? 0.45
+            : 0.18
+
+    inspectionAnalysisProgress.value = Number(
+      Math.min(
+        inspectionAnalysisProgressCeiling,
+        currentProgress + step,
+        currentProgress + remainingProgress * 0.08
+      ).toFixed(1)
+    )
+  }, 450)
+}
+
+const replaceInspectionReports = (reports: InspectionReportItem[]) => {
+  const activeReport = activeInspectionReport.value
+  const activeReportId = takeOptionalText(activeReport?.reportId)
+  const activeFileUrl = takeOptionalText(activeReport?.fileUrl)
+
+  inspectionReportList.value = reports
+
+  const matchedIndex = reports.findIndex((report) => {
+    if (activeReportId) return takeOptionalText(report.reportId) === activeReportId
+    return Boolean(activeFileUrl) && takeOptionalText(report.fileUrl) === activeFileUrl
+  })
+
+  selectedInspectionReportIndex.value = matchedIndex >= 0
+    ? matchedIndex
+    : Math.min(selectedInspectionReportIndex.value, Math.max(reports.length - 1, 0))
+}
+
+const resolveInspectionAnalysisState = (reports: InspectionReportItem[]) => {
+  const statuses = reports.map((report) => getInspectionAnalysisStatusNumber(report.analysisStatus))
+  const failedReport = reports.find((report) => getInspectionAnalysisStatusNumber(report.analysisStatus) === 4)
+
+  if (failedReport) {
+    return {
+      state: 'failed' as const,
+      error: takeOptionalText(failedReport.analysisErrorMsg) || t('doctorVideo.consultation.inspectionAnalysisFailedMessage')
+    }
+  }
+
+  if (reports.length > 0 && statuses.every((status) => status === 3)) {
+    return { state: 'success' as const, error: '' }
+  }
+
+  if (statuses.some((status) => status === 1 || status === 2)) {
+    inspectionAnalysisProgressCeiling = statuses.some((status) => status === 2) ? 94 : 72
+    return { state: 'polling' as const, error: '' }
+  }
+
+  return { state: 'idle' as const, error: '' }
+}
+
+const pollInspectionAnalysis = async (batchId: string | number, requestId: number) => {
+  try {
+    const response = await getInspectionBatchByBatchId(batchId)
+    if (requestId !== inspectionAnalysisPollRequestId) return
+
+    const reports = Array.isArray(response?.data) ? response.data : []
+    if (reports.length) {
+      replaceInspectionReports(reports)
+    }
+    const analysisState = resolveInspectionAnalysisState(
+      reports.length ? reports : inspectionReportList.value
+    )
+
+    if (analysisState.state === 'success') {
+      finishInspectionAnalysisPolling()
+      inspectionAnalysisProgress.value = 100
+      inspectionAnalysisError.value = ''
+      return
+    }
+
+    if (analysisState.state === 'failed') {
+      finishInspectionAnalysisPolling()
+      inspectionAnalysisProgress.value = 100
+      inspectionAnalysisError.value = analysisState.error
+      return
+    }
+
+    if (analysisState.state === 'idle') {
+      finishInspectionAnalysisPolling()
+      inspectionAnalysisProgress.value = 0
+      inspectionAnalysisError.value = ''
+      return
+    }
+
+    inspectionAnalysisError.value = ''
+    clearInspectionAnalysisPollTimer()
+    inspectionAnalysisPollTimer = window.setTimeout(() => {
+      void pollInspectionAnalysis(batchId, requestId)
+    }, 3000)
+  } catch (error) {
+    if (requestId !== inspectionAnalysisPollRequestId) return
+
+    console.warn('Failed to poll inspection analysis.', error)
+    finishInspectionAnalysisPolling()
+    inspectionAnalysisProgress.value = 100
+    inspectionAnalysisError.value = t('doctorVideo.consultation.inspectionReportLoadFailed')
+  }
+}
+
+const startInspectionAnalysisPolling = (batchId: string | number) => {
+  stopInspectionAnalysisPolling()
+  const requestId = ++inspectionAnalysisPollRequestId
+  inspectionAnalysisPolling.value = true
+  inspectionAnalysisProgress.value = Math.max(inspectionAnalysisProgress.value, 8)
+  inspectionAnalysisError.value = ''
+  startInspectionAnalysisProgress()
+  inspectionAnalysisPollTimer = window.setTimeout(() => {
+    void pollInspectionAnalysis(batchId, requestId)
+  }, 3000)
+}
+
+const closeInspectionReportDialog = () => {
+  inspectionReportVisible.value = false
+  stopInspectionAnalysisPolling()
+}
+
+const handleInspectionReportView = async () => {
+  if (!caseId.value) {
+    ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
+    return
+  }
+
+  const requestId = ++inspectionReportRequestId
+  inspectionReportLoading.value = true
+  stopInspectionAnalysisPolling()
+  inspectionAnalysisProgress.value = 0
+  inspectionAnalysisError.value = ''
+
+  try {
+    const response = await getInspectionBatchByCaseId(caseId.value)
+    if (requestId !== inspectionReportRequestId) return
+
+    const reports = Array.isArray(response?.data) ? response.data : []
+    inspectionReportList.value = reports
+    selectedInspectionReportIndex.value = 0
+    inspectionReportVisible.value = true
+
+    const analysisState = resolveInspectionAnalysisState(reports)
+    if (analysisState.state === 'success') {
+      inspectionAnalysisProgress.value = 100
+    } else if (analysisState.state === 'failed') {
+      inspectionAnalysisProgress.value = 100
+      inspectionAnalysisError.value = analysisState.error
+    } else if (analysisState.state === 'polling') {
+      const batchId = reports.map((report) => takeOptionalText(report.batchId)).find(Boolean)
+      if (batchId) {
+        startInspectionAnalysisPolling(batchId)
+      }
+    }
+  } catch (error) {
+    if (requestId !== inspectionReportRequestId) return
+
+    console.warn('Failed to load inspection reports.', error)
+    ElMessage.warning(t('doctorVideo.consultation.inspectionReportLoadFailed'))
+  } finally {
+    if (requestId === inspectionReportRequestId) {
+      inspectionReportLoading.value = false
+    }
+  }
+}
+
 const onSubmitDiagnosis = () => {
   if (!diagnosisFormRef.value) return
   diagnosisFormRef.value.validate(async (valid) => {
@@ -773,12 +1680,19 @@ const onSubmitDiagnosis = () => {
       }
       submittingDiagnosis.value = true
       try {
+        const caseDrugDetailPayload = buildCaseDrugDetailPayload(submitCaseId)
+        if (!caseDrugDetailPayload) {
+          ElMessage.warning(t('doctorVideo.consultation.prescriptionRequired'))
+          return
+        }
+
+        await saveCaseDrugDetail(caseDrugDetailPayload)
         await submitDiagnosis({
           caseId: submitCaseId,
           ...(doctorAideId.value ? { doctorAideId: doctorAideId.value } : {}),
           diseaseNameCn: diagnosisForm.value.diseaseNameCn,
           syndromeTypeCn: diagnosisForm.value.syndromeTypeCn,
-          therapyCn: diagnosisForm.value.therapyCn,
+          therapyCn: buildPrescriptionContent(),
           adviceCn: diagnosisForm.value.adviceCn,
           mainSuitCn: outpatientRecordForm.chiefComplaint,
           historyIllnessCn: outpatientRecordForm.currentHistory,
@@ -813,7 +1727,7 @@ const resolveSubtitleSavePayload = (item: SubtitleTimelineItem) => {
   const sourceText = item.sourceText.trim()
   const translatedText = item.translatedText.trim()
 
-  if (!translationEnabled.value) {
+  if (!subtitleTranslationEnabled.value) {
     if (!item.sourceFinal || !sourceText) {
       return null
     }
@@ -1278,6 +2192,9 @@ const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
     const sourceText = translationEnabled.value
       ? doctorMessage ? item.contentCn : item.contentLo
       : item.contentCn || item.contentLo
+    const translatedText = translationEnabled.value
+      ? doctorMessage ? item.contentLo : item.contentCn
+      : subtitleTranslationEnabled.value ? item.contentLo : ''
     timeline.appendHistoryMessage({
       speakerId: doctorMessage
         ? doctorId.value || 'doctor'
@@ -1292,9 +2209,9 @@ const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
       side: doctorMessage ? 'self' : 'remote',
       messageType: item.messageType,
       sourceText,
-      translatedText: translationEnabled.value ? doctorMessage ? item.contentLo : item.contentCn : '',
+      translatedText,
       sourceLanguage: translationEnabled.value ? doctorMessage ? 'cn' : 'lo' : 'cn',
-      targetLanguage: translationEnabled.value ? doctorMessage ? 'lo' : 'cn' : 'cn',
+      targetLanguage: translationEnabled.value ? doctorMessage ? 'lo' : 'cn' : subtitleTranslationEnabled.value ? 'lo' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -1358,7 +2275,7 @@ const timeline = useDoctorSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || doctorId.value,
   getCurrentUserName: () => doctorName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== doctorId.value),
-  getTranslationEnabled: () => translationEnabled.value,
+  getTranslationEnabled: () => subtitleTranslationEnabled.value,
   onFinalizedItem: handleSubtitleFinalized
 })
 
@@ -1387,9 +2304,9 @@ const chat = createDoctorConsultationChatService({
     timeline.appendManualMessage({
       ...sender,
       sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
-      translatedText: translationEnabled.value ? contentCn : '',
+      translatedText: translationEnabled.value ? contentCn : manualChatTranslationEnabled.value ? contentLo : '',
       sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-      targetLanguage: 'cn'
+      targetLanguage: translationEnabled.value ? 'cn' : manualChatTranslationEnabled.value ? 'lo' : 'cn'
     })
   },
   onError: (error) => {
@@ -1503,9 +2420,9 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerName: doctorName.value,
     side: 'self',
     sourceText: payload.contentCn,
-    translatedText: translationEnabled.value ? payload.contentLo : '',
+    translatedText: manualChatTranslationEnabled.value ? payload.contentLo : '',
     sourceLanguage: 'cn',
-    targetLanguage: translationEnabled.value ? 'lo' : 'cn'
+    targetLanguage: manualChatTranslationEnabled.value ? 'lo' : 'cn'
   })
 }
 
@@ -1541,7 +2458,7 @@ const handleChatSend = async () => {
   chatSending.value = true
 
   try {
-    const contentLo = translationEnabled.value
+    const contentLo = manualChatTranslationEnabled.value
       ? resolveTranslationText((await translateConsultationText({
           source: 'cn',
           to: 'lo',
@@ -1658,7 +2575,8 @@ const bootstrapConsultation = async () => {
       token,
       secondaryToken,
       language: 'cn',
-      translationEnabled: translationEnabled.value
+      translationEnabled: translationEnabled.value,
+      subtitleTranslationEnabled: subtitleTranslationEnabled.value
     })
 
     const resolvedConsultationVideoId = takeOptionalText(resolvedVideoId) || videoId.value
@@ -1725,6 +2643,7 @@ const handleLeave = async () => {
 onMounted(async () => {
   loadConsultationContext()
   syncOutpatientRecordForm()
+  void loadPrescriptionUnitDict()
   void fetchHistoryCaseList()
   await bootstrapConsultation()
 })
@@ -1734,6 +2653,8 @@ watch([patientId, caseId], () => {
 })
 
 onBeforeUnmount(async () => {
+  stopInspectionAnalysisPolling()
+  window.clearTimeout(prescriptionSearchTimer)
   stopConsultationDuration()
   savedSubtitleKeys.clear()
   chatDraft.value = ''
@@ -2062,6 +2983,117 @@ onBeforeUnmount(async () => {
   margin-bottom: 0;
 }
 
+.prescription-select {
+  width: 100%;
+}
+
+.prescription-detail-block {
+  margin: -6px 0 15px;
+}
+
+.prescription-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.prescription-option span:first-child {
+  color: #203351;
+  font-weight: 600;
+}
+
+.prescription-preview {
+  margin-top: 10px;
+  border: 1px solid #e2edff;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.prescription-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prescription-info-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 8px;
+  color: #203351;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.prescription-info-row span {
+  color: #6c7e97;
+  font-weight: 700;
+}
+
+.prescription-info-row p {
+  min-width: 0;
+  margin: 0;
+}
+
+.prescription-info-row--warning,
+.prescription-info-row--warning span {
+  color: #c47918;
+}
+
+.prescription-herbs {
+  margin-top: 12px;
+}
+
+.prescription-herb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.prescription-herb-header strong {
+  color: #203351;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.prescription-herb-header div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prescription-herb-header span {
+  color: #6c7e97;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.prescription-herb-table {
+  overflow: hidden;
+  border: 1px solid #e2edff;
+  border-radius: 8px;
+}
+
+.prescription-herb-table :deep(.el-table__header th) {
+  background: #eef5ff;
+  color: #5d7190;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.prescription-herb-table :deep(.el-table__cell) {
+  padding: 5px 0;
+}
+
+.prescription-herb-table :deep(.el-input__wrapper),
+.prescription-herb-table :deep(.el-select__wrapper) {
+  min-height: 30px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px #dbe8f8 inset;
+}
+
 .submit-btn-wrapper {
   margin-top: 12px;
 }
@@ -2112,6 +3144,91 @@ onBeforeUnmount(async () => {
   line-height: 1.7;
 }
 
+.four-diagnosis-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.four-diagnosis-report-card {
+  min-height: 64px;
+  padding: 10px 16px;
+  border: 1px solid #e2edff;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 4px 14px rgba(78, 114, 168, 0.12);
+}
+
+.four-report-main {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.four-report-main .el-icon {
+  flex: none;
+  color: #ff4b55;
+  font-size: 24px;
+}
+
+.four-report-main strong {
+  min-width: 0;
+  color: #203351;
+  font-size: 18px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.four-diagnosis-report-card button {
+  flex: none;
+  min-width: 96px;
+  height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: #eaf3ff;
+  color: #2483ff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.four-diagnosis-report-card button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.four-diagnosis-empty-state {
+  flex: 1;
+  min-height: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #7f91aa;
+}
+
+.four-diagnosis-empty-state .el-icon {
+  color: #d4dae2;
+  font-size: 84px;
+  line-height: 1;
+}
+
+.four-diagnosis-empty-state h3 {
+  margin: 26px 0 0;
+  color: #617693;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .empty-record-state {
   display: flex;
   flex: 1;
@@ -2158,6 +3275,289 @@ onBeforeUnmount(async () => {
 .error-icon {
   font-size: 34px;
   color: #e15656;
+}
+
+.four-pdf-preview-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.four-pdf-preview-dialog {
+  width: min(1180px, 100%);
+  height: min(820px, 92vh);
+  min-height: 420px;
+  border-radius: 18px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.four-pdf-preview-header {
+  flex: none;
+  height: 58px;
+  padding: 0 14px 0 22px;
+  border-bottom: 1px solid #e4edf7;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.four-pdf-preview-header h3 {
+  min-width: 0;
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.four-pdf-preview-header button {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #71849a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  cursor: pointer;
+}
+
+.four-pdf-preview-header button:hover {
+  background: #eef4fb;
+  color: #2f66ee;
+}
+
+.four-pdf-preview-frame {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #ffffff;
+}
+
+.inspection-report-dialog {
+  width: min(1480px, calc(100vw - 32px));
+  height: min(860px, calc(100vh - 32px));
+  border-radius: 10px;
+}
+
+.inspection-report-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.inspection-report-body .empty-record-state {
+  min-height: 360px;
+}
+
+.inspection-report-workspace {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 18px;
+  height: 100%;
+  min-height: 0;
+}
+
+.inspection-report-visual {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.inspection-report-main-image {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #dfe6f0;
+  background: #f7f9fc;
+}
+
+.inspection-report-main-image .el-image {
+  width: 100%;
+  height: 100%;
+}
+
+.inspection-report-main-image .el-empty {
+  width: 100%;
+}
+
+.inspection-report-thumbnails {
+  display: flex;
+  gap: 8px;
+  min-height: 78px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+}
+
+.inspection-report-thumbnail {
+  position: relative;
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: #eef2f7;
+  color: #607089;
+  cursor: pointer;
+}
+
+.inspection-report-thumbnail.is-active {
+  border-color: #2f6fe4;
+}
+
+.inspection-report-thumbnail .el-image {
+  width: 100%;
+  height: 100%;
+}
+
+.inspection-report-content {
+  display: grid;
+  grid-template-rows: minmax(170px, 0.42fr) minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.inspection-analysis-panel,
+.inspection-items-panel {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid #dfe6f0;
+  background: #ffffff;
+}
+
+.inspection-analysis-panel {
+  overflow: auto;
+  padding: 14px 16px;
+}
+
+.inspection-items-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 0 0 12px;
+}
+
+.inspection-panel-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.inspection-analysis-panel .inspection-panel-header {
+  padding: 0 0 12px;
+}
+
+.inspection-panel-header h4 {
+  margin: 0;
+  color: #203351;
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.inspection-analysis-status {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eef3fa;
+  color: #607089;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.inspection-analysis-status.is-status-1,
+.inspection-analysis-status.is-status-2 {
+  background: #eaf3ff;
+  color: #2f6fe4;
+}
+
+.inspection-analysis-status.is-status-3 {
+  background: #ebf8ef;
+  color: #2f8a4b;
+}
+
+.inspection-analysis-status.is-status-4 {
+  background: #fff0f0;
+  color: #d9363e;
+}
+
+.inspection-analysis-progress {
+  margin-bottom: 12px;
+}
+
+.inspection-report-error {
+  margin: 0 0 12px;
+  color: #d94c4c;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.inspection-report-table {
+  flex: 1 1 auto;
+  width: calc(100% - 28px);
+  margin: 0 14px;
+}
+
+.inspection-report-table :deep(.el-table__header th) {
+  background: #f4f7fb;
+  color: #5d7190;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.inspection-report-table :deep(.is-abnormal-row .cell) {
+  color: #d9363e;
+  font-weight: 600;
+}
+
+.inspection-report-empty-line {
+  margin: 0;
+  color: #7f91aa;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.inspection-items-panel > .inspection-report-empty-line {
+  padding: 0 14px;
+}
+
+.inspection-report-advice-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #334967;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.inspection-report-advice-list li + li {
+  margin-top: 4px;
 }
 
 @media (max-width: 1600px) {
@@ -2219,6 +3619,36 @@ onBeforeUnmount(async () => {
   .diagnosis-grid,
   .record-grid {
     grid-template-columns: 1fr;
+  }
+
+  .four-diagnosis-empty-state {
+    min-height: 320px;
+  }
+
+  .four-pdf-preview-mask {
+    padding: 12px;
+  }
+
+  .four-pdf-preview-dialog {
+    height: 92vh;
+    min-height: 0;
+  }
+
+  .inspection-report-body {
+    overflow: auto;
+  }
+
+  .inspection-report-workspace {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .inspection-report-main-image {
+    height: 360px;
+  }
+
+  .inspection-report-content {
+    grid-template-rows: auto minmax(320px, auto);
   }
 }
 </style>

@@ -36,14 +36,14 @@
     </el-card>
 
     <!-- 2. 操作栏 -->
-    <el-card class="table-card" shadow="never" style="margin-top: 20px">
+    <el-card class="table-card" shadow="never">
       <div class="toolbar">
         <el-button type="primary" plain @click="handleAdd">{{ t('dept.addDept') }}</el-button>
         <!-- <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button> -->
       </div>
 
       <!-- 3. 数据表格 -->
-      <el-table v-loading="loading" :data="deptList" style="width: 100%; margin-top: 15px" border>
+      <el-table v-loading="loading" :data="deptList" height="100%" style="width: 100%; margin-top: 15px" border>
         <el-table-column :label="t('dept.deptName')" align="center" prop="departmentName" />
         <el-table-column :label="t('dept.deptCode')" align="center" prop="departmentCode" />
         <el-table-column :label="t('dept.deptType')" align="center" prop="departmentType">
@@ -199,7 +199,7 @@ const deptFormRef = ref<FormInstance>()
 // 查询参数 (适配 Swagger)
 const queryParams = reactive<DeptQuery>({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 20,
   departmentName: '',
   departmentType: '',
   status: ''
@@ -257,6 +257,7 @@ const resetQuery = () => {
   queryParams.departmentName = ''
   queryParams.departmentType = ''
   queryParams.status = ''
+  queryParams.pageSize = 20
   handleQuery()
 }
 
@@ -408,9 +409,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  padding: 20px;
-}
 .search-card {
   margin-bottom: 0;
 }

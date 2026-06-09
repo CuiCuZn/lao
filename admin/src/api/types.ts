@@ -191,6 +191,95 @@ export interface DiagnosisRecordVO {
 }
 
 /**
+ * 处方管理查询对象
+ */
+export interface DrugPrescriptionQuery {
+  pageNum: number;
+  pageSize: number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+}
+
+/**
+ * 处方管理数据项
+ */
+export interface DrugPrescriptionVO {
+  drugId: string | number;
+  drugName: string;
+  drugModel: string;
+  drugType: string;
+  drugUsage: string;
+  drugEffect: string;
+  drugCure: string;
+  drugAttention: string;
+  drugDetailCount: number;
+  detailList?: DrugPrescriptionDetailVO[];
+  delFlag?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+}
+
+/**
+ * 处方药材明细
+ */
+export interface DrugPrescriptionDetailVO {
+  drugDetailId?: string | number;
+  drugId?: string | number;
+  drugDetailName: string;
+  drugDetailUnit: string;
+  drugDetailShare: string;
+  delFlag?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+}
+
+export interface CaseDrugDetailItem {
+  caseDrugDetailId?: string | number;
+  videoId?: string | number;
+  caseId?: string | number;
+  drugId?: string | number;
+  drugDetailName?: string;
+  drugDetailUnit?: string;
+  drugDetailShare?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailData {
+  caseId?: string | number;
+  videoId?: string | number;
+  drugId?: string | number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+  drugUsage?: string;
+  drugEffect?: string;
+  drugCure?: string;
+  drugAttention?: string;
+  detailList?: CaseDrugDetailItem[] | null;
+  [key: string]: unknown;
+}
+
+/**
+ * 新增/编辑处方表单
+ */
+export interface DrugPrescriptionForm {
+  drugId?: string | number;
+  drugName: string;
+  drugModel: string;
+  drugType: string;
+  drugUsage: string;
+  drugEffect: string;
+  drugCure: string;
+  drugAttention: string;
+  detailList: DrugPrescriptionDetailVO[];
+}
+
+/**
  * 通用响应包装类
  */
 export interface ResponseData<T> {

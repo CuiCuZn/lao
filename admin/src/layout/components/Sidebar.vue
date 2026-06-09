@@ -19,8 +19,8 @@
             v-if="!menu.hidden" 
             :index="resolvePath(menu.path, getShowingChildConfig(menu).child.path)"
           >
-            <el-icon v-if="getIcon(getShowingChildConfig(menu).child.meta?.icon || menu.meta?.icon)">
-               <component :is="getIcon(getShowingChildConfig(menu).child.meta?.icon || menu.meta?.icon)" />
+            <el-icon v-if="getIcon(getShowingChildConfig(menu).child, menu)">
+               <component :is="getIcon(getShowingChildConfig(menu).child, menu)" />
             </el-icon>
             <span>{{ getShowingChildConfig(menu).child.meta?.title }}</span>
           </el-menu-item>
@@ -29,8 +29,8 @@
         <!-- 带有子菜单的情况 (多于一个子路由或是文件夹) -->
         <el-sub-menu v-else-if="!menu.hidden" :index="menu.path">
           <template #title>
-            <el-icon v-if="getIcon(menu.meta?.icon)">
-               <component :is="getIcon(menu.meta.icon)" />
+            <el-icon v-if="getIcon(menu)">
+               <component :is="getIcon(menu)" />
             </el-icon>
             <span>{{ menu.meta?.title }}</span>
           </template>
@@ -40,8 +40,8 @@
             :key="child.path" 
             :index="resolvePath(menu.path, child.path)"
           >
-             <el-icon v-if="getIcon(child.meta?.icon)">
-               <component :is="getIcon(child.meta.icon)" />
+             <el-icon v-if="getIcon(child, menu)">
+               <component :is="getIcon(child, menu)" />
              </el-icon>
              <span>{{ child.meta?.title }}</span>
           </el-menu-item>
@@ -81,18 +81,41 @@ const resolvePath = (parentPath: string, childPath: string) => {
 /**
  * 图标映射
  */
-const getIcon = (iconName: string) => {
-  if (!iconName) return ''
+const getIcon = (route: any, parentRoute?: any) => {
+  const iconName = route?.meta?.icon || parentRoute?.meta?.icon
+  const routeText = [
+    route?.path,
+    route?.name,
+    route?.meta?.title,
+    parentRoute?.path,
+    parentRoute?.name,
+    parentRoute?.meta?.title
+  ].filter(Boolean).join(' ').toLowerCase()
+
   const map: Record<string, string> = {
-    'system': 'Setting',
-    'peoples': 'User',
-    'list': 'List',
-    'nested': 'Operation',
-    'dashboard': 'Monitor',
-    'user': 'User',
-    'bug': 'Warning'
+    system: 'Setting',
+    peoples: 'UserFilled',
+    list: 'List',
+    nested: 'Operation',
+    dashboard: 'DataBoard',
+    user: 'User',
+    bug: 'Warning',
+    doctor: 'FirstAidKit',
+    dept: 'OfficeBuilding',
+    department: 'OfficeBuilding',
+    record: 'DocumentChecked',
+    prescription: 'Tickets',
+    recipe: 'Tickets',
+    medicine: 'FirstAidKit'
   }
-  return map[iconName] || iconName
+
+  if (iconName && map[iconName]) return map[iconName]
+  if (routeText.includes('prescription') || routeText.includes('处方')) return 'Tickets'
+  if (routeText.includes('doctor') || routeText.includes('医师')) return 'FirstAidKit'
+  if (routeText.includes('dept') || routeText.includes('department') || routeText.includes('科室')) return 'OfficeBuilding'
+  if (routeText.includes('record') || routeText.includes('诊疗记录')) return 'DocumentChecked'
+
+  return iconName || ''
 }
 
 /**

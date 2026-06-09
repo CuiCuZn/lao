@@ -156,17 +156,12 @@ const clearSseWatchdog = () => {
   }
 }
 
-const markSseAlive = (streamId: number, reason: string) => {
+const markSseAlive = (streamId: number, _reason: string) => {
   if (streamId !== activeStreamId) {
     return
   }
 
   lastSseActivityAt = Date.now()
-  console.log('[assistant-sse] alive', {
-    reason,
-    streamId,
-    at: new Date(lastSseActivityAt).toISOString()
-  })
 }
 
 const scheduleReconnect = () => {

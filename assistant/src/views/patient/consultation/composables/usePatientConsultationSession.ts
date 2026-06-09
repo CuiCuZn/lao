@@ -757,6 +757,7 @@ export const usePatientConsultationSession = () => {
         language: params.language,
         ...(joinResult.secondaryLanguage ? { secondaryLanguage: joinResult.secondaryLanguage } : {}),
         translationEnabled: joinResult.translationEnabled,
+        subtitleTranslationEnabled: joinResult.subtitleTranslationEnabled,
         token: joinResult.primaryTokenResult.token
       }
 
@@ -793,7 +794,8 @@ export const usePatientConsultationSession = () => {
         clients.primaryClient,
         clients.secondaryClient,
         params.language,
-        joinResult.translationEnabled
+        joinResult.translationEnabled,
+        joinResult.subtitleTranslationEnabled
       )
 
       primaryAsr.value = asrRegistrationResult.primaryAsr
@@ -831,11 +833,13 @@ export const usePatientConsultationSession = () => {
 
     try {
       primaryAsr.value.setCurrentTranslateLanguages(
-        localChannelContext.translationEnabled && localChannelContext.secondaryLanguage
+        localChannelContext.subtitleTranslationEnabled && localChannelContext.secondaryLanguage
           ? [localChannelContext.secondaryLanguage, 'source']
           : ['source']
       )
-      secondaryAsr.value?.setCurrentTranslateLanguages([localChannelContext.language, 'source'])
+      secondaryAsr.value?.setCurrentTranslateLanguages(
+        localChannelContext.subtitleTranslationEnabled ? [localChannelContext.language, 'source'] : ['source']
+      )
 
       const startTasks: Promise<unknown>[] = []
 
@@ -1054,12 +1058,17 @@ export const usePatientConsultationSession = () => {
       return []
     }
 
-    if (!localChannelContext.translationEnabled || !localChannelContext.secondaryLanguage) {
+    if (!localChannelContext.translationEnabled || !secondaryAsr.value || !localChannelContext.secondaryLanguage) {
+      const targetLanguage =
+        localChannelContext.subtitleTranslationEnabled && localChannelContext.secondaryLanguage
+          ? localChannelContext.secondaryLanguage
+          : localChannelContext.language
+
       return [
         {
           asr: primaryAsr.value,
           sourceLanguage: localChannelContext.language,
-          targetLanguage: localChannelContext.language
+          targetLanguage
         }
       ]
     }
@@ -1068,12 +1077,16 @@ export const usePatientConsultationSession = () => {
       {
         asr: primaryAsr.value,
         sourceLanguage: localChannelContext.language,
-        targetLanguage: localChannelContext.secondaryLanguage
+        targetLanguage: localChannelContext.subtitleTranslationEnabled
+          ? localChannelContext.secondaryLanguage || localChannelContext.language
+          : localChannelContext.language
       },
       {
         asr: secondaryAsr.value,
         sourceLanguage: localChannelContext.secondaryLanguage,
-        targetLanguage: localChannelContext.language
+        targetLanguage: localChannelContext.subtitleTranslationEnabled
+          ? localChannelContext.language
+          : localChannelContext.secondaryLanguage
       }
     ]
   })

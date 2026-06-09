@@ -150,12 +150,14 @@ interface Props {
   chatSendDisabled?: boolean
   chatStatusText?: string
   translationEnabled?: boolean
+  primaryLanguage?: string
   onChatInput?: (value: string) => void
   onChatSend?: () => void | Promise<void>
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  translationEnabled: true
+  translationEnabled: true,
+  primaryLanguage: 'cn'
 })
 const { t } = useI18n()
 const timelineListRef = ref<HTMLDivElement | null>(null)
@@ -196,28 +198,55 @@ const hasSourceText = (item: SubtitleTimelineItem) => {
   return Boolean(item.sourceText?.trim())
 }
 
-const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
-  if (!props.translationEnabled) {
-    return !(item.sourceText?.trim() || item.translatedText?.trim())
-  }
-
-  return item.side === 'remote' && !hasTranslatedText(item)
+const isLaoLanguage = (languageCode: string) => {
+  const normalizedCode = languageCode?.trim().toLowerCase()
+  return normalizedCode === 'lo' || normalizedCode === 'lao'
 }
 
-const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
-  if (!props.translationEnabled) {
-    return item.sourceText?.trim() || item.translatedText?.trim() || t('doctorVideo.consultation.translationPending')
+const isChineseLanguage = (languageCode: string) => {
+  const normalizedCode = languageCode?.trim().toLowerCase()
+  return normalizedCode === 'cn' || normalizedCode === 'zh' || normalizedCode === 'zh-cn'
+}
+
+const resolveLaoDisplayText = (item: SubtitleTimelineItem) => {
+  const sourceText = item.sourceText?.trim() || ''
+  const translatedText = item.translatedText?.trim() || ''
+
+  if (isLaoLanguage(item.sourceLanguage)) {
+    return sourceText
   }
 
-  if (item.side === 'self') {
+  if (isLaoLanguage(item.targetLanguage)) {
+    return translatedText
+  }
+
+  return ''
+}
+
+const resolvePrimaryLanguageDisplayText = (item: SubtitleTimelineItem) => {
+  if (!props.translationEnabled) {
     return item.sourceText?.trim() || item.translatedText?.trim() || ''
   }
 
-  if (hasTranslatedText(item)) {
-    return item.translatedText
+  if (props.primaryLanguage === 'cn') {
+    if (isChineseLanguage(item.sourceLanguage)) {
+      return item.sourceText?.trim() || ''
+    }
+
+    if (isChineseLanguage(item.targetLanguage)) {
+      return item.translatedText?.trim() || ''
+    }
   }
 
-  return t('doctorVideo.consultation.translationPending')
+  return resolveLaoDisplayText(item)
+}
+
+const isSingleLanguageDisplayPending = (item: SubtitleTimelineItem) => {
+  return !resolvePrimaryLanguageDisplayText(item)
+}
+
+const resolveSingleLanguageDisplayText = (item: SubtitleTimelineItem) => {
+  return resolvePrimaryLanguageDisplayText(item) || t('doctorVideo.consultation.translationPending')
 }
 
 const resolveDisplayText = (item: SubtitleTimelineItem) => {

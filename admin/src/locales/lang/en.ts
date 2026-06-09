@@ -71,7 +71,16 @@ export default {
       dosage: 'Dosage',
       notAvailable: 'N/A',
       noDiagnosisData: 'No TCM four diagnostics data',
-      noPrescription: 'No prescription for this visit'
+      noDiagnosisDataTitle: 'TCM device data not collected',
+      noDiagnosisDataDescription: 'No TCM device examination was performed for this visit, so no related data is available',
+      noPrescription: 'No prescription for this visit',
+      prescriptionDrugName: 'Prescription Name',
+      prescriptionDrugModel: 'Dosage Form',
+      prescriptionDrugType: 'Prescription Type',
+      prescriptionDrugUsage: 'Usage',
+      prescriptionDrugEffect: 'Effect',
+      prescriptionDrugCure: 'Indications',
+      prescriptionDrugAttention: 'Precautions'
     },
   },
   language: {

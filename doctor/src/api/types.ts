@@ -103,6 +103,7 @@ export interface PendingConsultation {
   caseId?: string;
   doctorAideId?: string;
   roomId?: string;
+  fourApparatusUrl?: string;
   consultationLang?: 'lo' | 'cn';
   historyIllness?: string;
   previousHistory?: string;
@@ -129,6 +130,7 @@ export interface ConsultationNavigationContext {
   patientId?: string | number;
   doctorAideId?: string;
   roomId?: string | number;
+  fourApparatusUrl?: string;
   consultationLang?: 'lo' | 'cn';
   consultationMode?: ConsultationMode;
   raw?: unknown;
@@ -281,6 +283,168 @@ export interface GenerateMedicalRecordResponse {
   code?: number;
   msg?: string;
   data?: GenerateMedicalRecordData | null;
+  [key: string]: unknown;
+}
+
+export interface DrugPrescriptionQuery {
+  pageNum: number;
+  pageSize: number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+}
+
+export interface DrugPrescriptionDetailVO {
+  drugDetailId?: string | number;
+  drugId?: string | number;
+  drugDetailName?: string;
+  drugDetailUnit?: string;
+  drugDetailShare?: string;
+  delFlag?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+  [key: string]: unknown;
+}
+
+export interface DrugPrescriptionVO {
+  drugId?: string | number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+  drugUsage?: string;
+  drugEffect?: string;
+  drugCure?: string;
+  drugAttention?: string;
+  drugDetailCount?: number;
+  detailList?: DrugPrescriptionDetailVO[];
+  delFlag?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+  [key: string]: unknown;
+}
+
+export interface DrugPrescriptionListResponse {
+  code?: number;
+  msg?: string;
+  rows?: DrugPrescriptionVO[] | null;
+  data?: DrugPrescriptionVO[] | { rows?: DrugPrescriptionVO[]; list?: DrugPrescriptionVO[]; total?: number | string } | null;
+  total?: number | string;
+  [key: string]: unknown;
+}
+
+export interface DrugPrescriptionResponse {
+  code?: number;
+  msg?: string;
+  data?: DrugPrescriptionVO | null;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailItem {
+  caseDrugDetailId?: string | number;
+  videoId?: string | number;
+  caseId?: string | number;
+  drugId?: string | number;
+  drugDetailName?: string;
+  drugDetailUnit?: string;
+  drugDetailShare?: string;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailData {
+  caseId?: string | number;
+  videoId?: string | number;
+  drugId?: string | number;
+  drugName?: string;
+  drugModel?: string;
+  drugType?: string;
+  drugUsage?: string;
+  drugEffect?: string;
+  drugCure?: string;
+  drugAttention?: string;
+  detailList?: CaseDrugDetailItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailResponse {
+  code?: number;
+  msg?: string;
+  data?: CaseDrugDetailData | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionRecognizedItem {
+  item_name?: string;
+  result_value?: string;
+  reference_range?: string;
+  unit?: string;
+  abnormal_flag?: string;
+  result_status?: string;
+  is_abnormal?: boolean;
+  [key: string]: unknown;
+}
+
+export interface InspectionReportItem {
+  reportId?: string | number;
+  batchId?: string | number;
+  caseId?: string | number;
+  sortNo?: string | number;
+  fileUrl?: string;
+  recognizeStatus?: string | number;
+  errorMsg?: string;
+  confidenceScore?: string | number;
+  recognizedItems?: InspectionRecognizedItem[] | null;
+  itemsConfirmStatus?: string | number;
+  analysisStatus?: string | number;
+  analysisErrorMsg?: string;
+  analysisAdvice?: string[] | null;
+  summaryText?: string;
+  abnormalCount?: string | number;
+  abnormalItems?: InspectionRecognizedItem[] | null;
+  adviceItems?: string[] | null;
+  fullResultJson?: string;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchListByCaseIdResponse {
+  code?: number;
+  msg?: string;
+  data?: InspectionReportItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface InspectionBatchListByBatchIdResponse {
+  code?: number;
+  msg?: string;
+  data?: InspectionReportItem[] | null;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailSaveItem {
+  caseDrugDetailId?: string | number;
+  videoId: string | number;
+  caseId: string | number;
+  drugId: string | number;
+  drugDetailName: string;
+  drugDetailUnit: string;
+  drugDetailShare: string;
+  [key: string]: unknown;
+}
+
+export interface CaseDrugDetailSaveParams {
+  caseId: string | number;
+  videoId: string | number;
+  drugId: string | number;
+  detailList: CaseDrugDetailSaveItem[];
+}
+
+export interface CaseDrugDetailSaveResponse {
+  code?: number;
+  msg?: string;
+  data?: unknown;
   [key: string]: unknown;
 }
 

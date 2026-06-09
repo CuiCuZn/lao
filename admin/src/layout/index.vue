@@ -1,3 +1,14 @@
+<!--
+ * @version: 
+ * @Author: Cuidezhen
+ * @Date: 2026-04-03 10:43:46
+ * @LastEditors: Cuidezhen
+ * @LastEditTime: 2026-06-01 10:47:48
+ * @company: 医视界
+ * @FilePath: \lao\admin\src\layout\index.vue
+ * @Descripttion: 
+ * @Edit Record: 
+-->
 <template>
   <div class="app-wrapper">
     <!-- 侧边菜单栏 -->
@@ -53,8 +64,8 @@ import AppHeader from './components/Header.vue'
 
 .app-main {
   flex: 1;
-  padding: 20px;
-  overflow-y: auto;
+  padding: 10px;
+  overflow: hidden;
   background-color: #f0f2f5;
 }
 

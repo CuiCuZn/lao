@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { DiagnosisRecordQuery, DiagnosisRecordVO, ResponseData } from './types'
+import type { CaseDrugDetailData, DiagnosisRecordQuery, DiagnosisRecordVO, ResponseData } from './types'
 
 /**
  * 查询就诊记录列表
@@ -15,4 +15,12 @@ export function listDiagnosisRecord(query: DiagnosisRecordQuery): Promise<Respon
  */
 export function getCaseDetail(caseId: string | number): Promise<ResponseData<any>> {
   return request.get(`/case/detail/${caseId}`)
+}
+
+/**
+ * 查询就诊处方详情
+ * @param caseId
+ */
+export function getCaseDrugDetail(caseId: string | number): Promise<ResponseData<CaseDrugDetailData>> {
+  return request.get(`/caseDrugDetail/${caseId}`)
 }

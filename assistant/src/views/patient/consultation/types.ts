@@ -27,6 +27,7 @@ export interface PatientConsultationJoinParams {
   secondaryToken?: string
   language: ConsultationLanguage
   translationEnabled?: boolean
+  subtitleTranslationEnabled?: boolean
   gslb?: string
   publishLocalMedia?: boolean
   playRemoteAudio?: boolean
@@ -42,6 +43,7 @@ export interface ConsultationJoinRoomResult {
   secondaryChannelId?: string
   secondaryLanguage?: ConsultationLanguage
   translationEnabled: boolean
+  subtitleTranslationEnabled: boolean
   primaryTokenResult: RtcChannelTokenResult
   secondaryTokenResult?: RtcChannelTokenResult
   primaryResult: Awaited<ReturnType<DingRTCClient['join']>>
@@ -107,6 +109,7 @@ export interface ConsultationChannelContext {
   language: ConsultationLanguage
   secondaryLanguage?: ConsultationLanguage
   translationEnabled: boolean
+  subtitleTranslationEnabled: boolean
   token: string
 }
 

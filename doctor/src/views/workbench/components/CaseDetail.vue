@@ -72,56 +72,19 @@
               <span>{{ t('assistant.caseResult.diagnosisData') }}</span>
             </header>
 
-            <div class="diagnosis-device-content">
-              <div class="diagnosis-image-panel">
-                <img class="diagnosis-image diagnosis-image-zhu" :src="zhuImage" alt="" />
+            <div class="four-diagnosis-result">
+              <iframe
+                v-if="fourApparatusUrl"
+                class="four-diagnosis-pdf"
+                :src="fourApparatusUrl"
+                :title="t('assistant.caseResult.diagnosisData')"
+              ></iframe>
+
+              <div v-else class="four-diagnosis-empty">
+                <el-icon class="four-diagnosis-empty-icon"><first-aid-kit /></el-icon>
+                <h3>{{ t('assistant.caseResult.noDiagnosisDataTitle') }}</h3>
+                <p>{{ t('assistant.caseResult.noDiagnosisDataDescription') }}</p>
               </div>
-
-              <table class="diagnosis-table diagnosis-table--tongue">
-                <tbody>
-                  <tr>
-                    <th class="table-title" colspan="6">{{ t('assistant.caseResult.tongueResult') }}</th>
-                  </tr>
-                  <tr v-for="(row, rowIndex) in tongueDemoRows" :key="`tongue-${rowIndex}`">
-                    <template v-for="item in row" :key="item.label">
-                      <th>{{ item.label }}</th>
-                      <td>{{ item.value }}</td>
-                    </template>
-                  </tr>
-                </tbody>
-              </table>
-
-              <table class="diagnosis-table diagnosis-table--face">
-                <tbody>
-                  <tr>
-                    <th class="table-title" colspan="4">{{ t('assistant.caseResult.faceResult') }}</th>
-                  </tr>
-                  <tr v-for="(row, rowIndex) in faceDemoRows" :key="`face-${rowIndex}`">
-                    <template v-for="item in row" :key="item.label">
-                      <th>{{ item.label }}</th>
-                      <td>{{ item.value }}</td>
-                    </template>
-                  </tr>
-                </tbody>
-              </table>
-
-              <table class="diagnosis-table diagnosis-table--pulse">
-                <tbody>
-                  <tr>
-                    <th class="table-title" colspan="3">{{ t('assistant.caseResult.pulseResult') }}</th>
-                  </tr>
-                  <tr>
-                    <th></th>
-                    <td>{{ t('assistant.caseResult.leftHand') }}</td>
-                    <td>{{ t('assistant.caseResult.rightHand') }}</td>
-                  </tr>
-                  <tr v-for="row in pulseDemoRows" :key="row.label">
-                    <th>{{ row.label }}</th>
-                    <td>{{ row.left }}</td>
-                    <td>{{ row.right }}</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
           </section>
 
@@ -138,28 +101,36 @@
               </div>
             </div>
 
-            <!-- <section class="prescription-section">
-              <div class="result-table-card__title">{{ t('assistant.caseResult.prescription') }}</div>
+            <section class="prescription-section">
 
-              <table v-if="prescriptionRows.length" class="result-table result-table--prescription">
+              <div v-if="prescriptionTextItems.length" class="prescription-text-list">
+                <div v-for="item in prescriptionTextItems" :key="item.label" class="plan-item">
+                  <span class="detail-label">{{ item.label }}</span>
+                  <div class="plan-value">{{ item.value }}</div>
+                </div>
+              </div>
+
+              <table v-if="prescriptionDetailRows.length" class="result-table result-table--prescription prescription-detail-table">
                 <thead>
                   <tr>
                     <th>{{ t('assistant.caseResult.drugName') }}</th>
                     <th>{{ t('assistant.caseResult.dosage') }}</th>
+                    <th>{{ t('assistant.caseResult.unit') }}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, index) in prescriptionRows" :key="`${row.name}-${index}`">
+                  <tr v-for="(row, index) in prescriptionDetailRows" :key="`${row.name}-${row.dosage}-${row.unit}-${index}`">
                     <td>{{ row.name }}</td>
                     <td>{{ row.dosage }}</td>
+                    <td>{{ row.unit }}</td>
                   </tr>
                 </tbody>
               </table>
 
-              <div v-else class="empty-block empty-block--compact">
+              <div v-if="!prescriptionTextItems.length && !prescriptionDetailRows.length" class="empty-block empty-block--compact">
                 {{ t('assistant.caseResult.noPrescription') }}
               </div>
-            </section> -->
+            </section>
           </section>
         </section>
 
@@ -176,13 +147,15 @@ import {
   CircleCheckFilled,
   DataBoard,
   Document,
+  FirstAidKit,
   OfficeBuilding,
   Tickets,
   UserFilled
 } from '@element-plus/icons-vue'
-import { getCaseDetail } from '@/api/record'
+import { listDictData } from '@/api/dict'
+import { getCaseDetail, getCaseDrugDetail } from '@/api/record'
+import type { CaseDrugDetailData, DictDataVO } from '@/api/types'
 import { formatSexByDict, loadSexDict } from '@/utils/sex-dict'
-import zhuImage from '@/assets/zhu.png'
 
 type DetailRecord = Record<string, unknown>
 
@@ -206,13 +179,21 @@ interface PulseRow {
 interface PrescriptionRow {
   name: string
   dosage: string
+  unit: string
 }
 
 const { t } = useI18n()
+const PRESCRIPTION_CATEGORY_DICT_TYPE = 'drug_type'
+const PRESCRIPTION_MODEL_DICT_TYPE = 'drug_model'
+const PRESCRIPTION_UNIT_DICT_TYPE = 'drug_detail_unit'
 
 const loading = ref(false)
 const pageError = ref('')
 const detail = ref<DetailRecord | null>(null)
+const prescriptionDetail = ref<CaseDrugDetailData | null>(null)
+const prescriptionCategoryOptions = ref<DictDataVO[]>([])
+const prescriptionModelOptions = ref<DictDataVO[]>([])
+const prescriptionUnitOptions = ref<DictDataVO[]>([])
 
 const props = defineProps({
   caseId: {
@@ -238,6 +219,63 @@ const takeOptionalText = (value: unknown) => {
 
   const text = String(value).trim()
   return text || ''
+}
+
+const normalizeDictListPayload = (response: { rows?: DictDataVO[] | null; data?: DictDataVO[] | null }) => {
+  return response.rows || response.data || []
+}
+
+const findDictOption = (options: DictDataVO[], value: unknown) => {
+  const text = takeOptionalText(value)
+  if (!text) {
+    return null
+  }
+
+  const exactValueMatched = options.find((item) => takeOptionalText(item.dictValue) === text)
+  if (exactValueMatched) {
+    return exactValueMatched
+  }
+
+  const normalizedText = text.toLowerCase()
+  const normalizedValueMatched = options.find((item) => takeOptionalText(item.dictValue).toLowerCase() === normalizedText)
+  if (normalizedValueMatched) {
+    return normalizedValueMatched
+  }
+
+  const exactLabelMatched = options.find((item) => takeOptionalText(item.dictLabel) === text)
+  if (exactLabelMatched) {
+    return exactLabelMatched
+  }
+
+  return options.find((item) => takeOptionalText(item.dictLabel).toLowerCase() === normalizedText) || null
+}
+
+const formatDictLabel = (options: DictDataVO[], value: unknown) => {
+  const text = takeOptionalText(value)
+  if (!text) {
+    return ''
+  }
+
+  return findDictOption(options, value)?.dictLabel || text
+}
+
+const loadPrescriptionDictionaries = async () => {
+  try {
+    const [categoryResponse, modelResponse, unitResponse] = await Promise.all([
+      listDictData({ dictType: PRESCRIPTION_CATEGORY_DICT_TYPE }),
+      listDictData({ dictType: PRESCRIPTION_MODEL_DICT_TYPE }),
+      listDictData({ dictType: PRESCRIPTION_UNIT_DICT_TYPE })
+    ])
+
+    prescriptionCategoryOptions.value = normalizeDictListPayload(categoryResponse)
+    prescriptionModelOptions.value = normalizeDictListPayload(modelResponse)
+    prescriptionUnitOptions.value = normalizeDictListPayload(unitResponse)
+  } catch (error) {
+    console.warn('Failed to load doctor case prescription dictionaries.', error)
+    prescriptionCategoryOptions.value = []
+    prescriptionModelOptions.value = []
+    prescriptionUnitOptions.value = []
+  }
 }
 
 const takeOptionalNumber = (value: unknown) => {
@@ -434,38 +472,10 @@ const resolveDisplayText = (value: string) => {
   return value || t('assistant.caseResult.notAvailable')
 }
 
-const tongueDemoRows = computed(() => [
-  [
-    { label: t('assistant.caseResult.tongueColor'), value: t('assistant.caseResult.demoPaleTongue') },
-    { label: t('assistant.caseResult.tongueShape'), value: t('assistant.caseResult.demoSpottedToothMarkedTongue') },
-    { label: t('assistant.caseResult.tongueState'), value: t('assistant.caseResult.demoNormal') }
-  ],
-  [
-    { label: t('assistant.caseResult.tongueCoatingColor'), value: t('assistant.caseResult.demoYellowWhiteCoating') },
-    { label: t('assistant.caseResult.tongueCoatingQuality'), value: t('assistant.caseResult.demoThickCoating') },
-    { label: t('assistant.caseResult.sublingualVein'), value: t('assistant.caseResult.demoNormal') }
-  ]
-])
-
-const faceDemoRows = computed(() => [
-  [
-    { label: t('assistant.caseResult.complexion'), value: t('assistant.caseResult.demoPaleYellowComplexion') },
-    { label: t('assistant.caseResult.faceLuster'), value: t('assistant.caseResult.demoSlightLuster') }
-  ],
-  [
-    { label: t('assistant.caseResult.lipColor'), value: t('assistant.caseResult.demoBluishPurple') },
-    { label: t('assistant.caseResult.localFeature'), value: '-' }
-  ]
-])
-
-const pulseDemoRows = computed(() => [
-  { label: t('assistant.caseResult.cun'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoModeratePulse') },
-  { label: t('assistant.caseResult.guan'), left: t('assistant.caseResult.demoModeratePulse'), right: t('assistant.caseResult.demoDeficientPulse') },
-  { label: t('assistant.caseResult.chi'), left: t('assistant.caseResult.demoDeficientPulse'), right: t('assistant.caseResult.demoDeficientPulse') }
-])
+const fourApparatusUrl = computed(() => pickText(['fourApparatusUrl']))
 
 const resolvePatientId = () => {
-  return pickText(['patientNumber', 'patientId', 'visitNo', 'medicalNo', 'caseNo']) || caseId.value
+  return pickText(['caseId', 'caseID', 'medicalCaseId']) || caseId.value
 }
 
 const heroMetaItems = computed(() => [
@@ -703,61 +713,63 @@ const diagnosisPlanItems = computed<DetailItem[]>(() => [
   }
 ])
 
-const prescriptionRows = computed<PrescriptionRow[]>(() => {
-  if (!detail.value) {
+const prescriptionTextItems = computed<DetailItem[]>(() => {
+  const prescription = prescriptionDetail.value
+  if (!prescription) {
     return []
   }
 
-  const arrayKeys = ['prescriptionList', 'drugList', 'medicineList', 'medicines', 'prescriptionDrugs']
-
-  for (const key of arrayKeys) {
-    const value = detail.value[key]
-    if (!Array.isArray(value)) {
-      continue
+  return [
+    {
+      label: t('assistant.caseResult.prescriptionDrugModel'),
+      value: formatDictLabel(prescriptionModelOptions.value, prescription.drugModel)
+    },
+    {
+      label: t('assistant.caseResult.prescriptionDrugType'),
+      value: formatDictLabel(prescriptionCategoryOptions.value, prescription.drugType)
+    },
+    {
+      label: t('assistant.caseResult.prescriptionDrugUsage'),
+      value: takeOptionalText(prescription.drugUsage)
+    },
+    {
+      label: t('assistant.caseResult.prescriptionDrugEffect'),
+      value: takeOptionalText(prescription.drugEffect)
+    },
+    {
+      label: t('assistant.caseResult.prescriptionDrugCure'),
+      value: takeOptionalText(prescription.drugCure)
+    },
+    {
+      label: t('assistant.caseResult.prescriptionDrugAttention'),
+      value: takeOptionalText(prescription.drugAttention)
     }
-
-    const normalizedRows = value
-      .map((item) => {
-        if (!isRecord(item)) {
-          return null
-        }
-
-        const name = takeOptionalText(
-          item.drugName || item.name || item.medicineName || item.herbName || item.medicinalName
-        )
-        const dosageValue = takeOptionalText(item.dosage || item.amount || item.weight || item.useAmount)
-        const unit = takeOptionalText(item.unit)
-        const dosage = `${dosageValue}${unit}`.trim()
-
-        if (!name && !dosage) {
-          return null
-        }
-
-        return {
-          name: name || t('assistant.caseResult.notAvailable'),
-          dosage: dosage || t('assistant.caseResult.notAvailable')
-        }
-      })
-      .filter((item): item is PrescriptionRow => Boolean(item))
-
-    if (normalizedRows.length) {
-      return normalizedRows
-    }
-  }
-
-  const prescriptionText = pickText(['prescriptionCn', 'prescription', 'recipe'])
-  if (!prescriptionText) {
-    return []
-  }
-
-  return prescriptionText
-    .split(/\r?\n|,|，|;/)
-    .map((item) => item.trim())
-    .filter(Boolean)
+  ]
+    .filter((item) => item.value)
     .map((item) => ({
-      name: item,
-      dosage: t('assistant.caseResult.notAvailable')
+      ...item,
+      value: resolveDisplayText(item.value)
     }))
+})
+
+const prescriptionDetailRows = computed<PrescriptionRow[]>(() => {
+  return (prescriptionDetail.value?.detailList || [])
+    .map((item) => {
+      const name = takeOptionalText(item.drugDetailName)
+      const unit = formatDictLabel(prescriptionUnitOptions.value, item.drugDetailUnit)
+      const dosage = takeOptionalText(item.drugDetailShare)
+
+      if (!name && !dosage && !unit) {
+        return null
+      }
+
+      return {
+        name: name || t('assistant.caseResult.notAvailable'),
+        dosage: dosage || t('assistant.caseResult.notAvailable'),
+        unit: unit || t('assistant.caseResult.notAvailable')
+      }
+    })
+    .filter((item): item is PrescriptionRow => Boolean(item))
 })
 
 const hasDiagnosisData = computed(() => {
@@ -788,10 +800,26 @@ const fetchDetail = async () => {
 
   loading.value = true
   pageError.value = ''
+  prescriptionDetail.value = null
 
   try {
-    const response = await getCaseDetail(caseId.value)
+    const [detailResult, prescriptionResult] = await Promise.allSettled([
+      getCaseDetail(caseId.value),
+      getCaseDrugDetail(caseId.value)
+    ])
+
+    if (detailResult.status === 'rejected') {
+      throw detailResult.reason
+    }
+
+    const response = detailResult.value
     detail.value = isRecord(response?.data) ? response.data : {}
+
+    if (prescriptionResult.status === 'fulfilled') {
+      prescriptionDetail.value = prescriptionResult.value?.data || null
+    } else {
+      console.warn('Failed to load doctor case prescription detail.', prescriptionResult.reason)
+    }
   } catch (error) {
     console.warn('Failed to load assistant case result detail.', error)
     pageError.value = t('assistant.caseResult.loadFailed')
@@ -802,6 +830,7 @@ const fetchDetail = async () => {
 
 onMounted(() => {
   void loadSexDict()
+  void loadPrescriptionDictionaries()
   void fetchDetail()
 })
 </script>
@@ -1088,77 +1117,55 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.diagnosis-device-content {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  align-items: stretch;
-  padding: 16px;
-  border: 1px solid #e7eef8;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #fbfcff 0%, #f5f8fd 100%);
-  overflow-x: auto;
-}
-
-.diagnosis-image-panel {
-  min-width: 0;
-  min-height: 150px;
+.four-diagnosis-result {
+  min-height: 340px;
+  border-radius: 14px;
+  background: #f6f9fc;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid #e6ebf3;
+  overflow: hidden;
 }
 
-.diagnosis-image {
-  display: block;
+.four-diagnosis-pdf {
   width: 100%;
-  max-width: 100%;
-  height: auto;
-  object-fit: contain;
+  height: 560px;
+  min-height: 340px;
+  border: 0;
+  background: #ffffff;
 }
 
-.diagnosis-image-zhu {
-  max-height: 230px;
-}
-
-.diagnosis-table {
+.four-diagnosis-empty {
+  min-height: 300px;
   width: 100%;
-  min-width: 0;
-  border-collapse: collapse;
-  table-layout: fixed;
-  background: rgba(255, 255, 255, 0.96);
-  color: #111827;
-  font-size: 17px;
-  line-height: 1.45;
-}
-
-.diagnosis-table th,
-.diagnosis-table td {
-  height: 34px;
-  padding: 6px 8px;
-  border: 1px solid #e5e9f0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  vertical-align: middle;
-  white-space: nowrap;
+  padding: 38px 24px;
 }
 
-.diagnosis-table th {
-  background: #f0f2ff;
-  font-weight: 700;
+.four-diagnosis-empty-icon {
+  color: #d4dae2;
+  font-size: 80px;
+  line-height: 1;
 }
 
-.diagnosis-table td {
-  background: rgba(255, 255, 255, 0.96);
+.four-diagnosis-empty h3 {
+  margin: 54px 0 0;
+  color: #6d7d91;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
-.diagnosis-table .table-title {
-  height: 36px;
-  background: #f5f5f5;
-  color: #1d2a44;
+.four-diagnosis-empty p {
+  margin: 22px 0 0;
+  color: #9aabba;
   font-size: 18px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .result-table-stack {
@@ -1218,7 +1225,7 @@ onMounted(() => {
 }
 
 .plan-value {
-  min-height: 56px;
+  // min-height: 56px;
   padding: 14px 16px;
   border-radius: 14px;
   background: #fbfcff;
@@ -1233,8 +1240,42 @@ onMounted(() => {
   margin-top: 18px;
 }
 
+.prescription-text-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  margin-top: 0;
+}
+
+.prescription-detail-table {
+  margin-top: 12px;
+  border: 1px solid #e6ebf3;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
 .result-table--prescription th {
   background: #f0f2f6;
+}
+
+.prescription-detail-table th,
+.prescription-detail-table td {
+  border-width: 0 1px 1px 0;
+}
+
+.prescription-detail-table th:last-child,
+.prescription-detail-table td:last-child {
+  border-right: 0;
+}
+
+.prescription-detail-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.result-table--prescription td:nth-child(2) {
+  text-align: center;
 }
 
 .empty-block {
@@ -1264,7 +1305,8 @@ onMounted(() => {
 
 @media (max-width: 1200px) {
   .detail-grid--four,
-  .plan-grid {
+  .plan-grid,
+  .prescription-text-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1288,6 +1330,10 @@ onMounted(() => {
 
   .bar-chart {
     min-height: 220px;
+  }
+
+  .prescription-text-list {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1331,6 +1377,32 @@ onMounted(() => {
   .bar-track {
     width: 40px;
     height: 150px;
+  }
+
+  .four-diagnosis-result {
+    min-height: 280px;
+  }
+
+  .four-diagnosis-pdf {
+    height: 420px;
+  }
+
+  .four-diagnosis-empty {
+    min-height: 260px;
+    padding: 32px 16px;
+  }
+
+  .four-diagnosis-empty-icon {
+    font-size: 66px;
+  }
+
+  .four-diagnosis-empty h3 {
+    margin-top: 36px;
+    font-size: 21px;
+  }
+
+  .four-diagnosis-empty p {
+    font-size: 16px;
   }
 
   .result-table th,

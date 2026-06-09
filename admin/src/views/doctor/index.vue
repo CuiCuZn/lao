@@ -40,14 +40,14 @@
     </el-card>
 
     <!-- 2. 操作栏 -->
-    <el-card class="table-card" shadow="never" style="margin-top: 20px">
+    <el-card class="table-card" shadow="never">
       <div class="toolbar">
         <el-button type="primary" plain @click="handleAdd">{{ t('doctor.addDoctor') }}</el-button>
         <!-- <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button> -->
       </div>
 
       <!-- 3. 数据表格 -->
-      <el-table v-loading="loading" :data="userList" style="width: 100%; margin-top: 15px" border>
+      <el-table v-loading="loading" :data="userList" height="100%" style="width: 100%; margin-top: 15px" border>
         <el-table-column :label="t('doctor.nickName')" align="center" prop="nickName" />
         <el-table-column :label="t('doctor.userName')" align="center" prop="userName" />
         <el-table-column :label="t('doctor.role')" align="center" min-width="120" show-overflow-tooltip>
@@ -238,7 +238,7 @@ const singleRoleId = computed({
 // 查询参数
 const queryParams = reactive<UserQuery>({
   pageNum: 1,
-  pageSize: 10,
+  pageSize: 20,
   nickName: '',
   phonenumber: '',
   status: '',
@@ -352,6 +352,7 @@ const resetQuery = () => {
   queryParams.phonenumber = ''
   queryParams.status = ''
   queryParams.departmentId = undefined
+  queryParams.pageSize = 20
   handleQuery()
 }
 
@@ -511,9 +512,6 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.app-container {
-  padding: 20px;
-}
 .pagination-container {
   display: flex;
   justify-content: flex-end;

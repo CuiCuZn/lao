@@ -28,7 +28,7 @@
           :chat-send-disabled="chatSendDisabled"
           :chat-status-text="chatStatusText"
           :show-chat-composer="false"
-          :translation-enabled="translationEnabled"
+          :translation-enabled="subtitleTranslationEnabled"
           :primary-language="consultationLang"
           :on-chat-input="handleChatInput"
           :on-chat-send="handleChatSend"
@@ -53,7 +53,6 @@
                 :muted="previewParticipant.muted"
                 :speaking="previewParticipant.speaking"
                 :badge="previewParticipant.track ? '' : previewParticipant.placeholderBadge"
-                :mirror="previewParticipantRole === 'patient'"
                 compact
                 @click="toggleFeaturedParticipant"
               />
@@ -67,7 +66,6 @@
               :speaking="featuredParticipant.speaking"
               :badge="featuredParticipant.track ? '' : featuredParticipant.placeholderBadge"
               :placeholder-mode="featuredPlaceholderMode"
-              :mirror="featuredParticipantRole === 'patient'"
             :show-status="false"
           />
         </div>
@@ -170,6 +168,8 @@ const consultationLang = computed<'lo' | 'cn'>(() => {
   return rawLang === 'cn' || rawLang === 'zh-cn' ? 'cn' : 'lo'
 })
 const translationEnabled = computed(() => consultationLang.value === 'lo')
+const subtitleTranslationEnabled = computed(() => true)
+const manualChatTranslationEnabled = computed(() => translationEnabled.value || subtitleTranslationEnabled.value)
 const pageError = ref('')
 const consultationDuration = ref('00:00:00')
 const chatDraft = ref('')
@@ -280,7 +280,7 @@ const resolveSubtitleSavePayload = (item: SubtitleTimelineItem) => {
   const sourceText = item.sourceText.trim()
   const translatedText = item.translatedText.trim()
 
-  if (!translationEnabled.value) {
+  if (!subtitleTranslationEnabled.value) {
     if (!item.sourceFinal || !sourceText) {
       return null
     }
@@ -406,7 +406,7 @@ const timeline = usePatientSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || userId.value,
   getCurrentUserName: () => patientName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value),
-  getTranslationEnabled: () => translationEnabled.value,
+  getTranslationEnabled: () => subtitleTranslationEnabled.value,
   onFinalizedItem: handleSubtitleFinalized
 })
 
@@ -439,13 +439,16 @@ const appendConversationHistory = (items: ConsultationHistoryItem[]) => {
   items.forEach((item) => {
     const speaker = resolveHistorySpeaker(item)
     const sourceText = translationEnabled.value ? item.contentLo : item.contentCn || item.contentLo
+    const translatedText = translationEnabled.value
+      ? item.contentCn
+      : subtitleTranslationEnabled.value ? item.contentLo : ''
     timeline.appendHistoryMessage({
       ...speaker,
       messageType: item.messageType,
       sourceText,
-      translatedText: translationEnabled.value ? item.contentCn : '',
+      translatedText,
       sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-      targetLanguage: translationEnabled.value ? 'cn' : 'cn',
+      targetLanguage: translationEnabled.value ? 'cn' : subtitleTranslationEnabled.value ? 'lo' : 'cn',
       timestamp: item.timestamp
     })
   })
@@ -495,9 +498,9 @@ const chat = createPatientConsultationChatService({
     timeline.appendManualMessage({
       ...sender,
       sourceText: translationEnabled.value ? contentLo : contentCn || contentLo,
-      translatedText: translationEnabled.value ? contentCn : '',
+      translatedText: translationEnabled.value ? contentCn : manualChatTranslationEnabled.value ? contentLo : '',
       sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-      targetLanguage: translationEnabled.value ? 'cn' : 'cn'
+      targetLanguage: translationEnabled.value ? 'cn' : manualChatTranslationEnabled.value ? 'lo' : 'cn'
     })
   },
   onError: (error) => {
@@ -603,9 +606,9 @@ const appendLocalManualMessage = (payload: ConsultationChatPayload) => {
     speakerName: patientName.value,
     side: 'self',
     sourceText: translationEnabled.value ? payload.contentLo : payload.contentCn || payload.contentLo,
-    translatedText: translationEnabled.value ? payload.contentCn : '',
+    translatedText: translationEnabled.value ? payload.contentCn : manualChatTranslationEnabled.value ? payload.contentLo : '',
     sourceLanguage: translationEnabled.value ? 'lo' : 'cn',
-    targetLanguage: translationEnabled.value ? 'cn' : 'cn'
+    targetLanguage: translationEnabled.value ? 'cn' : manualChatTranslationEnabled.value ? 'lo' : 'cn'
   })
 }
 
@@ -645,8 +648,17 @@ const handleChatSend = async () => {
           text: normalizedText
         }))?.data)
       : normalizedText
+    const contentLo = translationEnabled.value
+      ? normalizedText
+      : manualChatTranslationEnabled.value
+        ? resolveTranslationText((await translateConsultationText({
+            source: 'cn',
+            to: 'lo',
+            text: normalizedText
+          }))?.data)
+        : ''
     const payload = {
-      contentLo: translationEnabled.value ? normalizedText : '',
+      contentLo,
       contentCn
     }
 
@@ -664,7 +676,7 @@ const handleChatSend = async () => {
         caseId,
         isDoctor: 1,
         contentCn,
-        contentLo: translationEnabled.value ? normalizedText : ''
+        contentLo
       })
     ])
 
@@ -816,7 +828,8 @@ const bootstrapConsultation = async () => {
       token: token.value,
       secondaryToken: secondaryToken.value,
       language: consultationLang.value,
-      translationEnabled: translationEnabled.value
+      translationEnabled: translationEnabled.value,
+      subtitleTranslationEnabled: subtitleTranslationEnabled.value
     })
     void startConsultationDuration(consultationVideoId.value)
 

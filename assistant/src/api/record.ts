@@ -1,5 +1,10 @@
 import request from '@/utils/request'
-import type { CaseDetailResponse, CaseRecordListParams, CaseRecordListResponse } from './types'
+import type {
+  CaseDetailResponse,
+  CaseDrugDetailResponse,
+  CaseRecordListParams,
+  CaseRecordListResponse
+} from './types'
 
 const buildCaseRecordQueryConfig = () => ({
   headers: {
@@ -28,6 +33,15 @@ export function getUndoneCaseList(data: CaseRecordListParams): Promise<CaseRecor
 
 export function getCaseDetail(caseId: string | number): Promise<CaseDetailResponse> {
   return request.get(`/case/detail/${caseId}`, undefined, {
+    headers: {
+      silentError: true,
+      successCodes: '0,200'
+    }
+  })
+}
+
+export function getCaseDrugDetail(caseId: string | number): Promise<CaseDrugDetailResponse> {
+  return request.get(`/caseDrugDetail/${caseId}`, undefined, {
     headers: {
       silentError: true,
       successCodes: '0,200'

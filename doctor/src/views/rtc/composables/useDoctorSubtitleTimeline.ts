@@ -458,11 +458,10 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
     targetLanguage = 'lo',
     timestamp
   }: ManualTimelineMessageParams) => {
-    const translationEnabled = options.getTranslationEnabled?.() !== false
     const normalizedSourceText = sourceText.trim()
     const normalizedTranslatedText = translatedText.trim()
 
-    if (!normalizedSourceText || (translationEnabled && !normalizedTranslatedText)) {
+    if (!normalizedSourceText) {
       return undefined
     }
 
@@ -488,7 +487,7 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
       sequence,
       speakerSequence,
       sourceFinal: true,
-      translatedFinal: !translationEnabled || Boolean(normalizedTranslatedText),
+      translatedFinal: true,
       isFinal: true
     }
 
