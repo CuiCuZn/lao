@@ -943,6 +943,22 @@ onMounted(() => {
   color: #2a394a;
   line-height: 1.8;
   font-weight: 600;
+  max-height: calc(1.8em * 3);
+  padding-right: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d3e2 transparent;
+}
+
+.doctor-specialty p::-webkit-scrollbar {
+  width: 5px;
+}
+
+.doctor-specialty p::-webkit-scrollbar-thumb {
+  border-radius: 5px;
+  background: #c5d3e2;
 }
 
 .doctor-radio {

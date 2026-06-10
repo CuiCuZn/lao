@@ -124,6 +124,16 @@
                 @click.prevent
               />
               <span class="capture-photo-index">{{ index + 1 }}</span>
+              <button
+                type="button"
+                class="capture-photo-remove"
+                :title="t('assistant.aideVideo.consultation.captureRemoveUploaded')"
+                :aria-label="t('assistant.aideVideo.consultation.captureRemoveUploaded')"
+                :disabled="uploadedPhotoRemoveDisabled"
+                @click.stop.prevent="removeUploadedPhoto(photo)"
+              >
+                <el-icon><delete /></el-icon>
+              </button>
             </div>
           </div>
 
@@ -245,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { Camera, Close, RefreshLeft, Upload } from '@element-plus/icons-vue'
+import { Camera, Close, Delete, RefreshLeft, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -272,6 +282,7 @@ interface UploadedInspectionPhoto {
   fileUrl: string
   objectName: string
   createdAt: number
+  reportId?: string | number
 }
 
 interface EditableInspectionItem {
@@ -333,7 +344,8 @@ const RESOLUTION_CANDIDATES = [
   [2592, 1944],
   [1920, 1080]
 ] as const
-const PREFERRED_RESOLUTION_KEY = '1920x1080'
+const PREFERRED_RESOLUTION_KEY = '3840x3104'
+const PREFERRED_RESOLUTION = { width: 3840, height: 3104 }
 const DEFAULT_CAPTURE_ROTATION = 270
 const FIXED_RESOLUTION_OPTIONS = RESOLUTION_CANDIDATES.map(([width, height]) => ({
   width,
@@ -346,6 +358,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: boolean): void
   (event: 'update:recognitionReports', value: EditableInspectionReport[]): void
   (event: 'capture-confirm', value: CapturePhoto): void
+  (event: 'remove-uploaded-photo', value: UploadedInspectionPhoto): void
   (event: 'recognize'): void
   (event: 'save'): void
 }>()
@@ -385,6 +398,9 @@ const localImageUploadDisabled = computed(() => {
       props.recognitionSaving ||
       draftPhoto.value
   )
+})
+const uploadedPhotoRemoveDisabled = computed(() => {
+  return Boolean(props.uploading || props.recognizing || props.recognitionSaving)
 })
 const previewMediaRotation = computed(() => (draftPhoto.value ? 0 : captureRotation.value))
 const previewRotatedSideways = computed(() => captureRotation.value === 90 || captureRotation.value === 270)
@@ -570,8 +586,8 @@ const startStream = async () => {
       audio: false,
       video: {
         deviceId: { exact: props.device.deviceId },
-        width: { ideal: 1920 },
-        height: { ideal: 1080 }
+        width: { ideal: PREFERRED_RESOLUTION.width },
+        height: { ideal: PREFERRED_RESOLUTION.height }
       }
     })
 
@@ -740,6 +756,14 @@ const confirmPhoto = () => {
 
   emit('capture-confirm', draftPhoto.value)
   draftPhoto.value = null
+}
+
+const removeUploadedPhoto = (photo: UploadedInspectionPhoto) => {
+  if (uploadedPhotoRemoveDisabled.value) {
+    return
+  }
+
+  emit('remove-uploaded-photo', photo)
 }
 
 const openLocalImageUpload = () => {
@@ -1125,6 +1149,35 @@ onBeforeUnmount(() => {
   min-width: 22px;
   height: 22px;
   padding: 0 6px;
+}
+
+.capture-photo-remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(34, 57, 95, 0.78);
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.16s ease, opacity 0.16s ease;
+}
+
+.capture-photo-remove:hover:not(:disabled) {
+  background: rgba(217, 76, 76, 0.92);
+}
+
+.capture-photo-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
 }
 
 .recognition-panel {

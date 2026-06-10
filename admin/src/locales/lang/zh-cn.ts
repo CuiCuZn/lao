@@ -70,6 +70,7 @@ export default {
       chi: '尺',
       drugName: '药材名称',
       dosage: '用量',
+      unit: '单位',
       notAvailable: '暂无',
       noDiagnosisData: '暂无四诊仪采集结果',
       noDiagnosisDataTitle: '未采集四诊仪信息',

@@ -24,9 +24,9 @@
             <div class="panel-title">
               <el-icon><tickets /></el-icon>
               <h3>{{ t('assistant.intake.basicTitle') }}</h3>
-              <div v-if="displayPatientRecordId" class="patient-record-id">
-                <span>{{ t('assistant.intake.medicalRecordId') }}：</span>
-                <strong>{{ displayPatientRecordId }}</strong>
+              <div v-if="displayPatientId" class="patient-record-id">
+                <span>{{ t('assistant.intake.patientId') }}：</span>
+                <strong>{{ displayPatientId }}</strong>
               </div>
             </div>
 
@@ -334,7 +334,6 @@ const createEmptyForm = () => ({
 
 const patientId = ref<number | undefined>(undefined)
 const caseId = ref<number | undefined>(undefined)
-const patientRecordId = ref('')
 
 const form = reactive(createEmptyForm())
 
@@ -365,7 +364,9 @@ const maritalStatusOptions = computed(() => {
 
 const sexOptions = computed(() => sexDictOptions.value)
 
-const displayPatientRecordId = computed(() => patientRecordId.value.trim())
+const displayPatientId = computed(() => {
+  return patientId.value === undefined ? '' : String(patientId.value)
+})
 
 const buildSavePayload = (): PatientSaveParams => ({
   ...(patientId.value !== undefined ? { patientId: patientId.value } : {}),
@@ -430,7 +431,6 @@ const hydrateForm = (data?: IntakePatientData | null) => {
     sessionStore.setCaseId(caseId.value)
   }
 
-  patientRecordId.value = takeText(data.patientIdCard, patientRecordId.value)
   fourApparatusUrl.value = takeText(data.fourApparatusUrl, fourApparatusUrl.value)
   form.patientName = takeText(data.patientName, form.patientName)
   form.patientSex = takeText(data.patientSex, form.patientSex)
@@ -486,7 +486,6 @@ const submitSave = async (): Promise<boolean> => {
         caseId.value = toNumber(response.data.caseId)
         sessionStore.setCaseId(caseId.value)
       }
-      patientRecordId.value = takeText(response?.data?.patientIdCard, patientRecordId.value)
       lastSavedSnapshot.value = JSON.stringify(buildSavePayload())
       saveState.value = 'saved'
       return true
@@ -547,7 +546,7 @@ const refreshFourDiagnosisDetail = async () => {
 }
 
 const fetchFourDiagnosisData = async () => {
-  if (!displayPatientRecordId.value) {
+  if (!displayPatientId.value) {
     basicInfoDialogVisible.value = true
     return
   }
@@ -670,7 +669,6 @@ const initializeFromRouteQuery = async () => {
 
   patientId.value = getRoutePatientId()
   caseId.value = undefined
-  patientRecordId.value = ''
   fourApparatusUrl.value = ''
   fourCollectionDialogVisible.value = false
   pdfPreviewVisible.value = false

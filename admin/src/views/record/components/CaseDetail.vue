@@ -102,22 +102,29 @@
             </div>
 
             <section class="prescription-section">
-              <div class="result-table-card__title">{{ t('assistant.caseResult.prescription') }}</div>
-
               <div v-if="prescriptionTextItems.length" class="prescription-text-list">
-                <article v-for="item in prescriptionTextItems" :key="item.label" class="prescription-text-item">
-                  <span>{{ item.label }}</span>
-                  <p>{{ item.value }}</p>
-                </article>
+                <div v-for="item in prescriptionTextItems" :key="item.label" class="plan-item">
+                  <span class="detail-label">{{ item.label }}</span>
+                  <div class="plan-value">{{ item.value }}</div>
+                </div>
               </div>
 
-              <div v-if="prescriptionDetailRows.length" class="prescription-detail-list">
-                <article v-for="(row, index) in prescriptionDetailRows" :key="`${row.name}-${index}`">
-                  <span>{{ index + 1 }}</span>
-                  <p>{{ row.name }}</p>
-                  <strong>{{ row.dosage }}</strong>
-                </article>
-              </div>
+              <table v-if="prescriptionDetailRows.length" class="result-table result-table--prescription prescription-detail-table">
+                <thead>
+                  <tr>
+                    <th>{{ t('assistant.caseResult.drugName') }}</th>
+                    <th>{{ t('assistant.caseResult.dosage') }}</th>
+                    <th>{{ t('assistant.caseResult.unit') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, index) in prescriptionDetailRows" :key="`${row.name}-${row.dosage}-${row.unit}-${index}`">
+                    <td>{{ row.name }}</td>
+                    <td>{{ row.dosage }}</td>
+                    <td>{{ row.unit }}</td>
+                  </tr>
+                </tbody>
+              </table>
 
               <div v-if="!prescriptionTextItems.length && !prescriptionDetailRows.length" class="empty-block empty-block--compact">
                 {{ t('assistant.caseResult.noPrescription') }}
@@ -170,6 +177,7 @@ interface PulseRow {
 interface PrescriptionRow {
   name: string
   dosage: string
+  unit: string
 }
 
 const { t } = useI18n()
@@ -717,10 +725,6 @@ const prescriptionTextItems = computed<DetailItem[]>(() => {
 
   return [
     {
-      label: t('assistant.caseResult.prescriptionDrugName'),
-      value: takeOptionalText(prescription.drugName)
-    },
-    {
       label: t('assistant.caseResult.prescriptionDrugModel'),
       value: formatDictLabel(prescriptionModelOptions.value, prescription.drugModel)
     },
@@ -757,15 +761,16 @@ const prescriptionDetailRows = computed<PrescriptionRow[]>(() => {
     .map((item) => {
       const name = takeOptionalText(item.drugDetailName)
       const unit = formatDictLabel(prescriptionUnitOptions.value, item.drugDetailUnit)
-      const dosage = `${takeOptionalText(item.drugDetailShare)}${unit}`.trim()
+      const dosage = takeOptionalText(item.drugDetailShare)
 
-      if (!name && !dosage) {
+      if (!name && !dosage && !unit) {
         return null
       }
 
       return {
         name: name || t('assistant.caseResult.notAvailable'),
-        dosage: dosage || t('assistant.caseResult.notAvailable')
+        dosage: dosage || t('assistant.caseResult.notAvailable'),
+        unit: unit || t('assistant.caseResult.notAvailable')
       }
     })
     .filter((item): item is PrescriptionRow => Boolean(item))
@@ -1177,17 +1182,6 @@ onMounted(() => {
   gap: 14px;
 }
 
-.result-table-card__title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 16px;
-  background: #f0f2f6;
-  color: #1d2a44;
-  font-size: 16px;
-  font-weight: 800;
-}
-
 .result-table {
   width: 100%;
   border-collapse: collapse;
@@ -1228,7 +1222,11 @@ onMounted(() => {
 }
 
 .plan-value {
+  box-sizing: border-box;
   min-height: 56px;
+  max-height: calc(3.6em + 30px);
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 14px 16px;
   border-radius: 14px;
   background: #fbfcff;
@@ -1246,67 +1244,39 @@ onMounted(() => {
 .prescription-text-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 16px;
-  margin-top: 12px;
+  gap: 16px 20px;
+  margin-top: 0;
 }
 
-.prescription-text-item,
-.prescription-detail-list article {
-  min-width: 0;
+.prescription-detail-table {
+  margin-top: 12px;
+  border: 1px solid #e6ebf3;
+  border-collapse: separate;
+  border-spacing: 0;
   border-radius: 14px;
-  border: 1px solid #e5ebf5;
-  background: #fbfcff;
-}
-
-.prescription-text-item {
-  padding: 12px 14px;
-}
-
-.prescription-text-item span,
-.prescription-detail-list span {
-  color: #6b7890;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.prescription-text-item p {
-  margin: 6px 0 0;
-  color: #23324f;
-  font-size: 20px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.prescription-detail-list {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.prescription-detail-list article {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) minmax(120px, auto);
-  align-items: center;
-  gap: 12px;
-  padding: 11px 14px;
-}
-
-.prescription-detail-list p,
-.prescription-detail-list strong {
-  min-width: 0;
-  margin: 0;
-  color: #23324f;
-  font-size: 20px;
-  line-height: 1.6;
-}
-
-.prescription-detail-list strong {
-  text-align: right;
+  overflow: hidden;
 }
 
 .result-table--prescription th {
   background: #f0f2f6;
+}
+
+.prescription-detail-table th,
+.prescription-detail-table td {
+  border-width: 0 1px 1px 0;
+}
+
+.prescription-detail-table th:last-child,
+.prescription-detail-table td:last-child {
+  border-right: 0;
+}
+
+.prescription-detail-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.result-table--prescription td:nth-child(2) {
+  text-align: center;
 }
 
 .empty-block {
@@ -1363,14 +1333,8 @@ onMounted(() => {
     min-height: 220px;
   }
 
-  .prescription-text-list,
-  .prescription-detail-list,
-  .prescription-detail-list article {
+  .prescription-text-list {
     grid-template-columns: 1fr;
-  }
-
-  .prescription-detail-list strong {
-    text-align: left;
   }
 }
 

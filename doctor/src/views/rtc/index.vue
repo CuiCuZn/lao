@@ -345,12 +345,11 @@
                   <span>{{ formatHistoryCaseDate(item.date) }}</span>
                 </div>
 
-                <div class="history-case-meta">
-                  <span>{{ t('doctorVideo.consultation.historyCaseId') }}: {{ item.caseId || '--' }}</span>
-                </div>
-
                 <p class="history-case-diagnosis">
                   {{ t('workbench.diagnosisLabel') }}{{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}
+                </p>
+                <p class="history-case-therapy">
+                  {{ t('doctorVideo.consultation.therapy') }}：{{ item.therapy || t('doctorVideo.consultation.notFilled') }}
                 </p>
               </article>
             </div>
@@ -505,6 +504,7 @@
                 >
                   <el-table-column prop="item_name" :label="t('doctorVideo.consultation.inspectionReportItemName')" min-width="150" />
                   <el-table-column prop="result_value" :label="t('doctorVideo.consultation.inspectionReportResultValue')" min-width="120" />
+                  <el-table-column prop="abnormal_flag" :label="t('doctorVideo.consultation.inspectionReportAbnormalFlag')" min-width="90" />
                   <el-table-column prop="reference_range" :label="t('doctorVideo.consultation.inspectionReportReferenceRange')" min-width="140" />
                   <el-table-column prop="unit" :label="t('doctorVideo.consultation.inspectionReportUnit')" min-width="100" />
                 </el-table>
@@ -590,6 +590,7 @@ interface HistoryCaseRecord {
   caseId: string
   departmentName: string
   diagnosis: string
+  therapy: string
   date: string
 }
 
@@ -870,6 +871,7 @@ const normalizeHistoryCaseList = (value: unknown): HistoryCaseRecord[] => {
         caseId: resolveContextText(record.caseId),
         departmentName: resolveContextText(record.departmentName),
         diagnosis: resolveContextText(record.diagnosis),
+        therapy: resolveContextText(record.therapy),
         date: resolveContextText(record.date)
       }
     })
@@ -3126,22 +3128,22 @@ onBeforeUnmount(async () => {
   line-height: 1.5;
 }
 
-.history-case-head span,
-.history-case-meta {
+.history-case-head span {
   color: #6c7e97;
   font-size: 12px;
   line-height: 1.6;
 }
 
-.history-case-meta {
-  margin-top: 6px;
-}
-
-.history-case-diagnosis {
+.history-case-diagnosis,
+.history-case-therapy {
   margin: 8px 0 0;
   color: #203351;
   font-size: 14px;
   line-height: 1.7;
+}
+
+.history-case-therapy {
+  margin-top: 2px;
 }
 
 .four-diagnosis-content {

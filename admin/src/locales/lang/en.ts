@@ -69,6 +69,7 @@ export default {
       chi: 'Chi',
       drugName: 'Herbal Medicine Name',
       dosage: 'Dosage',
+      unit: 'Unit',
       notAvailable: 'N/A',
       noDiagnosisData: 'No TCM four diagnostics data',
       noDiagnosisDataTitle: 'TCM device data not collected',

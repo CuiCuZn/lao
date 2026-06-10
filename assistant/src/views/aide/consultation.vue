@@ -137,6 +137,7 @@
         :recognition-error="inspectionRecognitionError"
         :has-recognition="Boolean(inspectionBatchId || inspectionEditableReports.length)"
         @capture-confirm="handleSideScannerPhotoConfirm"
+        @remove-uploaded-photo="handleUploadedInspectionPhotoRemove"
         @recognize="handleInspectionRecognize"
         @save="handleInspectionSave"
       />
@@ -201,7 +202,9 @@ import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import {
   confirmInspectionBatchUpload,
+  deleteInspectionReport,
   getInspectionBatchByBatchId,
+  getInspectionBatchByCaseId,
   retryInspectionBatch,
   saveInspectionReportItems,
   submitInspectionBatch
@@ -265,6 +268,7 @@ interface UploadedInspectionPhoto {
   fileUrl: string
   objectName: string
   createdAt: number
+  reportId?: string | number
 }
 
 interface EditableInspectionItem {
@@ -306,6 +310,7 @@ let inspectionPollTimer = 0
 let inspectionPollRequestId = 0
 let inspectionProgressTimer = 0
 let inspectionProgressCeiling = 82
+let sideScannerHistoryRequestId = 0
 
 const pageError = ref('')
 const consultationDuration = ref('00:00:00')
@@ -315,6 +320,7 @@ const patientCameraDialogVisible = ref(false)
 const sideScannerCaptureVisible = ref(false)
 const uploadedInspectionPhotos = ref<UploadedInspectionPhoto[]>([])
 const sideScannerPhotoUploading = ref(false)
+const sideScannerHistoryLoading = ref(false)
 const inspectionBatchId = ref<string | number>('')
 const inspectionSubmittedFileUrls = ref<string[]>([])
 const inspectionRecognizing = ref(false)
@@ -512,6 +518,10 @@ const patientMediaControlsDisabled = computed(() => {
 })
 
 const sideScannerCaptureControlsDisabled = computed(() => {
+  if (sideScannerHistoryLoading.value) {
+    return true
+  }
+
   if (SIDE_SCANNER_CAPTURE_DEV_ENABLED) {
     return false
   }
@@ -1003,6 +1013,105 @@ const normalizeInspectionReports = (reports: InspectionBatchReportItem[]): Edita
   }))
 }
 
+const normalizeUploadedInspectionPhotos = (reports: InspectionBatchReportItem[]): UploadedInspectionPhoto[] => {
+  return reports.flatMap((report, index): UploadedInspectionPhoto[] => {
+    const fileUrl = takeOptionalText(report.fileUrl)
+    if (!fileUrl) {
+      return []
+    }
+
+    const reportId = takeOptionalText(report.reportId)
+    const sortNo = takeOptionalText(report.sortNo)
+    const name = `inspection-${sortNo || reportId || index + 1}`
+
+    return [
+      {
+        id: reportId ? `history-${reportId}` : `history-${index}-${fileUrl}`,
+        name,
+        previewUrl: fileUrl,
+        fileUrl,
+        objectName: '',
+        createdAt: Date.now() + index,
+        ...(report.reportId !== undefined ? { reportId: report.reportId } : {})
+      }
+    ]
+  })
+}
+
+const syncUploadedInspectionPhotoReports = (reports: InspectionBatchReportItem[]) => {
+  const reportByFileUrl = new Map<string, InspectionBatchReportItem>()
+  reports.forEach((report) => {
+    const fileUrl = takeOptionalText(report.fileUrl)
+    if (fileUrl) {
+      reportByFileUrl.set(fileUrl, report)
+    }
+  })
+
+  uploadedInspectionPhotos.value = uploadedInspectionPhotos.value.map((photo) => {
+    const report = reportByFileUrl.get(takeOptionalText(photo.fileUrl))
+    return report?.reportId === undefined
+      ? photo
+      : {
+          ...photo,
+          reportId: report.reportId
+        }
+  })
+}
+
+const extractBatchIdFromReports = (reports: InspectionBatchReportItem[]) => {
+  for (const report of reports) {
+    const batchId = takeOptionalText(report.batchId)
+    if (batchId) {
+      return report.batchId as string | number
+    }
+  }
+
+  return ''
+}
+
+const hydrateInspectionHistoryReports = (reports: InspectionBatchReportItem[]) => {
+  if (!reports.length) {
+    uploadedInspectionPhotos.value = []
+    resetInspectionResultState()
+    return
+  }
+
+  const photos = normalizeUploadedInspectionPhotos(reports)
+  const batchId = extractBatchIdFromReports(reports)
+  const statuses = reports.map((report) => getInspectionStatusNumber(report.recognizeStatus))
+  const failedReport = reports.find((report) => getInspectionStatusNumber(report.recognizeStatus) === 3)
+  const recognized = reports.length > 0 && statuses.every((status) => status === 2)
+  const polling = statuses.some((status) => status === 0 || status === 1)
+
+  uploadedInspectionPhotos.value = photos
+  inspectionSubmittedFileUrls.value = photos.map((photo) => photo.fileUrl)
+  inspectionEditableReports.value = normalizeInspectionReports(reports)
+  inspectionBatchId.value = batchId
+
+  if (failedReport) {
+    inspectionRecognitionProgress.value = 100
+    inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionFailedStatus')
+    inspectionRecognitionError.value = failedReport.errorMsg || t('assistant.aideVideo.consultation.recognitionFailed')
+    return
+  }
+
+  if (recognized) {
+    inspectionRecognitionProgress.value = 100
+    inspectionRecognitionStatusText.value = t('assistant.aideVideo.consultation.recognitionSuccess')
+    inspectionRecognitionError.value = ''
+    return
+  }
+
+  if (polling && batchId) {
+    startInspectionPolling(batchId)
+    return
+  }
+
+  inspectionRecognitionProgress.value = 0
+  inspectionRecognitionStatusText.value = ''
+  inspectionRecognitionError.value = ''
+}
+
 const buildInspectionSaveItem = (item: EditableInspectionItem): InspectionRecognizedItem => ({
   item_name: item.item_name,
   result_value: item.result_value,
@@ -1037,6 +1146,7 @@ const pollInspectionBatchResult = async (batchId: string | number, requestId: nu
     }
 
     const reports = Array.isArray(response?.data) ? response.data : []
+    syncUploadedInspectionPhotoReports(reports)
     const failedReport = reports.find((report) => getInspectionStatusNumber(report.recognizeStatus) === 3)
 
     if (failedReport) {
@@ -1096,7 +1206,11 @@ const startInspectionPolling = (batchId: string | number) => {
   void pollInspectionBatchResult(batchId, requestId)
 }
 
-const openSideScannerCapture = () => {
+const openSideScannerCapture = async () => {
+  if (sideScannerHistoryLoading.value) {
+    return
+  }
+
   resetInspectionCaptureState()
 
   if (!sideScannerCaptureDevice.value) {
@@ -1107,7 +1221,34 @@ const openSideScannerCapture = () => {
     }
   }
 
-  sideScannerCaptureVisible.value = true
+  const caseId = takeOptionalText(consultationCaseId.value)
+  if (!caseId) {
+    sideScannerCaptureVisible.value = true
+    return
+  }
+
+  const requestId = sideScannerHistoryRequestId + 1
+  sideScannerHistoryRequestId = requestId
+  sideScannerHistoryLoading.value = true
+
+  try {
+    const response = await getInspectionBatchByCaseId(caseId)
+    if (requestId !== sideScannerHistoryRequestId) {
+      return
+    }
+
+    const reports = Array.isArray(response?.data) ? response.data : []
+    hydrateInspectionHistoryReports(reports)
+  } catch (error) {
+    if (requestId === sideScannerHistoryRequestId) {
+      console.warn('Failed to load inspection history by caseId.', error)
+    }
+  } finally {
+    if (requestId === sideScannerHistoryRequestId) {
+      sideScannerHistoryLoading.value = false
+      sideScannerCaptureVisible.value = true
+    }
+  }
 }
 
 const handleSideScannerPhotoConfirm = async (photo: AideCapturePhoto) => {
@@ -1155,6 +1296,72 @@ const handleSideScannerPhotoConfirm = async (photo: AideCapturePhoto) => {
   } catch (error) {
     console.warn('Failed to upload side scanner photo.', error)
     ElMessage.error(t('assistant.aideVideo.consultation.captureUploadFailed'))
+  } finally {
+    sideScannerPhotoUploading.value = false
+  }
+}
+
+const removeUploadedInspectionPhotoLocally = (photo: UploadedInspectionPhoto) => {
+  const photoId = takeOptionalText(photo.id)
+  const fileUrl = takeOptionalText(photo.fileUrl)
+  uploadedInspectionPhotos.value = uploadedInspectionPhotos.value.filter((item) => {
+    if (photoId) {
+      return item.id !== photoId
+    }
+
+    return takeOptionalText(item.fileUrl) !== fileUrl
+  })
+}
+
+const handleUploadedInspectionPhotoRemove = async (photo: UploadedInspectionPhoto) => {
+  if (sideScannerPhotoUploading.value || inspectionRecognizing.value || inspectionSaveLoading.value) {
+    return
+  }
+
+  const fileUrl = takeOptionalText(photo.fileUrl)
+  const matchedReport = inspectionEditableReports.value.find((report) => {
+    return takeOptionalText(report.fileUrl) === fileUrl
+  })
+  const reportId = photo.reportId ?? matchedReport?.reportId
+
+  if (reportId === undefined || reportId === null || takeOptionalText(reportId) === '') {
+    removeUploadedInspectionPhotoLocally(photo)
+    resetInspectionResultState()
+    return
+  }
+
+  const caseId = takeOptionalText(consultationCaseId.value)
+  if (!caseId) {
+    ElMessage.warning(t('assistant.aideVideo.consultation.captureCaseUnavailable'))
+    return
+  }
+
+  const pendingPhotos = uploadedInspectionPhotos.value.filter((item) => {
+    return !takeOptionalText(item.reportId) && takeOptionalText(item.fileUrl) !== fileUrl
+  })
+  sideScannerPhotoUploading.value = true
+
+  try {
+    await deleteInspectionReport(reportId)
+
+    try {
+      const response = await getInspectionBatchByCaseId(caseId)
+      const reports = Array.isArray(response?.data) ? response.data : []
+      hydrateInspectionHistoryReports(reports)
+      const historicalFileUrls = new Set(uploadedInspectionPhotos.value.map((item) => takeOptionalText(item.fileUrl)))
+      uploadedInspectionPhotos.value = [
+        ...uploadedInspectionPhotos.value,
+        ...pendingPhotos.filter((item) => !historicalFileUrls.has(takeOptionalText(item.fileUrl)))
+      ]
+    } catch (error) {
+      console.warn('Failed to reload inspection reports after deletion.', error)
+      removeUploadedInspectionPhotoLocally(photo)
+      resetInspectionResultState()
+      ElMessage.error(t('assistant.aideVideo.consultation.captureDeleteRefreshFailed'))
+    }
+  } catch (error) {
+    console.warn('Failed to delete inspection report.', error)
+    ElMessage.error(t('assistant.aideVideo.consultation.captureDeleteFailed'))
   } finally {
     sideScannerPhotoUploading.value = false
   }
@@ -1763,6 +1970,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(async () => {
+  sideScannerHistoryRequestId += 1
+  sideScannerHistoryLoading.value = false
   stopInspectionPolling()
   stopRejectedListening?.()
   stopRejectedListening = null

@@ -246,6 +246,7 @@ export interface CaseListItem {
   caseId?: string | number;
   departmentName?: string;
   diagnosis?: string;
+  therapy?: string;
   date?: string;
   [key: string]: unknown;
 }

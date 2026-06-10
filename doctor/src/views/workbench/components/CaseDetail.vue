@@ -1225,7 +1225,11 @@ onMounted(() => {
 }
 
 .plan-value {
-  // min-height: 56px;
+  box-sizing: border-box;
+  min-height: 56px;
+  max-height: calc(3.6em + 30px);
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 14px 16px;
   border-radius: 14px;
   background: #fbfcff;

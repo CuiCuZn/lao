@@ -425,12 +425,26 @@ export interface InspectionBatchListByBatchIdResponse {
   [key: string]: unknown;
 }
 
+export interface InspectionBatchListByCaseIdResponse {
+  code?: number;
+  msg?: string;
+  data?: InspectionBatchReportItem[] | null;
+  [key: string]: unknown;
+}
+
 export interface InspectionReportSaveItemsParams {
   reportId: string | number;
   items: InspectionRecognizedItem[];
 }
 
 export interface InspectionReportSaveItemsResponse {
+  code?: number;
+  msg?: string;
+  data?: unknown;
+  [key: string]: unknown;
+}
+
+export interface InspectionReportDeleteResponse {
   code?: number;
   msg?: string;
   data?: unknown;

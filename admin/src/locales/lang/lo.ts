@@ -69,6 +69,7 @@ export default {
       chi: 'ສ່ວນເລິກ',
       drugName: 'ຊື່ຢາສະໝຸນໄພ',
       dosage: 'ປະລິມານ',
+      unit: 'ຫົວໜ່ວຍ',
       notAvailable: 'ບໍ່ມີຂໍ້ມູນ',
       noDiagnosisData: 'ຍັງບໍ່ມີຜົນຈາກເຄື່ອງວິນິດໄສ 4 ດ້ານ',
       noDiagnosisDataTitle: 'ຍັງບໍ່ໄດ້ເກັບຂໍ້ມູນ 4 ດ້ານ',
