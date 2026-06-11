@@ -123,8 +123,8 @@ const getLoginRedirect = () => {
 // 1. 响应式表单数据：初始化参考 plus-ui-ts
 const loginForm = ref<LoginData>({
   tenantId: '000000',
-  username: import.meta.env.DEV ? '医院管理员' : '',
-  password: import.meta.env.DEV ? '000000' : '',
+  username: import.meta.env.DEV ? 'admin_hos' : '',
+  password: import.meta.env.DEV ? 'Qwer1234!' : '',
   rememberMe: false,
   clientId: import.meta.env.VITE_APP_CLIENT_ID, // 从环境变量读取正确的 Client ID
   grantType: 'password'

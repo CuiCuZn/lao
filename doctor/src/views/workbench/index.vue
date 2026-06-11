@@ -958,7 +958,7 @@ function startSse() {
   sseStatus.value = reconnectAttempts.value > 0 ? 'reconnecting' : 'connecting'
   activeStreamId += 1
   const streamId = activeStreamId
-  markSseAlive(streamId, 'start')
+  markSseAlive(streamId)
   startSseWatchdog(streamId)
 
   const token = getToken()
@@ -977,19 +977,19 @@ function startSse() {
     },
     onOpen: () => {
       if (streamId !== activeStreamId) return
-      markSseAlive(streamId, 'open')
+      markSseAlive(streamId)
       sseStatus.value = 'connected'
       reconnectAttempts.value = 0
       void finalizeOnlineActivation()
     },
     onMessage: (message) => {
       if (streamId !== activeStreamId) return
-      markSseAlive(streamId, 'message')
+      markSseAlive(streamId)
       handleSseMessage(message)
     },
     onHeartbeat: () => {
       if (streamId !== activeStreamId) return
-      markSseAlive(streamId, 'heartbeat')
+      markSseAlive(streamId)
     },
     onError: () => {
       if (streamId !== activeStreamId) return
@@ -1023,14 +1023,9 @@ function clearSseWatchdog() {
   }
 }
 
-function markSseAlive(streamId: number, reason: string) {
+function markSseAlive(streamId: number) {
   if (streamId !== activeStreamId) return
   lastSseActivityAt = Date.now()
-  console.log('[doctor-sse] alive', {
-    reason,
-    streamId,
-    at: new Date(lastSseActivityAt).toISOString()
-  })
 }
 
 function startSseWatchdog(streamId: number) {
@@ -1045,11 +1040,6 @@ function startSseWatchdog(streamId: number) {
       return
     }
 
-    console.warn('[doctor-sse] heartbeat timeout, reconnecting', {
-      streamId,
-      inactiveMs,
-      timeout: SSE_HEARTBEAT_TIMEOUT
-    })
     sseStatus.value = 'error'
     manualClose = false
     activeStreamId += 1

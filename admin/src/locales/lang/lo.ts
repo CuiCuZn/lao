@@ -185,7 +185,7 @@ export default {
     resetPwd: 'ຕັ້ງລະຫັດໃໝ່',
     confirmResetPwd: 'ຢືນຢັນຈະຕັ້ງລະຫັດໃໝ່ໃຫ້ທ່ານໝໍນີ້ບໍ?',
     newPasswordPrompt: 'ກະລຸນາປ້ອນລະຫັດໃໝ່ຂອງ "{name}"',
-    passwordLength: 'ລະຫັດຜ່ານຕ້ອງມີ 5 ຫາ 20 ຕົວອັກສອນ',
+    passwordLength: 'ລະຫັດຜ່ານຢ່າງນ້ອຍ 8 ຕົວ ແລະຕ້ອງມີຕົວພິມໃຫຍ່, ຕົວພິມນ້ອຍ, ຕົວເລກ ແລະ {\'@\'}$!%*?&',
     resetPwdSuccess: 'ຕັ້ງລະຫັດໃໝ່ສຳເລັດ'
   },
   record: {

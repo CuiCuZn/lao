@@ -178,16 +178,15 @@ function isHeartbeatBlock(message: SseMessage, block: string) {
 }
 
 function logSseBlock(message: SseMessage, block: string, heartbeat = isHeartbeatBlock(message, block)) {
+  if (heartbeat) {
+    return
+  }
+
   const payload = {
     event: message.event,
     id: message.id,
     data: message.data,
     raw: block
-  }
-
-  if (isHeartbeatBlock(message, block)) {
-    logSse('heartbeat', payload)
-    return
   }
 
   logSse('message', payload)

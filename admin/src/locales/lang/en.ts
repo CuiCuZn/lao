@@ -185,7 +185,7 @@ export default {
     resetPwd: 'Reset Password',
     confirmResetPwd: 'Reset this doctor password?',
     newPasswordPrompt: 'Enter a new password for "{name}"',
-    passwordLength: 'Password must be 5 to 20 characters',
+    passwordLength: 'Password must be at least 8 characters and include uppercase, lowercase, number, and {\'@\'}$!%*?&',
     resetPwdSuccess: 'Password reset'
   },
   record: {

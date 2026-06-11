@@ -69,18 +69,18 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
     sourceLanguage: string,
     targetLanguage: string
   ) => {
-    console.log('[doctor-subtitle-message]', {
-      speakerId: message.uid,
-      speakerName: resolveSpeakerName(message.uid),
-      sourceLanguage,
-      targetLanguage,
-      translated: Boolean(message.translated),
-      sentenceEnd: Boolean(message.sentenceEnd),
-      sentenceIndex: normalizeSentenceIndex(message),
-      beginTime: normalizeBeginTime(message),
-      endTime: normalizeEndTime(message),
-      timestamp: normalizeTimestamp(message),
-      text: message.sentence?.trim() || '',
+    console.log('[doctor-dingrtc-subtitle-incoming]', {
+      // speakerId: message.uid,
+      // speakerName: resolveSpeakerName(message.uid),
+      // sourceLanguage,
+      // targetLanguage,
+      // translated: Boolean(message.translated),
+      // sentenceEnd: Boolean(message.sentenceEnd),
+      // sentenceIndex: normalizeSentenceIndex(message),
+      // beginTime: normalizeBeginTime(message),
+      // endTime: normalizeEndTime(message),
+      // timestamp: normalizeTimestamp(message),
+      // text: message.sentence?.trim() || '',
       rawMessage: message
     })
   }
@@ -627,8 +627,7 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
       }
 
       const handler = (message: ASRMessage) => {
-        // 这里只注释不删除
-        // logIncomingSubtitleMessage(message, binding.sourceLanguage, binding.targetLanguage)
+        logIncomingSubtitleMessage(message, binding.sourceLanguage, binding.targetLanguage)
         upsertDraftMessage({
           message,
           sourceLanguage: binding.sourceLanguage,

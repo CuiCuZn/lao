@@ -196,7 +196,7 @@ export default {
     resetPwd: '重置登录密钥',
     confirmResetPwd: '确认要重置该医师的登录密钥吗？',
     newPasswordPrompt: '请输入 "{name}" 的新密码',
-    passwordLength: '密码长度需在 5 到 20 个字符之间',
+    passwordLength: '密码至少 8 位，需包含大小写字母、数字和特殊字符 {\'@\'}$!%*?&',
     resetPwdSuccess: '重置成功'
   },
   record: {

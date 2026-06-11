@@ -81,7 +81,7 @@
             >
               {{ scope.row.status === '0' ? t('common.disable') : t('common.enable') }}
             </el-button>
-            <!-- <el-button link type="primary" @click="handleResetPwd(scope.row)">{{ t('doctor.resetPwd') }}</el-button> -->
+            <el-button link type="primary" @click="handleResetPwd(scope.row)">{{ t('doctor.resetPwd') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -103,7 +103,7 @@
 
     <!-- 5. 新增/编辑对话框 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="700px" append-to-body>
-      <el-form ref="userFormRef" :model="form" :rules="rules" label-width="100px" :disabled="isView">
+      <el-form ref="userFormRef" class="doctor-form" :model="form" :rules="rules" label-width="100px" :disabled="isView">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item :label="t('doctor.nickName')" prop="nickName">
@@ -260,11 +260,16 @@ const form = ref<UserForm>({
   roleIds: []
 })
 
+const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+
 // 校验规则
 const rules = {
   nickName: [{ required: true, message: t('doctor.inputNickName'), trigger: 'blur' }],
   userName: [{ required: true, message: t('doctor.inputUserName'), trigger: 'blur' }],
-  password: [{ required: true, message: t('doctor.inputPassword'), trigger: 'blur' }],
+  password: [
+    { required: true, message: t('doctor.inputPassword'), trigger: 'blur' },
+    { pattern: passwordPattern, message: t('doctor.passwordLength'), trigger: 'blur' }
+  ],
   jobNumber: [{ required: true, message: t('doctor.inputJobNumber'), trigger: 'blur' }],
   departmentId: [{ required: true, message: t('doctor.selectDept'), trigger: 'change' }],
   title: [{ required: true, message: t('doctor.inputTitle'), trigger: 'blur' }],
@@ -450,7 +455,7 @@ const handleResetPwd = (row: UserVO) => {
   ElMessageBox.prompt(t('doctor.newPasswordPrompt', { name: row.nickName }), t('doctor.resetPwd'), {
     confirmButtonText: t('common.confirm'),
     cancelButtonText: t('common.cancel'),
-    inputPattern: /^.{5,20}$/,
+    inputPattern: passwordPattern,
     inputErrorMessage: t('doctor.passwordLength')
   }).then(async ({ value }) => {
     const [err] = await to(resetUserPwd(row.userId, value))
@@ -516,5 +521,19 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: 20px;
+}
+
+.doctor-form {
+  :deep(.el-form-item) {
+    margin-bottom: 28px;
+  }
+
+  :deep(.el-form-item__error) {
+    position: static;
+    margin-top: 4px;
+    line-height: 16px;
+    white-space: normal;
+    word-break: break-all;
+  }
 }
 </style>
