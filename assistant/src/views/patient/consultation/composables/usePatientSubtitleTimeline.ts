@@ -1,4 +1,4 @@
-import type { ASRMessage } from 'dingrtc-asr'
+﻿import type { ASRMessage } from 'dingrtc-asr'
 import { ref } from 'vue'
 import type {
   ManualTimelineMessageParams,
@@ -309,6 +309,52 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     return matchedItem
   }
 
+  const findActiveSourceItemForTranslation = (message: ASRMessage) => {
+    const incomingTime = normalizeBeginTime(message) || normalizeTimestamp(message)
+    let bestItem: SubtitleTimelineItem | undefined
+    let bestScore = Number.POSITIVE_INFINITY
+
+    for (let index = items.value.length - 1; index >= 0; index -= 1) {
+      const item = items.value[index]
+
+      if (item.speakerId !== message.uid) {
+        continue
+      }
+
+      if (item.messageType !== 'subtitle') {
+        continue
+      }
+
+      if (item.translatedFinal) {
+        continue
+      }
+
+      const isActiveSentence = !item.sourceFinal || !item.isFinal
+      const recentlyFinished =
+        item.sourceFinal &&
+        item.isFinal &&
+        incomingTime > 0 &&
+        (item.endTime || item.beginTime || item.timestamp || item.anchorTimestamp || 0) > 0 &&
+        incomingTime - (item.endTime || item.beginTime || item.timestamp || item.anchorTimestamp || 0) <= 3000
+
+      if (!isActiveSentence && !recentlyFinished) {
+        continue
+      }
+
+      const itemTime = item.endTime || item.beginTime || item.timestamp || item.anchorTimestamp
+      const delta = incomingTime > 0 && itemTime > 0 ? Math.abs(itemTime - incomingTime) : 999999
+      const penalty = isActiveSentence ? 0 : 1500
+      const score = delta + penalty
+
+      if (score < bestScore) {
+        bestScore = score
+        bestItem = item
+      }
+    }
+
+    return bestItem
+  }
+
   const resolveTimelineItem = (message: ASRMessage) => {
     if (!message.translated) {
       return (
@@ -321,6 +367,7 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     return (
       findRecordByBeginTime(message) ||
       findAnyRecordBySentenceIndex(message) ||
+      findActiveSourceItemForTranslation(message) ||
       findRecentTranslatableRecord(message)
     )
   }
@@ -589,7 +636,7 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
       findAnyRecordByBeginTime(message) ||
       (!message.translated && sentenceIndex >= 0
         ? findLatestRecordBySentenceIndex(message.uid, sentenceIndex)
-        : findRecentTranslatableRecord(message))
+        : findActiveSourceItemForTranslation(message) || findRecentTranslatableRecord(message))
 
     if (!item) {
       return

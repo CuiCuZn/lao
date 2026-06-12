@@ -495,13 +495,13 @@ export const usePatientConsultationSession = () => {
     destroyRemoteTracks()
 
     try {
-      primaryAsr.value?.detach()
+      await primaryAsr.value?.detach()
     } catch {
       undefined
     }
 
     try {
-      secondaryAsr.value?.detach()
+      await secondaryAsr.value?.detach()
     } catch {
       undefined
     }

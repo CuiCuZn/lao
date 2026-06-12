@@ -162,6 +162,9 @@ const markSseAlive = (streamId: number, _reason: string) => {
   }
 
   lastSseActivityAt = Date.now()
+  if (_reason === 'heartbeat') {
+    console.log('[assistant-sse] 心跳检测一次', { streamId })
+  }
 }
 
 const scheduleReconnect = () => {
@@ -171,11 +174,14 @@ const scheduleReconnect = () => {
 
   clearReconnectTimer()
   reconnectAttempts += 1
+  const delay = Math.min(3000 + reconnectAttempts * 1000, 10000)
+  console.log('[assistant-sse] 正在安排重连', { attempt: reconnectAttempts, delayMs: delay })
   reconnectTimer = setTimeout(() => {
     if (!manualClose && activeRouter && getToken()) {
+      console.log('[assistant-sse] 正在尝试重连', { attempt: reconnectAttempts })
       void startAssistantConsultationSse(activeRouter).catch(() => undefined)
     }
-  }, Math.min(3000 + reconnectAttempts * 1000, 10000))
+  }, delay)
 }
 
 const startSseWatchdog = (streamId: number) => {
@@ -190,7 +196,7 @@ const startSseWatchdog = (streamId: number) => {
       return
     }
 
-    console.warn('[assistant-sse] heartbeat timeout, reconnecting', {
+    console.warn('[assistant-sse] 心跳超时，准备重连', {
       streamId,
       inactiveMs,
       timeout: SSE_HEARTBEAT_TIMEOUT
@@ -221,6 +227,7 @@ export function clearAssistantConsultationSseContext() {
 }
 
 export function stopAssistantConsultationSse() {
+  console.log('[assistant-sse] 手动停止 SSE 连接')
   manualClose = true
   activeStreamId += 1
   sseOpened = false
@@ -239,15 +246,18 @@ export function startAssistantConsultationSse(router: Router) {
   activeRouter = router
 
   if (sseOpened) {
+    console.log('[assistant-sse] 已连接，跳过重复连接')
     return Promise.resolve()
   }
 
   if (openPromise) {
+    console.log('[assistant-sse] 正在连接中，复用已有 Promise')
     return openPromise
   }
 
   const token = getToken()
   if (!token) {
+    console.error('[assistant-sse] 缺少 token，无法启动 SSE')
     return Promise.reject(new Error('missingToken'))
   }
 
@@ -255,6 +265,7 @@ export function startAssistantConsultationSse(router: Router) {
   clearReconnectTimer()
   activeStreamId += 1
   const streamId = activeStreamId
+  console.log('[assistant-sse] 开始连接 SSE', { streamId, attempt: reconnectAttempts })
   markSseAlive(streamId, 'start')
   startSseWatchdog(streamId)
 
@@ -298,6 +309,7 @@ export function startAssistantConsultationSse(router: Router) {
     }
     const openTimer = window.setTimeout(() => {
       if (streamId === activeStreamId && !openSettled) {
+        console.error('[assistant-sse] 连接超时 (' + SSE_OPEN_TIMEOUT + 'ms)', { streamId })
         failOpen(new Error('sseOpenTimeout'), true)
       }
     }, SSE_OPEN_TIMEOUT)
@@ -311,6 +323,8 @@ export function startAssistantConsultationSse(router: Router) {
       onOpen: () => {
         if (streamId !== activeStreamId) return
         markSseAlive(streamId, 'open')
+        const wasReconnect = reconnectAttempts > 0
+        console.log('[assistant-sse] SSE 连接成功' + (wasReconnect ? ' (第' + reconnectAttempts + '次重连)' : ''), { streamId })
         reconnectAttempts = 0
         settleOpen()
       },
@@ -325,12 +339,14 @@ export function startAssistantConsultationSse(router: Router) {
       },
       onError: (error) => {
         if (streamId !== activeStreamId) return
+        console.error('[assistant-sse] 连接错误:', { streamId, error: error.message })
         if (!openSettled) {
           failOpen(error)
         }
       },
       onClose: () => {
         if (streamId !== activeStreamId) return
+        console.log('[assistant-sse] 连接已关闭', { streamId, manualClose })
         sseConnection = undefined
         sseOpened = false
         openPromise = undefined

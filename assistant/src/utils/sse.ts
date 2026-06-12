@@ -38,6 +38,7 @@ export function connectSse(url: string, options: ConnectSseOptions = {}) {
 
 async function startStream(url: string, controller: AbortController, options: ConnectSseOptions) {
   try {
+    console.log('[sse] 正在连接:', url)
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -62,6 +63,7 @@ async function startStream(url: string, controller: AbortController, options: Co
     while (true) {
       const { value, done } = await reader.read()
       if (done) {
+        console.log('[sse] 流已结束')
         break
       }
 
@@ -95,9 +97,13 @@ async function startStream(url: string, controller: AbortController, options: Co
     }
   } catch (error) {
     if (!controller.signal.aborted) {
+      console.error('[sse] 连接错误:', error)
       options.onError?.(normalizeError(error))
+    } else {
+      console.log('[sse] 连接已中断 (手动关闭)')
     }
   } finally {
+    console.log('[sse] 连接已关闭')
     options.onClose?.()
   }
 }
