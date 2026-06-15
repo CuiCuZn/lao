@@ -67,6 +67,7 @@ export interface PatientVerifyResponse {
 
 export interface PatientSaveParams {
   patientId?: number;
+  patientNumber?: string;
   patientName: string;
   patientSex: string;
   patientBirthday: string;

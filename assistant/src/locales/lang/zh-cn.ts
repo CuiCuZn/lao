@@ -228,6 +228,7 @@ export default {
       submitText: '提交',
       verifying: '系统比对中...',
       emptyDataMessage: '未匹配到该患者的建档信息，正在跳转信息录入流程。',
+      noPatientByOtherMethod: '无患者信息，请通过就诊号验证',
       verifySuccess: '核验通过',
       description: '支持扫描就诊凭证、录入身份证号或手机号。',
       tabs: {
@@ -265,12 +266,21 @@ export default {
         placeholderDescription: '目前仅预留四诊硬件采集面板位，实际软硬件接口及原始图谱解析将于后续迭代统一接管。'
       },
       submitSummary: '保存档案并提交采集信息',
+      validation: {
+        patientNumber: '请输入就诊号',
+        patientName: '请输入姓名',
+        patientSex: '请选择性别',
+        patientBirthday: '请选择出生日期',
+        patientIdCard: '请输入身份证号',
+        patientPhone: '请输入手机号'
+      },
       saveIdle: '等待保存',
       saveLoading: '载入中...',
       saveSaving: '保存中...',
       saveSaved: '已保存',
       saveError: '保存失败',
       fields: {
+        patientNumber: '就诊号',
         name: '姓名',
         sex: '性别',
         birthday: '出生日期',
@@ -287,6 +297,7 @@ export default {
         married: '已婚'
       },
       placeholders: {
+        patientNumber: '请输入就诊ID',
         name: '请输入姓名',
         birthday: '请选择出生日期',
         age: '请输入年龄',
@@ -444,8 +455,8 @@ export default {
         leaveConfirmDescription: '挂断后可重新连接',
         leaveConfirmCancel: '返回',
         leaveConfirmConfirm: '确认挂断',
-        captureButton: '拍照',
-        captureTitle: '侧面高拍仪拍照',
+        captureButton: '报告单',
+        captureTitle: '上传诊疗单',
         captureStarting: '正在打开侧面高拍仪...',
         capture: '拍照',
         captureRetake: '重拍',
@@ -506,8 +517,8 @@ export default {
         recognitionSaveUnavailable: '暂无可保存的识别结果。',
         recognitionSaveFailed: '确认上传失败，请稍后重试。',
         cameraLabels: {
-          sideScanner: '侧面高拍仪',
           patientCamera: '患者摄像头',
+          sideScanner: '侧面高拍仪',
           doctorCamera: '医生摄像头'
         }
       }

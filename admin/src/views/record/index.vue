@@ -50,7 +50,7 @@
       <el-table v-loading="loading" :data="recordList" height="100%" style="width: 100%; margin-top: 15px" border>
         <el-table-column :label="t('record.caseId')" align="center" min-width="120">
           <template #default="scope">
-            <span>{{ displayValue(scope.row.caseId ?? scope.row.recordId) }}</span>
+            <span>{{ displayValue(scope.row.patientNumber ?? scope.row.recordId) }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="t('record.patientName')" align="center" prop="patientName" min-width="140" show-overflow-tooltip>

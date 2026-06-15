@@ -34,6 +34,7 @@
                 :value="verifyCode"
                 class="verify-input"
                 :placeholder="currentPlaceholder"
+                :maxlength="verifyTabs[activeType].maxlength"
                 @input="handleVerifyCodeInput"
                 @keyup.enter="handleVerify"
               />
@@ -85,9 +86,9 @@ const emptyDialogMessage = ref('')
 const emptyDialogTitleId = 'patient-identify-empty-dialog-title'
 
 const verifyTabs = computed(() => [
-  { value: 0 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.visitNo') },
-  { value: 1 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.idCard') },
-  { value: 2 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.phone') }
+  { value: 0 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.visitNo'), maxlength: 6 },
+  { value: 1 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.idCard'), maxlength: 18 },
+  { value: 2 as PatientVerifyType, label: t('assistant.patientIdentify.tabs.phone'), maxlength: 11 }
 ])
 
 const currentPlaceholder = computed(() => {
@@ -128,7 +129,7 @@ const closeEmptyDialog = () => {
 
 const confirmEmptyDialog = async () => {
   emptyDialogVisible.value = false
-  await router.push('/assistant/intake')
+  await router.push({ path: '/assistant/intake', query: { patientNumber: verifyCode.value } })
 }
 
 const hasMeaningfulData = (value: unknown) => {
@@ -159,7 +160,7 @@ const getQueryPatientId = (value: unknown) => {
 const handleVerify = async () => {
   const code = normalizeVerifyCode(verifyCode.value)
   verifyCode.value = code
-  if (!code) {
+  if (!code ) {
     ElMessage.warning(currentPlaceholder.value)
     return
   }
@@ -177,11 +178,13 @@ const handleVerify = async () => {
       const patientId = getQueryPatientId(verifyData?.patientId)
       await router.push({
         path: '/assistant/intake',
-        ...(patientId ? { query: { patientId } } : {})
+        ...(patientId ? { query: { patientId, patientNumber: verifyCode.value } } : { query: { patientNumber: verifyCode.value } })
       })
-    } else {
+    } else if (activeType.value === 0) {
       emptyDialogMessage.value = response?.msg || t('assistant.patientIdentify.emptyDataMessage')
       emptyDialogVisible.value = true
+    } else {
+      ElMessage.warning(t('assistant.patientIdentify.noPatientByOtherMethod'))
     }
   } finally {
     loading.value = false

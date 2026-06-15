@@ -48,9 +48,9 @@
 
       <!-- 3. 数据表格 -->
       <el-table v-loading="loading" :data="userList" height="100%" style="width: 100%; margin-top: 15px" border>
-        <el-table-column :label="t('doctor.nickName')" align="center" prop="nickName" />
-        <el-table-column :label="t('doctor.userName')" align="center" prop="userName" />
-        <el-table-column :label="t('doctor.role')" align="center" min-width="120" show-overflow-tooltip>
+        <el-table-column :label="t('doctor.nickName')" align="center"  min-width="120" prop="nickName" />
+        <el-table-column :label="t('doctor.userName')" align="center"  min-width="120" prop="userName" />
+        <el-table-column :label="t('doctor.role')" align="center" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ getRoleNames(scope.row) }}</span>
           </template>
@@ -69,7 +69,7 @@
           </template>
         </el-table-column>
         <el-table-column :label="t('doctor.createTime')" align="center" prop="createTime" width="160" />
-        <el-table-column :label="t('common.operate')" align="center" class-name="small-padding fixed-width" width="200">
+        <el-table-column :label="t('common.operate')" align="center" class-name="small-padding fixed-width" width="300">
           <template #default="scope">
             <el-button link type="primary" @click="handleDetail(scope.row)">{{ t('common.view') }}</el-button>
             <el-button link type="primary" @click="handleUpdate(scope.row)">{{ t('common.edit') }}</el-button>
@@ -458,7 +458,7 @@ const handleResetPwd = (row: UserVO) => {
     inputPattern: passwordPattern,
     inputErrorMessage: t('doctor.passwordLength')
   }).then(async ({ value }) => {
-    const [err] = await to(resetUserPwd(row.userId, value))
+    const [err] = await to(resetUserPwd(row.userId, row.userName, value))
     if (!err) {
       ElMessage.success(t('doctor.resetPwdSuccess'))
     }

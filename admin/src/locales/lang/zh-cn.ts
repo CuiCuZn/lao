@@ -193,7 +193,7 @@ export default {
     editDoctor: '修改医师信息',
     doctorDetail: '医师执业详情',
     confirmStatus: '确认要{operate}该医师账号吗？',
-    resetPwd: '重置登录密钥',
+    resetPwd: '重置密码',
     confirmResetPwd: '确认要重置该医师的登录密钥吗？',
     newPasswordPrompt: '请输入 "{name}" 的新密码',
     passwordLength: '密码至少 8 位，需包含大小写字母、数字和特殊字符 {\'@\'}$!%*?&',

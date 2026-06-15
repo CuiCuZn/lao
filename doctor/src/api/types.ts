@@ -290,7 +290,7 @@ export interface GenerateMedicalRecordResponse {
 export interface DrugPrescriptionQuery {
   pageNum: number;
   pageSize: number;
-  drugName?: string;
+  drugNamePrecise?: string;
   drugModel?: string;
   drugType?: string;
 }

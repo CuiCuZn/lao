@@ -67,12 +67,14 @@ export function changeUserStatus(userId: string | number, status: string): Promi
 
 /**
  * 重置密码
- * @param userId 
- * @param password 
+ * @param userId
+ * @param userName
+ * @param password
  */
-export function resetUserPwd(userId: string | number, password: string): Promise<ResponseData<any>> {
+export function resetUserPwd(userId: string | number, userName: string, password: string): Promise<ResponseData<any>> {
   const data = {
     userId,
+    userName,
     password
   }
   return request.request({

@@ -361,19 +361,18 @@
           </div>
 
           <div v-else-if="activeTab === 'fourDiagnoses'" class="record-content four-diagnosis-content">
-            <div v-if="fourApparatusUrl" class="four-diagnosis-report-card">
+            <div class="four-diagnosis-report-card">
               <div class="four-report-main">
                 <el-icon><document /></el-icon>
                 <strong>{{ t('doctorVideo.consultation.fourDiagnosisReportTitle') }}</strong>
               </div>
-              <button type="button" @click="fourDiagnosisPdfVisible = true">
-                {{ t('doctorVideo.consultation.fourDiagnosisViewReport') }}
+              <button
+                type="button"
+                :disabled="fourDiagnosisLoading"
+                @click="handleFourDiagnosisReportView"
+              >
+                {{ fourDiagnosisLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.fourDiagnosisViewReport') }}
               </button>
-            </div>
-
-            <div v-else class="four-diagnosis-empty-state">
-              <el-icon><document /></el-icon>
-              <h3>{{ t('doctorVideo.consultation.fourDiagnosisEmptyTitle') }}</h3>
             </div>
 
             <div class="four-diagnosis-report-card inspection-report-card">
@@ -404,7 +403,7 @@
         </div>
         <iframe
           class="four-pdf-preview-frame"
-          :src="fourApparatusUrl"
+          :src="fourDiagnosisPdfUrl"
           :title="t('doctorVideo.consultation.fourDiagnosisPdfTitle')"
         ></iframe>
       </div>
@@ -555,7 +554,7 @@ import type {
   InspectionRecognizedItem,
   InspectionReportItem
 } from '@/api/types'
-import { generateMedicalRecord, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
+import { generateMedicalRecord, getBasicInfo, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
 import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { useUserStore } from '@/stores/user'
 import { showConfirmDialog } from '@/utils/confirm-dialog'
@@ -629,6 +628,8 @@ const generatingMedicalRecord = ref(false)
 const cameraDialogVisible = ref(false)
 const cameraDialogRequired = ref(false)
 const fourDiagnosisPdfVisible = ref(false)
+const fourDiagnosisPdfUrl = ref('')
+const fourDiagnosisLoading = ref(false)
 const inspectionReportVisible = ref(false)
 const inspectionReportLoading = ref(false)
 const inspectionReportList = ref<InspectionReportItem[]>([])
@@ -754,7 +755,6 @@ const consultationLang = computed<'lo' | 'cn'>(() => {
 const translationEnabled = computed(() => consultationLang.value === 'lo')
 const subtitleTranslationEnabled = computed(() => true)
 const manualChatTranslationEnabled = computed(() => translationEnabled.value || subtitleTranslationEnabled.value)
-const fourApparatusUrl = computed(() => resolveContextText(consultationContext.value.fourApparatusUrl))
 
 const patientName = computed(() => {
   return consultationContext.value.patientName || queryValue('patientId') || t('workbench.unknownPatient')
@@ -1081,7 +1081,7 @@ const fetchPrescriptionList = async (reset = false) => {
     const response = await listDrugPrescription({
       pageNum: nextPageNum,
       pageSize: PRESCRIPTION_PAGE_SIZE,
-      drugName: prescriptionKeyword.value || undefined
+      drugNamePrecise: prescriptionKeyword.value || undefined
     })
 
     if (requestId !== prescriptionListRequestId) return
@@ -1115,15 +1115,22 @@ const fetchPrescriptionList = async (reset = false) => {
 }
 
 const handlePrescriptionVisibleChange = (visible: boolean) => {
-  if (visible && !prescriptionOptions.value.length && !prescriptionListLoading.value) {
-    void fetchPrescriptionList(true)
-  }
+  if (!visible) return
+  // 已有数据：直接展示，不重复请求，靠滚动触底加载更多
+  if (prescriptionOptions.value.length > 0) return
+  // 没有数据：直接调接口加载第一页
+  if (prescriptionListLoading.value) return
+  void fetchPrescriptionList(true)
 }
 
 const handlePrescriptionRemoteSearch = (keyword: string) => {
-  prescriptionKeyword.value = keyword.trim()
+  const trimmedKeyword = keyword.trim()
+  prescriptionKeyword.value = trimmedKeyword
   window.clearTimeout(prescriptionSearchTimer)
   prescriptionSearchTimer = window.setTimeout(() => {
+    // el-select 打开时会自动用当前输入框的值（通常为空）再触发一次 remote-method，
+    // 搜索词未变且已有数据时不重新请求，避免每次打开下拉都打接口
+    if (trimmedKeyword === '' && prescriptionOptions.value.length > 0) return
     void fetchPrescriptionList(true)
   }, 300)
 }
@@ -1185,28 +1192,31 @@ const onPrescriptionSelect = async (prescriptionId: string | number | boolean | 
 
   const listItem = prescriptionOptions.value.find((prescription) => resolvePrescriptionId(prescription) === normalizedId)
   selectedPrescription.value = listItem || null
-  editablePrescriptionHerbs.value = []
+  editablePrescriptionHerbs.value = listItem ? normalizePrescriptionHerbs(listItem) : []
 
   const requestId = ++prescriptionDetailRequestId
-  prescriptionDetailLoading.value = true
+  prescriptionDetailLoading.value = !listItem
 
   try {
     const response = await getDrugPrescription(normalizedId)
     if (requestId !== prescriptionDetailRequestId) return
 
     const detail = response?.data || listItem || null
-    selectedPrescription.value = detail
-    editablePrescriptionHerbs.value = detail ? normalizePrescriptionHerbs(detail) : []
-
+    if (detail && detail !== selectedPrescription.value) {
+      selectedPrescription.value = detail
+    }
     if (detail) {
+      editablePrescriptionHerbs.value = normalizePrescriptionHerbs(detail)
       prescriptionOptions.value = mergePrescriptionOptions(prescriptionOptions.value, [detail])
     }
     refreshPrescriptionValidation()
   } catch (error) {
     if (requestId !== prescriptionDetailRequestId) return
     console.warn('Failed to load prescription detail.', error)
-    selectedPrescription.value = listItem || null
-    editablePrescriptionHerbs.value = listItem ? normalizePrescriptionHerbs(listItem) : []
+    if (!selectedPrescription.value) {
+      selectedPrescription.value = listItem || null
+      editablePrescriptionHerbs.value = listItem ? normalizePrescriptionHerbs(listItem) : []
+    }
     refreshPrescriptionValidation()
     ElMessage.warning(t('doctorVideo.consultation.prescriptionDetailLoadFailed'))
   } finally {
@@ -1620,6 +1630,30 @@ const startInspectionAnalysisPolling = (batchId: string | number) => {
 const closeInspectionReportDialog = () => {
   inspectionReportVisible.value = false
   stopInspectionAnalysisPolling()
+}
+
+const handleFourDiagnosisReportView = async () => {
+  if (!caseId.value) {
+    ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
+    return
+  }
+
+  fourDiagnosisLoading.value = true
+
+  try {
+    const response = await getBasicInfo(caseId.value)
+    const url = resolveContextText((response?.data as { fourApparatusUrl?: string } | null)?.fourApparatusUrl)
+
+    if (!url) {
+      ElMessage.warning(t('doctorVideo.consultation.fourDiagnosisEmptyTitle'))
+      return
+    }
+
+    fourDiagnosisPdfUrl.value = url
+    fourDiagnosisPdfVisible.value = true
+  } finally {
+    fourDiagnosisLoading.value = false
+  }
 }
 
 const handleInspectionReportView = async () => {
@@ -3353,8 +3387,8 @@ onBeforeUnmount(async () => {
 }
 
 .inspection-report-dialog {
-  width: min(1480px, calc(100vw - 32px));
-  height: min(860px, calc(100vh - 32px));
+  width: min(1250px, calc(100vw - 32px));
+  height: min(700px, calc(100vh - 32px));
   border-radius: 10px;
 }
 

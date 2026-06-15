@@ -24,29 +24,41 @@
             <div class="panel-title">
               <el-icon><tickets /></el-icon>
               <h3>{{ t('assistant.intake.basicTitle') }}</h3>
+              <!-- [隐藏] 患者ID展示 - 后续可能需要恢复 -->
+              <!--
               <div v-if="displayPatientId" class="patient-record-id">
                 <span>{{ t('assistant.intake.patientId') }}：</span>
                 <strong>{{ displayPatientId }}</strong>
               </div>
+              -->
             </div>
 
             <div class="form-grid">
-              <label class="field field-half">
-                <span class="field-label">{{ t('assistant.intake.fields.name') }}<i>*</i></span>
-                <input v-model="form.patientName" :placeholder="t('assistant.intake.placeholders.name')" @blur="triggerImmediateSave" />
+
+              <label class="field field-half" :ref="setFieldRef('patientNumber')">
+                <span class="field-label">{{ t('assistant.intake.fields.patientNumber') }}<i>*</i></span>
+                <input v-model="form.patientNumber" inputmode="numeric" pattern="[0-9]*" maxlength="6" :placeholder="t('assistant.intake.placeholders.patientNumber')" @input="handlePatientNumberInput" @blur="triggerImmediateSave" :class="{ 'has-error': formErrors.patientNumber }" />
+                <span v-if="formErrors.patientNumber" class="field-error">{{ formErrors.patientNumber }}</span>
               </label>
 
-              <div class="field field-half">
+              <label class="field field-half" :ref="setFieldRef('patientName')">
+                <span class="field-label">{{ t('assistant.intake.fields.name') }}<i>*</i></span>
+                <input v-model="form.patientName" :placeholder="t('assistant.intake.placeholders.name')" @input="clearFieldError('patientName')" @blur="triggerImmediateSave" :class="{ 'has-error': formErrors.patientName }" />
+                <span v-if="formErrors.patientName" class="field-error">{{ formErrors.patientName }}</span>
+              </label>
+
+              <div class="field field-half" :ref="setFieldRef('patientSex')">
                 <span class="field-label">{{ t('assistant.intake.fields.sex') }}<i>*</i></span>
                 <div class="gender-group">
                   <label v-for="item in sexOptions" :key="item.dictValue" class="gender-option">
-                    <input v-model="form.patientSex" type="radio" :value="item.dictValue" @change="triggerImmediateSave" />
+                    <input v-model="form.patientSex" type="radio" :value="item.dictValue" @change="handleSexChange" />
                     <span>{{ item.dictLabel }}</span>
                   </label>
                 </div>
+                <span v-if="formErrors.patientSex" class="field-error">{{ formErrors.patientSex }}</span>
               </div>
 
-              <label class="field field-half">
+              <label class="field field-half" :ref="setFieldRef('patientBirthday')">
                 <span class="field-label">{{ t('assistant.intake.fields.birthday') }}<i>*</i></span>
                 <el-date-picker
                   v-model="form.patientBirthday"
@@ -56,8 +68,9 @@
                   value-format="YYYY-MM-DD"
                   :editable="false"
                   :placeholder="t('assistant.intake.placeholders.birthday')"
-                  @change="triggerImmediateSave"
+                  @change="handleBirthdayChange"
                 />
+                <span v-if="formErrors.patientBirthday" class="field-error">{{ formErrors.patientBirthday }}</span>
               </label>
 
               <label class="field field-half">
@@ -72,14 +85,16 @@
                 />
               </label>
 
-              <label class="field field-half">
+              <label class="field field-half" :ref="setFieldRef('patientIdCard')">
                 <span class="field-label">{{ t('assistant.intake.fields.idCard') }}<i>*</i></span>
-                <input v-model="form.patientIdCard" :placeholder="t('assistant.intake.placeholders.idCard')" @blur="triggerImmediateSave" />
+                <input v-model="form.patientIdCard" :placeholder="t('assistant.intake.placeholders.idCard')" @input="clearFieldError('patientIdCard')" @blur="triggerImmediateSave" :class="{ 'has-error': formErrors.patientIdCard }" />
+                <span v-if="formErrors.patientIdCard" class="field-error">{{ formErrors.patientIdCard }}</span>
               </label>
 
-              <label class="field field-half">
+              <label class="field field-half" :ref="setFieldRef('patientPhone')">
                 <span class="field-label">{{ t('assistant.intake.fields.phone') }}<i>*</i></span>
-                <input v-model="form.patientPhone" :placeholder="t('assistant.intake.placeholders.phone')" @blur="triggerImmediateSave" />
+                <input v-model="form.patientPhone" :placeholder="t('assistant.intake.placeholders.phone')" @input="clearFieldError('patientPhone')" @blur="triggerImmediateSave" :class="{ 'has-error': formErrors.patientPhone }" />
+                <span v-if="formErrors.patientPhone" class="field-error">{{ formErrors.patientPhone }}</span>
               </label>
 
               <label class="field field-half">
@@ -202,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft, Close, Document, Download, FirstAidKit, FullScreen, Tickets } from '@element-plus/icons-vue'
@@ -320,6 +335,7 @@ const toIsoDateTime = (value: string) => {
 }
 
 const createEmptyForm = () => ({
+  patientNumber: '',
   patientName: '',
   patientSex: '',
   patientBirthday: '',
@@ -370,6 +386,7 @@ const displayPatientId = computed(() => {
 
 const buildSavePayload = (): PatientSaveParams => ({
   ...(patientId.value !== undefined ? { patientId: patientId.value } : {}),
+  patientNumber: form.patientNumber.trim(),
   patientName: form.patientName.trim(),
   patientSex: form.patientSex,
   patientBirthday: toIsoDateTime(form.patientBirthday),
@@ -389,12 +406,89 @@ const buildSavePayload = (): PatientSaveParams => ({
 
 const validateForm = () => {
   return Boolean(
+    form.patientNumber.trim() &&
     form.patientName.trim() &&
     form.patientSex &&
     form.patientBirthday.trim() &&
     form.patientIdCard.trim() &&
     form.patientPhone.trim()
   )
+}
+
+const requiredFieldErrorMessages: Record<RequiredFieldKey, string> = {
+  patientNumber: t('assistant.intake.validation.patientNumber'),
+  patientName: t('assistant.intake.validation.patientName'),
+  patientSex: t('assistant.intake.validation.patientSex'),
+  patientBirthday: t('assistant.intake.validation.patientBirthday'),
+  patientIdCard: t('assistant.intake.validation.patientIdCard'),
+  patientPhone: t('assistant.intake.validation.patientPhone')
+}
+
+type RequiredFieldKey =
+  | 'patientNumber'
+  | 'patientName'
+  | 'patientSex'
+  | 'patientBirthday'
+  | 'patientIdCard'
+  | 'patientPhone'
+
+const createEmptyFormErrors = (): Record<RequiredFieldKey, string> => ({
+  patientNumber: '',
+  patientName: '',
+  patientSex: '',
+  patientBirthday: '',
+  patientIdCard: '',
+  patientPhone: ''
+})
+
+const formErrors = reactive(createEmptyFormErrors())
+const fieldRefs = reactive<Record<RequiredFieldKey, HTMLElement | null>>({
+  patientNumber: null,
+  patientName: null,
+  patientSex: null,
+  patientBirthday: null,
+  patientIdCard: null,
+  patientPhone: null
+})
+
+const setFieldRef = (key: RequiredFieldKey) => (el: Element | ComponentPublicInstance | null) => {
+  fieldRefs[key] = (el as HTMLElement | null) ?? null
+}
+
+const clearFieldError = (key: RequiredFieldKey) => {
+  if (formErrors[key]) {
+    formErrors[key] = ''
+  }
+}
+
+const validateFormWithErrors = (): boolean => {
+  const checks: Array<{ key: RequiredFieldKey; valid: boolean }> = [
+    { key: 'patientNumber', valid: Boolean(form.patientNumber.trim()) },
+    { key: 'patientName', valid: Boolean(form.patientName.trim()) },
+    { key: 'patientSex', valid: Boolean(form.patientSex) },
+    { key: 'patientBirthday', valid: Boolean(form.patientBirthday.trim()) },
+    { key: 'patientIdCard', valid: Boolean(form.patientIdCard.trim()) },
+    { key: 'patientPhone', valid: Boolean(form.patientPhone.trim()) }
+  ]
+
+  let firstInvalidKey: RequiredFieldKey | null = null
+
+  for (const { key, valid } of checks) {
+    formErrors[key] = valid ? '' : requiredFieldErrorMessages[key]
+    if (!valid && firstInvalidKey === null) {
+      firstInvalidKey = key
+    }
+  }
+
+  if (firstInvalidKey !== null) {
+    const target = fieldRefs[firstInvalidKey]
+    if (target && typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    return false
+  }
+
+  return true
 }
 
 const saveStatusText = computed(() => {
@@ -432,6 +526,7 @@ const hydrateForm = (data?: IntakePatientData | null) => {
   }
 
   fourApparatusUrl.value = takeText(data.fourApparatusUrl, fourApparatusUrl.value)
+  form.patientNumber = takeText(data.patientNumber, form.patientNumber)
   form.patientName = takeText(data.patientName, form.patientName)
   form.patientSex = takeText(data.patientSex, form.patientSex)
   form.patientBirthday = takeText(formatBirthday(String(data.patientBirthday || '')), form.patientBirthday)
@@ -559,7 +654,7 @@ const fetchFourDiagnosisData = async () => {
 
 const goCollectFourDiagnosisData = async () => {
   fourCollectionDialogVisible.value = false
-  await fetchFourDiagnosisData()
+  // await fetchFourDiagnosisData()
 }
 
 const goNextStep = () => {
@@ -587,6 +682,21 @@ const handleAgeInput = () => {
 const handleAgeBlur = () => {
   form.patientAge = normalizeAge(form.patientAge, true)
   triggerImmediateSave()
+}
+
+const handlePatientNumberInput = () => {
+  form.patientNumber = form.patientNumber.replace(/\D/g, '').slice(0, 6)
+  clearFieldError('patientNumber')
+}
+
+const handleSexChange = () => {
+  triggerImmediateSave()
+  clearFieldError('patientSex')
+}
+
+const handleBirthdayChange = () => {
+  triggerImmediateSave()
+  clearFieldError('patientBirthday')
 }
 
 watch(
@@ -624,6 +734,14 @@ const loadMaritalStatusDict = async () => {
 const getRoutePatientId = () => {
   const queryValue = Array.isArray(route.query.patientId) ? route.query.patientId[0] : route.query.patientId
   return toNumber(queryValue)
+}
+
+const getRoutePatientNumber = () => {
+  const queryValue = Array.isArray(route.query.patientNumber) ? route.query.patientNumber[0] : route.query.patientNumber
+  if (queryValue === null || queryValue === undefined) {
+    return ''
+  }
+  return String(queryValue).trim()
 }
 
 const syncPatientIdToRoute = async () => {
@@ -666,6 +784,7 @@ const initializeFromRouteQuery = async () => {
   clearSaveTimer()
   queuedSave.value = false
   saveState.value = 'idle'
+  Object.assign(formErrors, createEmptyFormErrors())
 
   patientId.value = getRoutePatientId()
   caseId.value = undefined
@@ -674,6 +793,8 @@ const initializeFromRouteQuery = async () => {
   pdfPreviewVisible.value = false
   sessionStore.setCaseId(undefined)
   resetForm()
+
+  form.patientNumber = getRoutePatientNumber()
 
   if (patientId.value === undefined) {
     resetSaveBaseline()
@@ -722,6 +843,10 @@ const goBack = () => {
 }
 
 const goToDoctorSelect = async () => {
+  if (!validateFormWithErrors()) {
+    return
+  }
+
   clearSaveTimer()
   const saved = await submitSave()
   if (!saved) {
@@ -1400,6 +1525,21 @@ const goToDoctorSelect = async () => {
 .field input:not([type='radio'])::placeholder,
 .field textarea::placeholder {
   color: #a5b2c1;
+}
+
+.field input.has-error:not([type='radio']),
+.field textarea.has-error,
+.field :deep(.field-date-picker.has-error .el-input__wrapper) {
+  border-color: #ff5a58;
+  box-shadow: 0 0 0 4px rgba(255, 90, 88, 0.12);
+}
+
+.field-error {
+  margin-top: 2px;
+  color: #ff5a58;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
 }
 
 .field :deep(.field-date-picker.el-date-editor) {

@@ -890,7 +890,7 @@ onBeforeUnmount(() => {
   position: relative;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
-  width: min(1766px, calc(100vw - 32px));
+  width: min(1250px, calc(100vw - 32px));
   height: min(820px, calc(100vh - 32px));
   max-height: calc(100vh - 32px);
   overflow: hidden;

@@ -1,6 +1,21 @@
 <template>
   <div class="consult-room-controls">
     <button
+      v-if="showCapture && onCapture"
+      type="button"
+      class="control-button control-button--secondary is-active"
+      :disabled="(captureControlsDisabled ?? controlsDisabled) || captureDisabled"
+      @click="onCapture"
+    >
+      <span class="icon-shell">
+        <!-- <el-icon><camera /></el-icon> -->
+        <!-- <el-icon><Upload /></el-icon> -->
+        <el-icon><UploadFilled /></el-icon>
+      </span>
+      <span class="label">{{ captureLabel || t('assistant.aideVideo.consultation.captureButton') }}</span>
+    </button>
+
+    <button
       v-if="showCamera"
       type="button"
       class="control-button control-button--secondary"
@@ -42,19 +57,6 @@
         </el-icon>
       </span>
       <span class="label">{{ micEnabled ? t('assistant.patientVideo.consultation.micOn') : t('assistant.patientVideo.consultation.micOff') }}</span>
-    </button>
-
-    <button
-      v-if="showCapture && onCapture"
-      type="button"
-      class="control-button control-button--secondary is-active"
-      :disabled="(captureControlsDisabled ?? controlsDisabled) || captureDisabled"
-      @click="onCapture"
-    >
-      <span class="icon-shell">
-        <el-icon><camera /></el-icon>
-      </span>
-      <span class="label">{{ captureLabel || t('assistant.aideVideo.consultation.captureButton') }}</span>
     </button>
 
     <button v-if="showLeave" type="button" class="control-button control-button--danger" @click="onLeave">

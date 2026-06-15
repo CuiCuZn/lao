@@ -1378,7 +1378,12 @@ const handleInspectionRecognize = async () => {
     return
   }
 
-  const fileUrlList = uploadedInspectionPhotos.value.map((photo) => takeOptionalText(photo.fileUrl)).filter(Boolean)
+  const fileUrlList = uploadedInspectionPhotos.value.map((photo) => {
+  const url = takeOptionalText(photo.fileUrl)
+  if (!url) return ''
+  // return `${url}?x-oss-process=image/resize,m_lfit,w_2048,h_1536`
+  return url
+}).filter(Boolean)
   if (!fileUrlList.length) {
     ElMessage.warning(t('assistant.aideVideo.consultation.captureUploadedEmpty'))
     return
@@ -2445,3 +2450,4 @@ onBeforeUnmount(async () => {
   }
 }
 </style>
+

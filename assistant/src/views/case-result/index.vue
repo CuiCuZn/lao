@@ -80,7 +80,7 @@
             </div>
           </section>
 
-          <section class="info-card">
+          <!-- <section class="info-card">
             <header class="section-title">
               <el-icon><DataBoard /></el-icon>
               <span>{{ t('assistant.caseResult.diagnosisData') }}</span>
@@ -100,7 +100,7 @@
                 <p>{{ t('assistant.caseResult.noDiagnosisDataDescription') }}</p>
               </div>
             </div>
-          </section>
+          </section> -->
 
           <section class="info-card">
             <header class="section-title">

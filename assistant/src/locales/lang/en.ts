@@ -228,6 +228,7 @@ export default {
       submitText: 'Verify Patient Identity',
       verifying: 'Authenticating...',
       emptyDataMessage: 'No patient demographics found. Redirecting to the patient intake flow.',
+      noPatientByOtherMethod: 'No patient information found. Please verify via the Encounter ID.',
       verifySuccess: 'The patient verification request has been submitted',
       description: 'Please enter the Encounter ID / ID Number / Mobile Number.',
       tabs: {
@@ -265,6 +266,14 @@ export default {
         placeholderDescription: 'Currently, a unified placeholder layout is implemented. Device integration, parsing, and clinical data rendering will be established later.'
       },
       submitSummary: 'Submit demographics and conclude data capture',
+      validation: {
+        patientNumber: 'Please enter the visit number',
+        patientName: 'Please enter the patient name',
+        patientSex: 'Please select the gender',
+        patientBirthday: 'Please select the date of birth',
+        patientIdCard: 'Please enter the ID number',
+        patientPhone: 'Please enter the mobile number'
+      },
       saveIdle: 'Waiting to Save',
       saveLoading: 'Loading...',
       saveSaving: 'Saving...',
@@ -287,6 +296,7 @@ export default {
         married: 'Married'
       },
       placeholders: {
+        patientNumber: 'Please enter the visit number',
         name: 'Please enter the patient name',
         birthday: 'Please select the date of birth',
         age: 'Please enter the age',
