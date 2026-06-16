@@ -335,6 +335,7 @@ export default {
       fourDiagnosisReportTitle: 'TCM Report',
       fourDiagnosisViewReport: 'View Report',
       fourDiagnosisPdfTitle: 'TCM Report',
+      fourDiagnosisPdfRefresh: 'Refresh Report',
       inspectionReportTitle: 'Inspection Report',
       inspectionReportDialogTitle: 'Inspection Report',
       inspectionReportLoading: 'Loading',

@@ -253,6 +253,7 @@ export default {
         emptyDescription: 'ຫຼັງຈາກເກັບຂໍ້ມູນສຳເລັດ ໃຫ້ກົດປຸ່ມດ້ານລຸ່ມ',
         fetchData: 'ດຶງຂໍ້ມູນ 4 ດ້ານ',
         fullscreen: 'ເບິ່ງເຕັມຈໍ',
+        refresh: 'ໂຫຼດຄືນໃໝ່',
         collectionMissingTitle: 'ຍັງບໍ່ໄດ້ເກັບຂໍ້ມູນ 4 ດ້ານ',
         collectionMissingDescription: 'ແນະນຳໃຫ້ເກັບຂໍ້ມູນ 4 ດ້ານ ເພື່ອປະເມີນສຸຂະພາບຄົນໄຂ້ໄດ້ຄົບຖ້ວນຂຶ້ນ',
         skipCollection: 'ຂ້າມການເກັບ',

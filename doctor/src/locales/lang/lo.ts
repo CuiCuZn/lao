@@ -337,6 +337,7 @@ export default {
       fourDiagnosisReportTitle: 'ລາຍງານ 4 ດ້ານ',
       fourDiagnosisViewReport: 'ເບິ່ງລາຍງານ',
       fourDiagnosisPdfTitle: 'ລາຍງານ 4 ດ້ານ',
+      fourDiagnosisPdfRefresh: 'ໂຫຼດລາຍງານຄືນໃໝ່',
       inspectionReportTitle: 'ລາຍງານກວດ',
       inspectionReportDialogTitle: 'ລາຍງານກວດ',
       inspectionReportLoading: 'ກຳລັງໂຫຼດ',

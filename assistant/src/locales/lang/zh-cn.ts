@@ -254,6 +254,7 @@ export default {
         emptyDescription: '四诊仪设备采集完成后点击下方按钮',
         fetchData: '获取四诊仪数据',
         fullscreen: '全屏查看',
+        refresh: '刷新',
         collectionMissingTitle: '尚未采集四诊仪信息',
         collectionMissingDescription: '建议采集四诊数据，便于更全面地评估患者健康状况',
         skipCollection: '跳过采集',

@@ -135,6 +135,16 @@
               <button
                 v-if="fourApparatusUrl"
                 type="button"
+                class="four-refresh-btn"
+                :title="t('assistant.intake.fourDiagnosis.refresh')"
+                :disabled="fetchingFourData"
+                @click="handleRefreshFourDiagnosis"
+              >
+                <el-icon :class="{ 'is-spinning': fetchingFourData }"><refresh /></el-icon>
+              </button>
+              <button
+                v-if="fourApparatusUrl"
+                type="button"
                 class="four-fullscreen-btn"
                 :title="t('assistant.intake.fourDiagnosis.fullscreen')"
                 @click="pdfPreviewVisible = true"
@@ -220,7 +230,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ArrowLeft, Close, Document, Download, FirstAidKit, FullScreen, Tickets } from '@element-plus/icons-vue'
+import { ArrowLeft, Close, Document, Download, FirstAidKit, FullScreen, Refresh, Tickets } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import AppPage from '@/components/AppPage.vue'
 import { listDictData } from '@/api/dict'
@@ -650,6 +660,20 @@ const fetchFourDiagnosisData = async () => {
   if (!hasFourData) {
     ElMessage.warning(t('assistant.intake.fourDiagnosis.noData'))
   }
+}
+
+const handleRefreshFourDiagnosis = async () => {
+  if (fetchingFourData.value) {
+    return
+  }
+
+  const currentPatientId = patientId.value ?? getRoutePatientId()
+  if (currentPatientId === undefined) {
+    ElMessage.warning(t('assistant.intake.fourDiagnosis.completeBasicInfo'))
+    return
+  }
+
+  await refreshFourDiagnosisDetail()
 }
 
 const goCollectFourDiagnosisData = async () => {
@@ -1102,10 +1126,48 @@ const goToDoctorSelect = async () => {
   text-overflow: ellipsis;
 }
 
-.four-fullscreen-btn {
+.four-refresh-btn {
   width: 36px;
   height: 36px;
   margin-left: auto;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(237, 244, 255, 0.96);
+  color: #4b79ee;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.four-refresh-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: rgba(222, 235, 255, 0.98);
+}
+
+.four-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.four-refresh-btn :deep(.is-spinning) {
+  animation: four-refresh-spin 1s linear infinite;
+}
+
+@keyframes four-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.four-fullscreen-btn {
+  width: 36px;
+  height: 36px;
   border: 0;
   border-radius: 10px;
   background: rgba(237, 244, 255, 0.96);

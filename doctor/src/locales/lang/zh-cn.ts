@@ -348,6 +348,7 @@ export default {
       fourDiagnosisReportTitle: '四诊报告',
       fourDiagnosisViewReport: '查看报告',
       fourDiagnosisPdfTitle: '四诊报告',
+      fourDiagnosisPdfRefresh: '刷新报告',
       inspectionReportTitle: '检查报告',
       inspectionReportDialogTitle: '检查报告',
       inspectionReportLoading: '加载中',

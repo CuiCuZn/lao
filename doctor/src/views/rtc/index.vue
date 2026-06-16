@@ -397,9 +397,20 @@
       <div class="four-pdf-preview-dialog">
         <div class="four-pdf-preview-header">
           <h3>{{ t('doctorVideo.consultation.fourDiagnosisPdfTitle') }}</h3>
-          <button type="button" :title="t('common.cancel')" @click="fourDiagnosisPdfVisible = false">
-            <el-icon><close /></el-icon>
-          </button>
+          <div class="four-pdf-preview-actions">
+            <button
+              type="button"
+              class="four-pdf-preview-refresh"
+              :title="t('doctorVideo.consultation.fourDiagnosisPdfRefresh')"
+              :disabled="fourDiagnosisPdfRefreshing"
+              @click="handleFourDiagnosisPdfRefresh"
+            >
+              <el-icon :class="{ 'is-spinning': fourDiagnosisPdfRefreshing }"><refresh /></el-icon>
+            </button>
+            <button type="button" :title="t('common.cancel')" @click="fourDiagnosisPdfVisible = false">
+              <el-icon><close /></el-icon>
+            </button>
+          </div>
         </div>
         <iframe
           class="four-pdf-preview-frame"
@@ -535,7 +546,7 @@
 </template>
 
 <script setup lang="ts">
-import { Close, Delete, Document, Plus, WarningFilled } from '@element-plus/icons-vue'
+import { Close, Delete, Document, Plus, Refresh, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -630,6 +641,7 @@ const cameraDialogRequired = ref(false)
 const fourDiagnosisPdfVisible = ref(false)
 const fourDiagnosisPdfUrl = ref('')
 const fourDiagnosisLoading = ref(false)
+const fourDiagnosisPdfRefreshing = ref(false)
 const inspectionReportVisible = ref(false)
 const inspectionReportLoading = ref(false)
 const inspectionReportList = ref<InspectionReportItem[]>([])
@@ -1632,6 +1644,11 @@ const closeInspectionReportDialog = () => {
   stopInspectionAnalysisPolling()
 }
 
+const fetchFourDiagnosisPdfUrl = async (): Promise<string> => {
+  const response = await getBasicInfo(caseId.value)
+  return resolveContextText((response?.data as { fourApparatusUrl?: string } | null)?.fourApparatusUrl)
+}
+
 const handleFourDiagnosisReportView = async () => {
   if (!caseId.value) {
     ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
@@ -1641,8 +1658,7 @@ const handleFourDiagnosisReportView = async () => {
   fourDiagnosisLoading.value = true
 
   try {
-    const response = await getBasicInfo(caseId.value)
-    const url = resolveContextText((response?.data as { fourApparatusUrl?: string } | null)?.fourApparatusUrl)
+    const url = await fetchFourDiagnosisPdfUrl()
 
     if (!url) {
       ElMessage.warning(t('doctorVideo.consultation.fourDiagnosisEmptyTitle'))
@@ -1653,6 +1669,32 @@ const handleFourDiagnosisReportView = async () => {
     fourDiagnosisPdfVisible.value = true
   } finally {
     fourDiagnosisLoading.value = false
+  }
+}
+
+const handleFourDiagnosisPdfRefresh = async () => {
+  if (!caseId.value) {
+    ElMessage.warning(t('doctorVideo.consultation.diagnosisCaseUnavailable'))
+    return
+  }
+
+  if (fourDiagnosisPdfRefreshing.value) {
+    return
+  }
+
+  fourDiagnosisPdfRefreshing.value = true
+
+  try {
+    const url = await fetchFourDiagnosisPdfUrl()
+
+    if (!url) {
+      ElMessage.warning(t('doctorVideo.consultation.fourDiagnosisEmptyTitle'))
+      return
+    }
+
+    fourDiagnosisPdfUrl.value = url
+  } finally {
+    fourDiagnosisPdfRefreshing.value = false
   }
 }
 
@@ -3376,6 +3418,30 @@ onBeforeUnmount(async () => {
 .four-pdf-preview-header button:hover {
   background: #eef4fb;
   color: #2f66ee;
+}
+
+.four-pdf-preview-header button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.four-pdf-preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.four-pdf-preview-actions .is-spinning {
+  animation: four-pdf-preview-spin 1s linear infinite;
+}
+
+@keyframes four-pdf-preview-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .four-pdf-preview-frame {

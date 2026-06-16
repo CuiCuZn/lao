@@ -254,6 +254,7 @@ export default {
         emptyDescription: 'After collection is complete, click the button below',
         fetchData: 'Get TCM Data',
         fullscreen: 'View Fullscreen',
+        refresh: 'Refresh',
         collectionMissingTitle: 'TCM device data has not been collected',
         collectionMissingDescription: 'Collecting TCM data is recommended for a more complete health assessment',
         skipCollection: 'Skip',
