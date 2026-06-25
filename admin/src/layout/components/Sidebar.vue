@@ -106,7 +106,14 @@ const getIcon = (route: any, parentRoute?: any) => {
     record: 'DocumentChecked',
     prescription: 'Tickets',
     recipe: 'Tickets',
-    medicine: 'FirstAidKit'
+    medicine: 'FirstAidKit',
+    patient: 'UserFilled',
+    role: 'Avatar',
+    log: 'Notebook',
+    operlog: 'Notebook',
+    '操作日志': 'Notebook',
+    syndrome: 'Collection',
+    '证型': 'Collection'
   }
 
   if (iconName && map[iconName]) return map[iconName]
@@ -114,6 +121,12 @@ const getIcon = (route: any, parentRoute?: any) => {
   if (routeText.includes('doctor') || routeText.includes('医师')) return 'FirstAidKit'
   if (routeText.includes('dept') || routeText.includes('department') || routeText.includes('科室')) return 'OfficeBuilding'
   if (routeText.includes('record') || routeText.includes('诊疗记录')) return 'DocumentChecked'
+  if (routeText.includes('dashboard') || routeText.includes('工作台')) return 'DataBoard'
+  if (routeText.includes('patient') || routeText.includes('患者')) return 'UserFilled'
+  if (routeText.includes('role') || routeText.includes('角色')) return 'Avatar'
+  if (routeText.includes('log') || routeText.includes('操作日志')) return 'Notebook'
+  if (routeText.includes('user') || routeText.includes('用户')) return 'User'
+  if (routeText.includes('syndrome') || routeText.includes('证型')) return 'Collection'
 
   return iconName || ''
 }

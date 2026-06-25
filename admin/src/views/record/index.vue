@@ -1,105 +1,116 @@
 <template>
   <div class="app-container">
-    <el-card class="search-card" shadow="never">
-      <el-form :model="queryParams" ref="queryRef" :inline="true">
-        <el-form-item :label="t('record.patientName')" prop="patientName">
+    <!-- 1. 搜索筛选卡片 -->
+    <div class="card search-card">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-label">{{ t('record.patientName') }}</span>
           <el-input
             v-model="queryParams.patientName"
             :placeholder="t('record.inputPatientName')"
             clearable
-            style="width: 200px"
+            class="filter-input"
             @keyup.enter="handleQuery"
           />
-        </el-form-item>
-        <el-form-item :label="t('record.doctorName')" prop="doctorName">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('record.doctorName') }}</span>
           <el-input
             v-model="queryParams.doctorName"
             :placeholder="t('record.inputDoctorName')"
             clearable
-            style="width: 200px"
+            class="filter-input"
             @keyup.enter="handleQuery"
           />
-        </el-form-item>
-        <el-form-item :label="t('record.departmentName')" prop="departmentName">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('record.departmentName') }}</span>
           <el-input
             v-model="queryParams.departmentName"
             :placeholder="t('record.inputDepartmentName')"
             clearable
-            style="width: 200px"
+            class="filter-input"
             @keyup.enter="handleQuery"
           />
-        </el-form-item>
-        <el-form-item :label="t('record.visitDate')" prop="visitDate">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('record.visitDate') }}</span>
           <el-date-picker
             v-model="queryParams.visitDate"
             type="date"
             value-format="YYYY-MM-DD"
             :placeholder="t('record.selectVisitDate')"
             clearable
-            style="width: 200px"
+            class="filter-input"
           />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">{{ t('common.search') }}</el-button>
-          <el-button @click="resetQuery">{{ t('common.reset') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+        <div class="filter-actions">
+          <el-button type="primary" :icon="Search" @click="handleQuery">{{ t('common.search') }}</el-button>
+          <el-button :icon="Refresh" @click="resetQuery">{{ t('common.reset') }}</el-button>
+        </div>
+      </div>
+    </div>
 
-    <el-card class="table-card" shadow="never">
-      <el-table v-loading="loading" :data="recordList" height="100%" style="width: 100%; margin-top: 15px" border>
-        <el-table-column :label="t('record.caseId')" align="center" min-width="120">
+    <!-- 2. 表格卡片 -->
+    <div class="card table-card">
+      <el-table v-loading="loading" :data="recordList" class="record-table" style="width: 100%">
+        <el-table-column :label="t('record.caseId')" min-width="120">
           <template #default="scope">
             <span>{{ displayValue(scope.row.patientNumber ?? scope.row.recordId) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('record.patientName')" align="center" prop="patientName" min-width="140" show-overflow-tooltip>
+        <el-table-column :label="t('record.patientName')" prop="patientName" min-width="140" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ displayValue(scope.row.patientName) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('record.doctorName')" align="center" prop="doctorName" min-width="140" show-overflow-tooltip>
+        <el-table-column :label="t('record.doctorName')" prop="doctorName" min-width="140" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ displayValue(scope.row.doctorName) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('record.departmentName')" align="center" prop="departmentName" min-width="160" show-overflow-tooltip>
+        <el-table-column :label="t('record.departmentName')" prop="departmentName" min-width="160" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ displayValue(scope.row.departmentName) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('record.visitDate')" align="center" prop="visitDate" min-width="180">
+        <el-table-column :label="t('record.visitDate')" prop="visitDate" min-width="180">
           <template #default="scope">
             <span>{{ displayValue(scope.row.visitDate ?? scope.row.createTime) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('record.diagnosisResult')" align="center" prop="diagnosisResult" min-width="220" show-overflow-tooltip>
+        <el-table-column :label="t('record.diagnosisResult')" prop="diagnosisResult" min-width="220" show-overflow-tooltip>
           <template #default="scope">
             <span>{{ displayValue(scope.row.diagnosisResult) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('common.operate')" align="center" fixed="right" min-width="120">
+        <el-table-column :label="t('common.operate')" width="120" fixed="right" class-name="action-col">
           <template #default="scope">
-            <el-button link type="primary" @click="handleDetail(scope.row)">
-              {{ t('common.view') }}
-            </el-button>
+            <div class="actions">
+              <el-button link type="primary" :icon="View" @click="handleDetail(scope.row)">
+                {{ t('common.view') }}
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination-container">
+      <!-- 分页 -->
+      <div class="pagination-bar">
+        <span class="pagination-info">{{ t('common.total', { total }) }}</span>
         <el-pagination
           v-show="total > 0"
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="sizes, prev, pager, next, jumper"
+          background
           @size-change="getList"
           @current-change="getList"
         />
       </div>
-    </el-card>
+    </div>
 
     <el-drawer
       v-model="drawerVisible"
@@ -116,6 +127,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute, useRouter } from 'vue-router'
+import { Search, Refresh, View } from '@element-plus/icons-vue'
 import { to } from 'await-to-js'
 import type { FormInstance } from 'element-plus'
 import { listDiagnosisRecord } from '@/api/record'
@@ -123,6 +136,8 @@ import type { DiagnosisRecordQuery, DiagnosisRecordVO } from '@/api/types'
 import CaseDetail from './components/CaseDetail.vue'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 
 const queryRef = ref<FormInstance>()
 const loading = ref(false)
@@ -195,6 +210,10 @@ const handleQuery = () => {
 
 const resetQuery = () => {
   queryRef.value?.resetFields()
+  queryParams.patientName = ''
+  queryParams.doctorName = ''
+  queryParams.departmentName = ''
+  queryParams.visitDate = ''
   queryParams.pageNum = 1
   queryParams.pageSize = 20
   getList()
@@ -206,18 +225,106 @@ const handleDetail = (row: DiagnosisRecordVO) => {
 }
 
 onMounted(() => {
+  // 支持从工作台"查看全部"携带今日日期筛选跳转
+  const q = route.query.visitDate
+  if (q && typeof q === 'string') {
+    queryParams.visitDate = q
+    // 消费后清理 query，避免刷新或重置时仍被带入
+    router.replace({ path: route.path, query: {} })
+  }
   getList()
 })
 </script>
 
 <style scoped lang="scss">
-.search-card {
-  margin-bottom: 0;
+.app-container {
+  padding: 0;
 }
 
-.pagination-container {
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
+.search-card {
+  padding: 20px 24px;
+}
+.table-card {
+  padding: 20px 24px;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
+  flex-direction: column;
+}
+
+/* 筛选区 */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+}
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.filter-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.filter-input {
+  width: 180px;
+}
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* 表格 */
+.record-table {
+  width: 100%;
+  display: block;
+  :deep(thead th) {
+    background: #fafbfc;
+    color: #606266;
+    font-weight: 600;
+  }
+  :deep(tbody tr:hover > td) {
+    background: #f5f8ff;
+  }
+}
+
+/* 操作列 */
+.action-col {
+  .actions {
+    display: flex;
+    gap: 2px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  :deep(.el-button) {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+/* 分页 */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid #ebeef5;
+  width: 100%;
+}
+.pagination-info {
+  font-size: 13px;
+  color: #909399;
 }
 </style>
+
