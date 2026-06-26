@@ -150,6 +150,22 @@ export interface UserVO {
   title?: string;
   jobNumber?: string;
   goodAt?: string;
+  /** 头像 URL */
+  avatar?: string;
+  /** 个人简介 */
+  remark?: string;
+  /** 性别（0=男 1=女） */
+  sex?: string;
+  /** 出生日期 */
+  birthday?: string;
+  /** 执业医师证号 */
+  certifiedDoctorNumber?: string;
+  /** 执业证书有效期-开始 */
+  certifiedStartTime?: string;
+  /** 执业证书有效期-结束 */
+  certifiedEndTime?: string;
+  /** 执业证书文件 URL */
+  certifiedUrl?: string;
   roleName?: string;
   roleNames?: string | string[];
   roles?: Array<string | number | { roleName?: string; roleKey?: string; name?: string }>;
@@ -169,6 +185,22 @@ export interface UserForm {
   title: string;
   jobNumber: string;
   goodAt: string;
+  /** 头像 URL */
+  avatar?: string;
+  /** 个人简介 */
+  remark?: string;
+  /** 性别（0=男 1=女） */
+  sex?: string;
+  /** 出生日期 */
+  birthday?: string;
+  /** 执业医师证号 */
+  certifiedDoctorNumber?: string;
+  /** 执业证书有效期-开始 */
+  certifiedStartTime?: string;
+  /** 执业证书有效期-结束 */
+  certifiedEndTime?: string;
+  /** 执业证书文件 URL */
+  certifiedUrl?: string;
   roleIds?: (string | number)[];
 }
 
@@ -692,4 +724,30 @@ export interface LoginLogVO {
   /** 后端通用查询参数 */
   params?: Record<string, any>;
   [key: string]: any;
+}
+
+/**
+ * OSS 临时凭证数据 (适配 GET /oss/sts)
+ */
+export interface OssStsData {
+  accessKeyId: string;
+  accessKeySecret: string;
+  token: string;
+  bucket: string;
+  region: string;
+  time?: number;
+  folder?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * OSS 上传结果
+ */
+export interface OssUploadResult {
+  /** OSS object name */
+  objectName: string;
+  /** 可访问 URL */
+  url?: string;
+  /** 原始文件名 */
+  name: string;
 }
