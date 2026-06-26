@@ -1,18 +1,21 @@
 <template>
   <div class="app-container">
-    <el-card class="search-card" shadow="never">
-      <el-form ref="queryRef" :model="queryParams" :inline="true">
-        <el-form-item label="关键词" prop="drugName">
+    <!-- 1. 搜索筛选卡片 -->
+    <div class="card search-card">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-label">关键词</span>
           <el-input
             v-model="queryParams.drugName"
             placeholder="方剂名称 / 功效 / 主治"
             clearable
-            style="width: 220px"
+            class="filter-input-wide"
             @keyup.enter="handleQuery"
           />
-        </el-form-item>
-        <el-form-item label="方剂分类" prop="drugType">
-          <el-select v-model="queryParams.drugType" placeholder="全部分类" clearable style="width: 220px">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">方剂分类</span>
+          <el-select v-model="queryParams.drugType" placeholder="全部分类" clearable class="filter-select">
             <el-option
               v-for="item in categoryOptions"
               :key="item.dictValue"
@@ -20,9 +23,10 @@
               :value="item.dictValue"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item label="剂型" prop="drugModel">
-          <el-select v-model="queryParams.drugModel" placeholder="全部剂型" clearable style="width: 180px">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">剂型</span>
+          <el-select v-model="queryParams.drugModel" placeholder="全部剂型" clearable class="filter-select">
             <el-option
               v-for="item in dosageFormOptions"
               :key="item.dictValue"
@@ -30,57 +34,66 @@
               :value="item.dictValue"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item>
+        </div>
+        <div class="filter-actions">
           <el-button type="primary" :icon="Search" @click="handleQuery">查询</el-button>
           <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+      </div>
+    </div>
 
-    <el-card class="table-card" shadow="never">
+    <!-- 2. 表格卡片 -->
+    <div class="card table-card">
+      <!-- 操作栏 -->
       <div class="toolbar">
-        <el-button type="primary" plain @click="handleAdd">新增处方</el-button>
+        <div class="toolbar-left">
+          <el-button type="primary" :icon="Plus" @click="handleAdd">新增处方</el-button>
+        </div>
       </div>
 
-      <el-table v-loading="loading" :data="prescriptionList" height="100%" style="width: 100%; margin-top: 15px" border>
-        <el-table-column label="处方ID" align="center" prop="drugId" min-width="120" />
-        <el-table-column label="方剂名称" align="center" prop="drugName" min-width="160" show-overflow-tooltip />
-        <el-table-column label="分类" align="center" prop="drugType" min-width="120">
+      <el-table v-loading="loading" :data="prescriptionList" class="prescription-table" style="width: 100%">
+        <el-table-column label="处方ID" prop="drugId" min-width="120" />
+        <el-table-column label="方剂名称" prop="drugName" min-width="160" show-overflow-tooltip />
+        <el-table-column label="分类" prop="drugType" min-width="120">
           <template #default="scope">
-            <span>{{ getDictLabel(categoryOptions, scope.row.drugType) }}</span>
+            <span class="type-tag type-tag--primary">{{ getDictLabel(categoryOptions, scope.row.drugType) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="功效" align="center" prop="drugEffect" min-width="220" show-overflow-tooltip />
-        <el-table-column label="主治" align="center" prop="drugCure" min-width="260" show-overflow-tooltip />
-        <el-table-column label="剂型" align="center" prop="drugModel" min-width="100">
+        <el-table-column label="功效" prop="drugEffect" min-width="220" show-overflow-tooltip />
+        <el-table-column label="主治" prop="drugCure" min-width="260" show-overflow-tooltip />
+        <el-table-column label="剂型" prop="drugModel" min-width="100">
           <template #default="scope">
-            <span>{{ getDictLabel(dosageFormOptions, scope.row.drugModel) }}</span>
+            <span class="type-tag" :style="getDictStyle(dosageFormOptions, scope.row.drugModel)">{{ getDictLabel(dosageFormOptions, scope.row.drugModel) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="药材数" align="center" prop="drugDetailCount" min-width="100" />
-        <el-table-column label="操作" align="center" class-name="small-padding fixed-width" fixed="right" width="160">
+        <el-table-column label="药材数" prop="drugDetailCount" min-width="90" align="center" />
+        <el-table-column label="操作" width="200" fixed="right" class-name="action-col">
           <template #default="scope">
-            <el-button link type="primary" @click="handleView(scope.row)">查看</el-button>
-            <el-button link type="primary" @click="handleEdit(scope.row)">修改</el-button>
-            <el-button link type="danger" @click="handleDelete(scope.row)">删除</el-button>
+            <div class="actions">
+              <el-button link type="primary" :icon="View" @click="handleView(scope.row)">查看</el-button>
+              <el-button link type="primary" :icon="Edit" @click="handleEdit(scope.row)">修改</el-button>
+              <el-button link type="danger" :icon="Delete" @click="handleDelete(scope.row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <div class="pagination-container">
+      <!-- 分页 -->
+      <div class="pagination-bar">
+        <span class="pagination-info">共 {{ total }} 条</span>
         <el-pagination
           v-show="total > 0"
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="sizes, prev, pager, next, jumper"
+          background
           @size-change="getList"
           @current-change="getList"
         />
       </div>
-    </el-card>
+    </div>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px" append-to-body>
       <el-form
@@ -177,7 +190,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Plus, Edit, View, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { to } from 'await-to-js'
 import {
@@ -267,6 +280,41 @@ const getDictLabel = (options: DictDataVO[], value: string | number | undefined)
   return matched?.dictLabel || String(value)
 }
 
+/**
+ * 解析字典项的 cssClass 为内联样式对象
+ * cssClass 为 JSON 字符串，如 {color: '#722ED1',backgroundColor: '#F9F0FF',borderColor: '#D3ADF7'}
+ * 解析失败或为空时回退到默认紫色样式
+ */
+const getDictStyle = (options: DictDataVO[], value: string | number | undefined): Record<string, string> => {
+  const fallback = { background: '#f3edff', color: '#8b5cf6' }
+  if (value === undefined || value === null || value === '') return fallback
+  const matched = options.find((item) => String(item.dictValue) === String(value))
+  if (!matched || !matched.cssClass) return fallback
+  try {
+    // cssClass 为类 JSON 字符串，但键名和字符串值用的是单引号，需转为双引号后再解析
+    const raw = matched.cssClass.trim()
+    const normalized = raw
+      // 先把单引号包裹的值转为双引号
+      .replace(/'/g, '"')
+      // 给裸键名补双引号（如 color: → "color":）
+      .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
+    const parsed = JSON.parse(normalized)
+    if (parsed && typeof parsed === 'object') {
+      const style: Record<string, string> = {}
+      for (const key of Object.keys(parsed)) {
+        const val = parsed[key]
+        if (typeof val === 'string' || typeof val === 'number') {
+          style[key] = String(val)
+        }
+      }
+      return style
+    }
+  } catch {
+    // cssClass 无法解析，忽略
+  }
+  return fallback
+}
+
 const toFormData = (row: DrugPrescriptionVO): PrescriptionItem => ({
   prescriptionId: String(row.drugId ?? ''),
   prescriptionName: row.drugName ?? '',
@@ -339,7 +387,9 @@ const handleQuery = () => {
 }
 
 const resetQuery = () => {
-  queryRef.value?.resetFields()
+  queryParams.drugName = ''
+  queryParams.drugType = ''
+  queryParams.drugModel = ''
   queryParams.pageNum = 1
   queryParams.pageSize = 20
   getList()
@@ -442,22 +492,127 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.search-card {
-  margin-bottom: 0;
+.app-container {
+  padding: 0;
 }
 
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
+.search-card {
+  padding: 20px 24px;
+}
 .table-card {
-  .toolbar {
-    margin-bottom: 10px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 筛选区 */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+}
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.filter-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.filter-input-wide {
+  width: 220px;
+}
+.filter-select {
+  width: 180px;
+}
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+/* 表格 */
+.prescription-table {
+  width: 100%;
+  display: block;
+  :deep(thead th) {
+    background: #fafbfc;
+    color: #606266;
+    font-weight: 600;
+  }
+  :deep(tbody tr:hover > td) {
+    background: #f5f8ff;
   }
 }
 
-.pagination-container {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
+/* 分类/剂型标签（胶囊样式） */
+.type-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.type-tag--primary {
+  background: #ecf5ff;
+  color: #409eff;
+}
+.type-tag--purple {
+  background: #f3edff;
+  color: #8b5cf6;
 }
 
+/* 操作列 */
+.action-col {
+  .actions {
+    display: flex;
+    gap: 2px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  :deep(.el-button) {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+/* 分页 */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid #ebeef5;
+  width: 100%;
+}
+.pagination-info {
+  font-size: 13px;
+  color: #909399;
+}
+
+/* 弹窗药材区 */
 .herb-section {
   width: 100%;
 

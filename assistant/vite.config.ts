@@ -34,6 +34,7 @@ export default defineConfig(({mode})=>{
         },
         '/lao-api': {
           target: 'http://192.168.2.101:8085/',
+          // target: 'https://lwyczl.mvwchina.com/lao-api/',
           changeOrigin: true,
           rewrite: (requestPath) => requestPath.replace(/^\/lao-api/, '')
         },

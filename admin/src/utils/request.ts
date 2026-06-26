@@ -86,8 +86,11 @@ class Request {
         }
 
         // 移除自定义标志，避免发送给后端
+        // silentError 需保留到响应阶段供拦截器判断，先转存到 config 自定义字段
+        ;(config as any).silentError = headers.silentError === true || headers.silentError === 'true'
         delete headers.isEncrypt
         delete headers.isToken
+        delete headers.silentError
 
         return config
       },
@@ -101,6 +104,8 @@ class Request {
       (response: AxiosResponse) => {
         const { data } = response
         const code = data.code || 200
+        // 是否静默错误：调用方自行处理提示（如登录页表单内联提示）
+        const silentError = (response.config as any)?.silentError === true
         if (code === 401) {
           if (!isReloginShow) {
             isReloginShow = true
@@ -109,19 +114,24 @@ class Request {
           }
           return Promise.reject(i18n.global.t('message.sessionExpired'))
         } else if (code !== 200) {
-          ElMessage.error(data.msg || 'Error')
+          if (!silentError) {
+            ElMessage.error(data.msg || 'Error')
+          }
           return Promise.reject(new Error(data.msg || 'Error'))
         }
         return data
       },
       (error) => {
+        const silentError = (error.config as any)?.silentError === true
         const { message } = error
-        if (message === 'Network Error') {
-          ElMessage.error(i18n.global.t('message.networkError'))
-        } else if (message.includes('timeout')) {
-          ElMessage.error(i18n.global.t('message.timeout'))
-        } else {
-          ElMessage.error(message || i18n.global.t('message.systemError'))
+        if (!silentError) {
+          if (message === 'Network Error') {
+            ElMessage.error(i18n.global.t('message.networkError'))
+          } else if (message.includes('timeout')) {
+            ElMessage.error(i18n.global.t('message.timeout'))
+          } else {
+            ElMessage.error(message || i18n.global.t('message.systemError'))
+          }
         }
         return Promise.reject(error)
       }

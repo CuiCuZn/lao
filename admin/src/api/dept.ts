@@ -34,11 +34,12 @@ export function updateDept(data: DeptForm): Promise<ResponseData<any>> {
 }
 
 /**
- * 停用科室 (适配：POST /department/delete/{departmentId})
- * @param departmentId 
+ * 启用/停用科室 (适配：POST /department/delete/{departmentId}/{status})
+ * @param departmentId
+ * @param status 0启用 1停用
  */
-export function delDept(departmentId: string | number): Promise<ResponseData<any>> {
-  return request.post(`/department/delete/${departmentId}`)
+export function delDept(departmentId: string | number, status: string | number): Promise<ResponseData<any>> {
+  return request.post(`/department/delete/${departmentId}/${status}`)
 }
 
 /**

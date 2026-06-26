@@ -21,7 +21,8 @@ export function login(data: LoginData): AxiosPromise<LoginResult> {
   return request.post('/auth/login', params, {
     headers: {
       isEncrypt: true, // 开启加密标志
-      isToken: false
+      isToken: false,
+      silentError: true // 登录失败由登录页表单内联提示，不在拦截器中弹窗
     }
   })
 }

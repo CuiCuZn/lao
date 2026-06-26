@@ -1,19 +1,26 @@
 <template>
   <div class="app-container">
-    <!-- 1. 搜索表单 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :model="queryParams" ref="queryRef" :inline="true">
-        <el-form-item :label="t('dept.deptName')" prop="departmentName">
+    <!-- 1. 搜索筛选卡片 -->
+    <div class="card search-card">
+      <div class="filter-row">
+        <div class="filter-item">
+          <span class="filter-label">{{ t('dept.deptName') }}</span>
           <el-input
             v-model="queryParams.departmentName"
             :placeholder="t('dept.inputDeptName')"
             clearable
-            style="width: 200px"
+            class="filter-input"
             @keyup.enter="handleQuery"
           />
-        </el-form-item>
-        <el-form-item :label="t('dept.deptType')" prop="departmentType">
-          <el-select v-model="queryParams.departmentType" :placeholder="t('dept.selectDeptType')" clearable style="width: 200px">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('dept.deptType') }}</span>
+          <el-select
+            v-model="queryParams.departmentType"
+            :placeholder="t('dept.selectDeptType')"
+            clearable
+            class="filter-select"
+          >
             <el-option
               v-for="dict in sysDeptOptions"
               :key="dict.dictValue"
@@ -21,76 +28,117 @@
               :value="dict.dictValue"
             />
           </el-select>
-        </el-form-item>
-        <el-form-item :label="t('dept.status')" prop="status">
-          <el-select v-model="queryParams.status" :placeholder="t('dept.selectStatus')" clearable style="width: 150px">
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('dept.status') }}</span>
+          <el-select
+            v-model="queryParams.status"
+            :placeholder="t('dept.selectStatus')"
+            clearable
+            class="filter-select"
+          >
             <el-option :label="t('common.statusNormal')" value="0" />
             <el-option :label="t('common.statusStop')" value="1" />
           </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">{{ t('common.search') }}</el-button>
-          <el-button @click="resetQuery">{{ t('common.reset') }}</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">{{ t('dept.createTime') }}</span>
+          <el-date-picker
+            v-model="dateRange"
+            type="daterange"
+            range-separator="-"
+            :start-placeholder="t('dept.beginDate')"
+            :end-placeholder="t('dept.endDate')"
+            value-format="YYYY-MM-DD"
+            unlink-panels
+            class="filter-daterange"
+            @change="handleDateChange"
+          />
+        </div>
+        <div class="filter-actions">
+          <el-button type="primary" :icon="Search" @click="handleQuery">{{ t('common.search') }}</el-button>
+          <el-button :icon="Refresh" @click="resetQuery">{{ t('common.reset') }}</el-button>
+        </div>
+      </div>
+    </div>
 
-    <!-- 2. 操作栏 -->
-    <el-card class="table-card" shadow="never">
+    <!-- 2. 表格卡片 -->
+    <div class="card table-card">
+      <!-- 操作栏 -->
       <div class="toolbar">
-        <el-button type="primary" plain @click="handleAdd">{{ t('dept.addDept') }}</el-button>
-        <!-- <el-button type="warning" plain @click="handleExport">{{ t('common.export') }}</el-button> -->
+        <div class="toolbar-left">
+          <el-button type="primary" :icon="Plus" @click="handleAdd">{{ t('dept.addDept') }}</el-button>
+        </div>
       </div>
 
-      <!-- 3. 数据表格 -->
-      <el-table v-loading="loading" :data="deptList" height="100%" style="width: 100%; margin-top: 15px" border>
-        <el-table-column :label="t('dept.deptName')" align="center" prop="departmentName" />
-        <el-table-column :label="t('dept.deptCode')" align="center" prop="departmentCode" />
-        <el-table-column :label="t('dept.deptType')" align="center" prop="departmentType">
+      <!-- 数据表格 -->
+      <el-table v-loading="loading" :data="deptList" class="dept-table" style="width: 100%">
+        <el-table-column :label="t('dept.deptName')" min-width="180">
           <template #default="scope">
-             <dict-tag :options="sysDeptOptions" :value="scope.row.departmentType" />
+            <div class="dept-info">
+              <div class="dept-name">{{ scope.row.departmentName }}</div>
+              <div class="dept-sub">{{ getDeptTypeLabel(scope.row.departmentType) }}<template v-if="scope.row.doctorCount != null"> · {{ scope.row.doctorCount }}{{ t('dept.doctorUnit') }}</template></div>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column :label="t('dept.leader')" align="center" prop="departmentPrincipal" />
-        <el-table-column :label="t('dept.phone')" align="center" prop="departmentPhone" />
-        <el-table-column :label="t('dept.status')" align="center" prop="status">
+        <el-table-column :label="t('dept.deptCode')" prop="departmentCode" min-width="100" />
+        <el-table-column :label="t('dept.deptType')" min-width="120">
           <template #default="scope">
-            <dict-tag :options="sysStatusOptions" :value="scope.row.status" />
+            <span
+              class="type-tag"
+              :class="isMedicalTech(scope.row.departmentType) ? 'type-tag--purple' : 'type-tag--primary'"
+            >{{ getDeptTypeLabel(scope.row.departmentType) }}</span>
           </template>
         </el-table-column>
-        <el-table-column :label="t('dept.createTime')" align="center" prop="createTime" width="180" />
-        <el-table-column :label="t('common.operate')" align="center" class-name="small-padding fixed-width" width="200">
+        <el-table-column :label="t('dept.leader')" prop="departmentPrincipal" min-width="110" />
+        <el-table-column :label="t('dept.phone')" prop="departmentPhone" min-width="130" />
+        <el-table-column :label="t('dept.doctorCount')" min-width="90" align="center">
           <template #default="scope">
-            <el-button link type="primary" @click="handleDetail(scope.row)">{{ t('common.view') }}</el-button>
-            <el-button link type="primary" @click="handleUpdate(scope.row)">{{ t('common.edit') }}</el-button>
-            <el-button link type="danger" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
-            <el-button
-              link
-              :type="scope.row.status === '0' ? 'danger' : 'success'"
-              @click="handleStatusChange(scope.row)"
-            >
-              {{ scope.row.status === '0' ? t('common.disable') : t('common.enable') }}
-            </el-button>
+            <span>{{ scope.row.doctorCount != null ? scope.row.doctorCount : 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('dept.status')" prop="status" width="90" align="center">
+          <template #default="scope">
+            <dict-tag :options="sysStatusOptions" :value="scope.row.status" class="status-tags" />
+          </template>
+        </el-table-column>
+        <el-table-column :label="t('dept.createTime')" prop="createTime" min-width="160" />
+        <el-table-column :label="t('common.operate')" width="280" fixed="right" class-name="action-col">
+          <template #default="scope">
+            <div class="actions">
+              <el-button link type="primary" :icon="View" @click="handleDetail(scope.row)">{{ t('common.view') }}</el-button>
+              <el-button link type="primary" :icon="Edit" @click="handleUpdate(scope.row)">{{ t('common.edit') }}</el-button>
+              <el-button
+                link
+                :type="scope.row.status === '0' ? 'warning' : 'success'"
+                @click="handleStatusChange(scope.row)"
+              >
+                {{ scope.row.status === '0' ? t('common.disable') : t('common.enable') }}
+              </el-button>
+              <el-button link type="danger" :icon="Delete" @click="handleDelete(scope.row)">{{ t('common.delete') }}</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
 
-      <!-- 4. 分页 -->
-      <div class="pagination-container">
+      <!-- 分页 -->
+      <div class="pagination-bar">
+        <span class="pagination-info">{{ t('common.total', { total }) }}</span>
         <el-pagination
           v-show="total > 0"
           v-model:current-page="queryParams.pageNum"
           v-model:page-size="queryParams.pageSize"
           :total="total"
           :page-sizes="[10, 20, 30, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
+          layout="sizes, prev, pager, next, jumper"
+          background
           @size-change="getList"
           @current-change="getList"
         />
       </div>
-    </el-card>
+    </div>
 
-    <!-- 5. 新增/编辑对话框 -->
+    <!-- 3. 新增/编辑对话框（保持原有逻辑不动） -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px" append-to-body>
       <el-form ref="deptFormRef" :model="form" :rules="rules" label-width="100px" :disabled="isView">
         <el-row :gutter="20">
@@ -129,8 +177,8 @@
           <el-col :span="12">
             <el-form-item :label="t('dept.status')" prop="status">
               <el-radio-group v-model="form.status">
-                <el-radio label="0">{{ t('common.statusNormal') }}</el-radio>
-                <el-radio label="1">{{ t('common.statusStop') }}</el-radio>
+                <el-radio value="0">{{ t('common.statusNormal') }}</el-radio>
+                <el-radio value="1">{{ t('common.statusStop') }}</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -159,19 +207,9 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import {
-  Search,
-  Refresh,
-  Plus,
-  Download,
-  Edit,
-  View,
-  Minus,
-  CircleClose,
-  CircleCheck
-} from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, FormInstance } from 'element-plus'
-import { listDept, addDept, updateDept, changeDeptStatus, removeDept } from '@/api/dept'
+import { Search, Refresh, Plus, Edit, View, Delete, Minus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { listDept, addDept, updateDept, removeDept, delDept } from '@/api/dept'
 import { DeptQuery, DeptVO, DeptForm } from '@/api/types'
 import { useDictStore } from '@/stores/dict'
 import { to } from 'await-to-js'
@@ -196,13 +234,17 @@ const isView = ref(false)
 const dialogTitle = ref('')
 const deptFormRef = ref<FormInstance>()
 
+// 创建时间范围（双值绑定，提交时拆到 params）
+const dateRange = ref<[string, string] | []>([])
+
 // 查询参数 (适配 Swagger)
 const queryParams = reactive<DeptQuery>({
   pageNum: 1,
   pageSize: 20,
   departmentName: '',
   departmentType: '',
-  status: ''
+  status: '',
+  params: { beginTime: undefined, endTime: undefined }
 })
 
 // 表单对象 (适配 Swagger)
@@ -226,6 +268,36 @@ const rules = {
   departmentPhone: [{ required: true, message: t('dept.inputPhone'), trigger: 'blur' }]
 }
 
+/**
+ * 日期范围变更：写入 params.beginTime / params.endTime
+ */
+const handleDateChange = (val: [string, string] | []) => {
+  const params = (queryParams.params ??= {})
+  if (val && val.length === 2) {
+    params.beginTime = val[0]
+    params.endTime = val[1]
+  } else {
+    params.beginTime = undefined
+    params.endTime = undefined
+  }
+}
+
+/**
+ * 根据科室类型 value 获取 label
+ */
+const getDeptTypeLabel = (value: string | number) => {
+  const dict = sysDeptOptions.value.find(d => String(d.dictValue) === String(value))
+  return dict ? dict.dictLabel : (value || '-')
+}
+
+/**
+ * 判断是否为"医技科室"（用于紫色标签）
+ */
+const isMedicalTech = (value: string | number) => {
+  const label = getDeptTypeLabel(value)
+  return /医技/.test(String(label))
+}
+
 // 2. 核心逻辑方法
 
 /**
@@ -235,7 +307,6 @@ const getList = async () => {
   loading.value = true
   const [err, res] = await to(listDept(queryParams))
   if (res) {
-    // 适配后端分页返回格式 (rows 包含数据，total 包含总数)
     deptList.value = res.rows || []
     total.value = res.total || 0
   }
@@ -257,12 +328,18 @@ const resetQuery = () => {
   queryParams.departmentName = ''
   queryParams.departmentType = ''
   queryParams.status = ''
+  if (queryParams.params) {
+    queryParams.params.beginTime = undefined
+    queryParams.params.endTime = undefined
+  }
+  dateRange.value = []
   queryParams.pageSize = 20
   handleQuery()
 }
 
 /**
  * 状态切换
+ * 启用/停用统一调用 POST /department/delete/{departmentId}/{status}（status: 0启用 1停用）
  */
 const handleStatusChange = async (row: DeptVO) => {
   const newStatus = row.status === '0' ? '1' : '0'
@@ -271,17 +348,19 @@ const handleStatusChange = async (row: DeptVO) => {
     await ElMessageBox.confirm(t('dept.confirmStatus', { operate: operateText }), t('common.tip'), {
       confirmButtonText: t('common.confirm'),
       cancelButtonText: t('common.cancel'),
-      type: 'warning' 
+      type: 'warning'
     })
-    const [err] = await to(changeDeptStatus({
-      departmentId: row.departmentId,
-      status: newStatus
-    }))
-    if (!err) {
-      ElMessage.success(t('common.operateSuccess'))
-      getList() // 刷新列表获取最新状态
-    }
-  } catch {}
+  } catch {
+    // 用户点击取消，直接返回
+    return
+  }
+  const [err] = await to(delDept(row.departmentId, newStatus))
+  if (err) {
+    ElMessage.error(t('common.operateFail'))
+    return
+  }
+  ElMessage.success(t('common.operateSuccess'))
+  getList()
 }
 
 /**
@@ -300,7 +379,6 @@ const handleAdd = () => {
 const handleUpdate = (row: DeptVO) => {
   reset()
   isView.value = false
-  // 转换 row 数据到 form 对象
   const phrasesArr = row.usefulExpressions ? row.usefulExpressions.split('\n').filter(Boolean) : []
   form.value = { ...row, phrases: phrasesArr }
   dialogTitle.value = t('dept.editDept')
@@ -343,13 +421,6 @@ const handleDelete = async (row: DeptVO) => {
 }
 
 /**
- * 导出操作
- */
-const handleExport = () => {
-  ElMessage.info(t('common.exportPending'))
-}
-
-/**
  * 提交表单
  */
 const submitForm = () => {
@@ -357,8 +428,7 @@ const submitForm = () => {
     if (valid) {
       const isEdit = !!form.value.departmentId
       const action = isEdit ? updateDept : addDept
-      
-      // 提交前将前端数组转换为后端字符串字段 (\n 分隔)
+
       if (form.value.phrases && form.value.phrases.length > 0) {
         form.value.usefulExpressions = form.value.phrases.filter(p => p.trim() !== '').join('\n')
       } else {
@@ -409,19 +479,158 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.app-container {
+  padding: 0;
+}
+
+/* 卡片 */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
 .search-card {
-  margin-bottom: 0;
+  padding: 20px 24px;
 }
 .table-card {
-  .toolbar {
-    margin-bottom: 10px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 筛选区 */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+}
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.filter-label {
+  font-size: 13px;
+  color: #606266;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.filter-input,
+.filter-select {
+  width: 180px;
+}
+.filter-daterange {
+  width: 260px;
+}
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+/* 工具栏 */
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+/* 表格 */
+.dept-table {
+  width: 100%;
+  display: block;
+  :deep(thead th) {
+    background: #fafbfc;
+    color: #606266;
+    font-weight: 600;
+  }
+  :deep(tbody tr:hover > td) {
+    background: #f5f8ff;
   }
 }
-.pagination-container {
+
+/* 科室信息列（名称 + 副信息） */
+.dept-info {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
+  flex-direction: column;
+  gap: 2px;
 }
+.dept-name {
+  font-weight: 500;
+  color: #303133;
+  font-size: 14px;
+}
+.dept-sub {
+  font-size: 12px;
+  color: #909399;
+}
+
+/* 科室类型标签（原型胶囊样式） */
+.type-tag {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+.type-tag--primary {
+  background: #ecf5ff;
+  color: #409eff;
+}
+.type-tag--purple {
+  background: #f3edff;
+  color: #8b5cf6;
+}
+
+/* 账号状态标签（覆盖 el-tag 为原型胶囊样式） */
+.status-tags {
+  :deep(.el-tag) {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.5;
+    height: auto;
+    border: none;
+  }
+}
+
+/* 操作列 */
+.action-col {
+  .actions {
+    display: flex;
+    gap: 2px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  :deep(.el-button) {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+}
+
+/* 分页 */
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  margin-top: 4px;
+  border-top: 1px solid #ebeef5;
+  width: 100%;
+}
+.pagination-info {
+  font-size: 13px;
+  color: #909399;
+}
+
+/* 弹窗常用语区 */
 .phrases-section {
   .phrase-item {
     display: flex;
