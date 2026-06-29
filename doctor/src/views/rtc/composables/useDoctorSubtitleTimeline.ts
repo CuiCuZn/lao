@@ -1,4 +1,4 @@
-﻿import type { ASRMessage } from 'dingrtc-asr'
+import type { ASRMessage } from 'dingrtc-asr'
 import { ref } from 'vue'
 import type {
   ManualTimelineMessageParams,
@@ -561,6 +561,31 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
     return appendManualMessage(payload)
   }
 
+  const updateItemTexts = (id: string, sourceText: string, translatedText: string) => {
+    const item = items.value.find((entry) => entry.id === id)
+    if (!item) {
+      return false
+    }
+
+    const normalizedSourceText = sourceText.trim()
+    const normalizedTranslatedText = translatedText.trim()
+
+    item.sourceText = normalizedSourceText
+    item.translatedText = normalizedTranslatedText
+
+    const progress = ensureFieldProgress(item)
+    progress.source.text = normalizedSourceText
+    progress.source.isFinal = true
+    progress.translated.text = normalizedTranslatedText
+    progress.translated.isFinal = true
+    item.sourceFinal = true
+    item.translatedFinal = true
+    item.isFinal = true
+
+    scrollVersion.value++
+    return true
+  }
+
   const ensureTimelineItem = ({
     message,
     sourceLanguage,
@@ -800,6 +825,7 @@ export const useDoctorSubtitleTimeline = (options: SubtitleTimelineOptions) => {
     scrollVersion,
     appendHistoryMessage,
     appendManualMessage,
+    updateItemTexts,
     bindAsrStreams,
     upsertDraftMessage,
     finalizeSentence,

@@ -488,6 +488,25 @@ export interface VideoSaveSubtitleResponse {
   [key: string]: unknown;
 }
 
+export interface VideoOptimizeTranslationParams {
+  id: string;
+  recordCn: string;
+  recordLo: string;
+}
+
+export interface VideoOptimizeTranslationData {
+  id: string;
+  recordCn: string;
+  recordLo: string;
+}
+
+export interface VideoOptimizeTranslationResponse {
+  code?: number;
+  msg?: string;
+  data?: VideoOptimizeTranslationData | null;
+  [key: string]: unknown;
+}
+
 export interface DepartmentTranslateParams {
   source: string;
   to: string;

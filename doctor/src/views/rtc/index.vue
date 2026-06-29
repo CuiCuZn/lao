@@ -565,7 +565,7 @@ import type {
   InspectionRecognizedItem,
   InspectionReportItem
 } from '@/api/types'
-import { generateMedicalRecord, getBasicInfo, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle, submitDiagnosis } from '@/api/video'
+import { generateMedicalRecord, getBasicInfo, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, optimizeTranslation, saveSubtitle, submitDiagnosis } from '@/api/video'
 import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { useUserStore } from '@/stores/user'
 import { showConfirmDialog } from '@/utils/confirm-dialog'
@@ -2325,7 +2325,7 @@ const persistConsultationVideoId = (nextVideoId: string) => {
   })
 }
 
-const handleSubtitleFinalized = (item: SubtitleTimelineItem) => {
+const handleSubtitleFinalized = async (item: SubtitleTimelineItem) => {
   const resolvedVideoId = videoId.value
   const currentUserId = session.channelContext.value?.userId || doctorId.value
   const payload = resolveSubtitleSavePayload(item)
@@ -2340,10 +2340,39 @@ const handleSubtitleFinalized = (item: SubtitleTimelineItem) => {
   }
 
   savedSubtitleKeys.add(saveKey)
+
+  let finalRecordCn = payload.recordCn
+  let finalRecordLo = payload.recordLo
+
+  try {
+    const optimizeResponse = await optimizeTranslation({
+      id: item.id,
+      recordCn: payload.recordCn,
+      recordLo: payload.recordLo
+    })
+
+    const optimizedData = optimizeResponse?.data
+    if (optimizedData && optimizedData.id === item.id) {
+      finalRecordCn = optimizedData.recordCn || finalRecordCn
+      finalRecordLo = optimizedData.recordLo || finalRecordLo
+
+      let updatedSourceText = finalRecordCn
+      let updatedTranslatedText = finalRecordLo
+      if (item.sourceLanguage === 'lo') {
+        updatedSourceText = finalRecordLo
+        updatedTranslatedText = finalRecordCn
+      }
+      timeline.updateItemTexts(item.id, updatedSourceText, updatedTranslatedText)
+    }
+  } catch (error) {
+    console.warn('Failed to optimize subtitle translation, fallback to original text.', error)
+  }
+
   void saveSubtitle({
     videoId: resolvedVideoId,
     isDoctor: 0,
-    ...payload
+    recordCn: finalRecordCn,
+    recordLo: finalRecordLo
   }).catch((error) => {
     console.warn('Failed to save doctor subtitle record.', error)
   })

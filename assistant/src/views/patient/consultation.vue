@@ -83,7 +83,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
-import { getVideoConversation, getVideoId, getVideoTime, getVideoToken, saveSubtitle } from '@/api/video'
+import { getVideoConversation, getVideoId, getVideoTime, getVideoToken, optimizeTranslation, saveSubtitle } from '@/api/video'
 import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { broadcastPatientMediaControlState, listenPatientChannelMessages } from '@/utils/patient-channel'
@@ -378,12 +378,12 @@ const resolveTranslationText = (payload: unknown) => {
   return translatedText
 }
 
-function handleSubtitleFinalized(item: SubtitleTimelineItem) {
-  const videoId = consultationVideoId.value
+async function handleSubtitleFinalized(item: SubtitleTimelineItem) {
+  const resolvedVideoId = consultationVideoId.value
   const currentUserId = session.channelContext.value?.userId || userId.value
   const payload = resolveSubtitleSavePayload(item)
 
-  if (!videoId || !payload || !currentUserId || item.speakerId !== currentUserId) {
+  if (!resolvedVideoId || !payload || !currentUserId || item.speakerId !== currentUserId) {
     return
   }
 
@@ -393,10 +393,39 @@ function handleSubtitleFinalized(item: SubtitleTimelineItem) {
   }
 
   savedSubtitleKeys.add(saveKey)
+
+  let finalRecordCn = payload.recordCn
+  let finalRecordLo = payload.recordLo
+
+  try {
+    const optimizeResponse = await optimizeTranslation({
+      id: item.id,
+      recordCn: payload.recordCn,
+      recordLo: payload.recordLo
+    })
+
+    const optimizedData = optimizeResponse?.data
+    if (optimizedData && optimizedData.id === item.id) {
+      finalRecordCn = optimizedData.recordCn || finalRecordCn
+      finalRecordLo = optimizedData.recordLo || finalRecordLo
+
+      let updatedSourceText = finalRecordCn
+      let updatedTranslatedText = finalRecordLo
+      if (item.sourceLanguage === 'lo') {
+        updatedSourceText = finalRecordLo
+        updatedTranslatedText = finalRecordCn
+      }
+      timeline.updateItemTexts(item.id, updatedSourceText, updatedTranslatedText)
+    }
+  } catch (error) {
+    console.warn('Failed to optimize subtitle translation, fallback to original text.', error)
+  }
+
   void saveSubtitle({
-    videoId,
+    videoId: resolvedVideoId,
     isDoctor: 1,
-    ...payload
+    recordCn: finalRecordCn,
+    recordLo: finalRecordLo
   }).catch((error) => {
     console.warn('Failed to save patient subtitle record.', error)
   })

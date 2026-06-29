@@ -11,6 +11,8 @@ import type {
   VideoOpenSubtitleResponse,
   VideoSaveSubtitleParams,
   VideoSaveSubtitleResponse,
+  VideoOptimizeTranslationParams,
+  VideoOptimizeTranslationResponse,
   VideoGetTokenParams,
   VideoGetTokenResponse
 } from './types'
@@ -65,6 +67,14 @@ export function closeVideoSubtitle(data: VideoCloseSubtitleParams): Promise<Vide
 
 export function saveSubtitle(data: VideoSaveSubtitleParams): Promise<VideoSaveSubtitleResponse> {
   return request.post('/videoRecord/saveSubtitle', data, {
+    headers: {
+      silentError: true
+    }
+  })
+}
+
+export function optimizeTranslation(data: VideoOptimizeTranslationParams): Promise<VideoOptimizeTranslationResponse> {
+  return request.post('/videoRecord/optimizeTranslation', data, {
     headers: {
       silentError: true
     }
