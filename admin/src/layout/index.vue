@@ -60,13 +60,34 @@ import AppHeader from './components/Header.vue'
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .app-main {
   flex: 1;
+  min-height: 0;
   padding: 10px;
-  overflow: hidden;
+  /* 内容超出时可竖向滚动，避免遮挡；
+     横向不滚动，超出部分由子页面自适应处理。 */
+  overflow-x: hidden;
+  overflow-y: auto;
   background-color: #f0f2f5;
+}
+
+/* 滚动条美化（webkit 内核；不生效也不影响功能） */
+.app-main::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.app-main::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 4px;
+}
+.app-main::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+.app-main::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* 页面切换动画 */

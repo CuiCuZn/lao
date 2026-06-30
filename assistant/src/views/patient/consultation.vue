@@ -84,6 +84,7 @@ import { useI18n } from 'vue-i18n'
 import PatientPageShell from '@/components/patient/PatientPageShell.vue'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
 import { getVideoConversation, getVideoId, getVideoTime, getVideoToken, optimizeTranslation, saveSubtitle } from '@/api/video'
+import type { VideoSaveSubtitleParams } from '@/api/types'
 import { PATIENT_CHANNEL_MESSAGE_TYPES } from '@/constants/patient'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { broadcastPatientMediaControlState, listenPatientChannelMessages } from '@/utils/patient-channel'
@@ -383,7 +384,7 @@ async function handleSubtitleFinalized(item: SubtitleTimelineItem) {
   const currentUserId = session.channelContext.value?.userId || userId.value
   const payload = resolveSubtitleSavePayload(item)
 
-  if (!resolvedVideoId || !payload || !currentUserId || item.speakerId !== currentUserId) {
+  if (!resolvedVideoId || !payload) {
     return
   }
 
@@ -398,11 +399,15 @@ async function handleSubtitleFinalized(item: SubtitleTimelineItem) {
   let finalRecordLo = payload.recordLo
 
   try {
-    const optimizeResponse = await optimizeTranslation({
+    const optimizeParams = {
       id: item.id,
       recordCn: payload.recordCn,
-      recordLo: payload.recordLo
-    })
+      recordLo: payload.recordLo,
+      sourceLanguageType: item.sourceLanguage === 'lo' ? 'lo_LA' : 'zh_CN'
+    }
+    console.log('接口传参-- optimizeTranslation', optimizeParams)
+    const optimizeResponse = await optimizeTranslation(optimizeParams)
+    console.log('接口返回值-- optimizeTranslation', optimizeResponse)
 
     const optimizedData = optimizeResponse?.data
     if (optimizedData && optimizedData.id === item.id) {
@@ -418,16 +423,25 @@ async function handleSubtitleFinalized(item: SubtitleTimelineItem) {
       timeline.updateItemTexts(item.id, updatedSourceText, updatedTranslatedText)
     }
   } catch (error) {
-    console.warn('Failed to optimize subtitle translation, fallback to original text.', error)
+    console.warn('[PatientSubtitle] optimizeTranslation failed, fallback to original.', error)
   }
 
-  void saveSubtitle({
+  // 只有自己这方的字幕才保存
+  if (!currentUserId || item.speakerId !== currentUserId) {
+    return
+  }
+
+  const saveParams: VideoSaveSubtitleParams = {
     videoId: resolvedVideoId,
     isDoctor: 1,
     recordCn: finalRecordCn,
     recordLo: finalRecordLo
+  }
+  console.log('接口传参-- saveSubtitle', saveParams)
+  void saveSubtitle(saveParams).then((result) => {
+    console.log('接口返回值-- saveSubtitle', result)
   }).catch((error) => {
-    console.warn('Failed to save patient subtitle record.', error)
+    console.warn('[PatientSubtitle] saveSubtitle failed.', error)
   })
 }
 

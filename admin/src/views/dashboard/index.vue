@@ -537,6 +537,8 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .dashboard-container {
   padding: 4px 12px 12px;
+  /* 工作台内容较多，容器自然撑开高度，由外层 .app-main 提供滚动 */
+  min-height: 100%;
 }
 
 /* 顶部 */

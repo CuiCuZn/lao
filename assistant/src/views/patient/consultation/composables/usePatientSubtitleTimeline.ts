@@ -192,18 +192,17 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     item.isFinal = item.sourceFinal && (!translationEnabled || item.translatedFinal)
     syncSourceSentenceAlias(item)
 
-    if (
-      !options.onFinalizedItem ||
-      notifiedFinalizedItems.has(item) ||
-      !item.sourceFinal ||
-      !item.sourceText.trim() ||
-      (translationEnabled && (!item.translatedFinal || !item.translatedText.trim()))
-    ) {
+    const hasOnFinalizedItem = !!options.onFinalizedItem
+    const alreadyNotified = notifiedFinalizedItems.has(item)
+    const hasSourceText = !!item.sourceText.trim()
+    const hasTranslationText = !translationEnabled || (item.translatedFinal && !!item.translatedText.trim())
+
+    if (!hasOnFinalizedItem || alreadyNotified || !item.sourceFinal || !hasSourceText || !hasTranslationText) {
       return
     }
 
     notifiedFinalizedItems.add(item)
-    void options.onFinalizedItem(item)
+    void options.onFinalizedItem?.(item)
   }
 
   const findRecordByBeginTime = (message: ASRMessage) => {
@@ -623,6 +622,15 @@ export const usePatientSubtitleTimeline = (options: SubtitleTimelineOptions) => 
     sourceLanguage,
     targetLanguage
   }: SubtitleTimelineMessageContext) => {
+    console.log('[ASR消息] 收到消息:', {
+      uid: message.uid,
+      translated: message.translated,
+      sentenceEnd: message.sentenceEnd,
+      sentence: message.sentence,
+      sourceLanguage,
+      targetLanguage
+    })
+
     const item = ensureTimelineItem({
       message,
       sourceLanguage,

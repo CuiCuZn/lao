@@ -462,7 +462,7 @@ export interface VideoCloseSubtitleParams {
 
 export interface VideoSaveSubtitleParams {
   videoId: string | number;
-  isDoctor: 0 | 1;
+  isDoctor: 0 | 1 | 2;
   recordCn: string;
   recordLo: string;
 }
@@ -492,6 +492,7 @@ export interface VideoOptimizeTranslationParams {
   id: string;
   recordCn: string;
   recordLo: string;
+  sourceLanguageType: string;
 }
 
 export interface VideoOptimizeTranslationData {

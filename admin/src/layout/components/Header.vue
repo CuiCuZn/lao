@@ -1,7 +1,16 @@
 <template>
   <div class="header">
     <div class="right-menu">
-      <!-- 语言选择器 -->
+      <!--
+        ============================================================
+        语言选择器（暂时隐藏）
+        备注：2026-06-29 业务要求 header 不再展示语言切换入口，
+        此处仅做注释隐藏，**不要删除以下代码**，后续如需恢复
+        语言切换功能，移除注释即可。
+        关联函数：handleSetLanguage、currentLangName
+        ============================================================
+      -->
+      <!--
       <el-dropdown @command="handleSetLanguage">
         <span class="el-dropdown-link">
           {{ currentLangName }}
@@ -14,6 +23,7 @@
           </el-dropdown-menu>
         </template>
       </el-dropdown>
+      -->
 
       <!-- 用户头像与操作菜单 -->
       <el-dropdown trigger="click" @command="handleCommand">

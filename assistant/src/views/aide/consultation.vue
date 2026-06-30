@@ -211,7 +211,7 @@ import {
 } from '@/api/inspection'
 import type { InspectionBatchReportItem, InspectionRecognizedItem } from '@/api/types'
 import { addWrittenRecord, getPatientDetail, translateConsultationText } from '@/api/patient'
-import { getVideoConversation, getVideoTime } from '@/api/video'
+import { getVideoConversation, getVideoTime, optimizeTranslation } from '@/api/video'
 import { usePatientSessionStore } from '@/stores/patient-session'
 import { useUserStore } from '@/stores/user'
 import { navigateToAideConsultationRoom } from '@/utils/aide-consultation'
@@ -243,7 +243,7 @@ import { usePatientConsultationSession } from '@/views/patient/consultation/comp
 import { usePatientSubtitleTimeline } from '@/views/patient/consultation/composables/usePatientSubtitleTimeline'
 import { createPatientConsultationChatService } from '@/views/patient/consultation/services/consultation-chat'
 import { normalizeConversationHistory, type ConsultationHistoryItem } from '@/views/patient/consultation/services/consultation-history'
-import type { ConsultationChatPayload } from '@/views/patient/consultation/types'
+import type { ConsultationChatPayload, SubtitleTimelineItem } from '@/views/patient/consultation/types'
 import { uploadConsultationCaptureFiles } from '@/utils/oss-upload'
 
 const RTC_APP_ID = 'bkbbxxzy'
@@ -725,11 +725,109 @@ const resolveTranslationText = (payload: unknown) => {
   return translatedText
 }
 
+const savedSubtitleKeys = new Set<string>()
+
+const buildSubtitleSaveKey = (item: SubtitleTimelineItem) => {
+  if (item.beginTime > 0) {
+    return `${item.speakerId}_${item.sourceLanguage}_begin_${item.beginTime}`
+  }
+
+  if (item.sentenceIndex >= 0) {
+    return `${item.speakerId}_${item.sourceLanguage}_sentence_${item.sentenceIndex}`
+  }
+
+  return `${item.speakerId}_${item.sourceLanguage}_item_${item.id}`
+}
+
+const resolveSubtitleSavePayload = (item: SubtitleTimelineItem) => {
+  const sourceText = item.sourceText.trim()
+  const translatedText = item.translatedText.trim()
+
+  if (!subtitleTranslationEnabled.value) {
+    if (!item.sourceFinal || !sourceText) {
+      return null
+    }
+
+    return {
+      recordCn: sourceText,
+      recordLo: ''
+    }
+  }
+
+  if (!item.sourceFinal || !item.translatedFinal || !sourceText || !translatedText) {
+    return null
+  }
+
+  if (item.sourceLanguage === 'cn') {
+    return {
+      recordCn: sourceText,
+      recordLo: translatedText
+    }
+  }
+
+  if (item.sourceLanguage === 'lo') {
+    return {
+      recordCn: translatedText,
+      recordLo: sourceText
+    }
+  }
+
+  return null
+}
+
+async function handleSubtitleFinalized(item: SubtitleTimelineItem) {
+  const resolvedVideoId = consultationVideoId.value
+  const payload = resolveSubtitleSavePayload(item)
+
+  if (!resolvedVideoId || !payload) {
+    return
+  }
+
+  const saveKey = buildSubtitleSaveKey(item)
+  if (savedSubtitleKeys.has(saveKey)) {
+    return
+  }
+
+  savedSubtitleKeys.add(saveKey)
+
+  let finalRecordCn = payload.recordCn
+  let finalRecordLo = payload.recordLo
+
+  try {
+    const optimizeParams = {
+      id: item.id,
+      recordCn: payload.recordCn,
+      recordLo: payload.recordLo,
+      sourceLanguageType: item.sourceLanguage === 'lo' ? 'lo_LA' : 'zh_CN'
+    }
+    console.log('接口传参-- optimizeTranslation', optimizeParams)
+    const optimizeResponse = await optimizeTranslation(optimizeParams)
+    console.log('接口返回值-- optimizeTranslation', optimizeResponse)
+
+    const optimizedData = optimizeResponse?.data
+    if (optimizedData && optimizedData.id === item.id) {
+      finalRecordCn = optimizedData.recordCn || finalRecordCn
+      finalRecordLo = optimizedData.recordLo || finalRecordLo
+
+      let updatedSourceText = finalRecordCn
+      let updatedTranslatedText = finalRecordLo
+      if (item.sourceLanguage === 'lo') {
+        updatedSourceText = finalRecordLo
+        updatedTranslatedText = finalRecordCn
+      }
+      timeline.updateItemTexts(item.id, updatedSourceText, updatedTranslatedText)
+    }
+  } catch (error) {
+    console.warn('[AideSubtitle] optimizeTranslation failed, fallback to original.', error)
+  }
+}
+
 const timeline = usePatientSubtitleTimeline({
   getCurrentUserId: () => session.channelContext.value?.userId || userId.value,
   getCurrentUserName: () => aideName.value,
   getRemoteUsers: () => session.allUsers.value.filter((item) => item.userId !== userId.value),
-  getTranslationEnabled: () => subtitleTranslationEnabled.value
+  getTranslationEnabled: () => subtitleTranslationEnabled.value,
+  onFinalizedItem: handleSubtitleFinalized
 })
 
 const resolveHistorySpeaker = (item: ConsultationHistoryItem) => {
@@ -1789,6 +1887,7 @@ const cleanupConsultationRoom = async () => {
   resetInspectionCaptureState()
   clearAssistantConsultationSseContext()
   chat.disconnect()
+  savedSubtitleKeys.clear()
   timeline.clearTimeline()
   await session.leaveConsultationRoom({ taskPolicy: 'force' })
 }
