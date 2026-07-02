@@ -6,7 +6,7 @@
           <span class="filter-label">关键词</span>
           <el-input
             v-model="queryParams.keyword"
-            placeholder="中文证型 / 老挝语 / 关键词"
+            placeholder="药材中文名 / 老挝语"
             clearable
             class="filter-input filter-input--wide"
             @keyup.enter="handleQuery"
@@ -35,19 +35,19 @@
         <div class="filter-right-actions">
           <el-button type="success" :icon="Upload" @click="handleImport">批量导入</el-button>
           <el-button :icon="Download" @click="handleExport">导出</el-button>
-          <el-button type="primary" :icon="Plus" @click="handleAdd">新增证型</el-button>
+          <el-button type="primary" :icon="Plus" @click="handleAdd">新增药材</el-button>
         </div>
       </div>
     </div>
 
     <div class="card table-card">
       <el-table v-loading="loading" :data="corpusList" class="corpus-table" style="width: 100%">
-        <el-table-column label="分证" min-width="140" align="center">
+        <el-table-column label="分类" min-width="140" align="center">
           <template #default="scope">
             <span class="tag tag--primary">{{ getDictLabel(categoryOptions, scope.row.categoryCode) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="中文证型" prop="cnContent" min-width="200" show-overflow-tooltip />
+        <el-table-column label="中文名称" prop="cnContent" min-width="200" show-overflow-tooltip />
         <el-table-column label="老挝语译文" prop="loContent" min-width="220" show-overflow-tooltip>
           <template #default="scope">
             <span class="lao-text">{{ scope.row.loContent }}</span>
@@ -102,12 +102,12 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="中文证型" prop="cnContent">
+        <el-form-item label="中文名称" prop="cnContent">
           <el-input
             v-model="form.cnContent"
             type="textarea"
             :rows="2"
-            placeholder="请输入中文证型"
+            placeholder="请输入药材中文名称"
           />
         </el-form-item>
         <el-form-item label="老挝语译文" prop="loContent">
@@ -115,7 +115,7 @@
             v-model="form.loContent"
             type="textarea"
             :rows="2"
-            placeholder="请输入老挝语译文"
+            placeholder="请输入老挝语名称"
             class="lao-text"
           />
         </el-form-item>
@@ -138,7 +138,7 @@
 
     <el-dialog
       v-model="detailVisible"
-      title="证型详情"
+      title="药材详情"
       width="680px"
       append-to-body
       class="detail-dialog"
@@ -153,7 +153,7 @@
         </div>
       </div>
       <div class="detail-section">
-        <div class="section-title">中文证型</div>
+        <div class="section-title">中文名称</div>
         <div class="detail-content">{{ detailData.cnContent || '-' }}</div>
       </div>
       <div class="detail-section">
@@ -173,10 +173,10 @@
 
     <ImportDialog
       v-model="importVisible"
-      title="批量导入证型语料"
-      :corpus-type="CORPUS_TYPE.SYNDROME"
-      template-filename="证型语料模板.xlsx"
-      :template-path="TEMPLATE_PATHS.SYNDROME"
+      title="批量导入药材语料"
+      :corpus-type="CORPUS_TYPE.HERB"
+      template-filename="药材语料模板.xlsx"
+      :template-path="TEMPLATE_PATHS.HERB"
       @success="handleImportSuccess"
     />
   </div>
@@ -205,7 +205,7 @@ import ImportDialog from '../corpus/components/ImportDialog.vue'
 
 const dictStore = useDictStore()
 
-const categoryOptions = computed(() => dictStore.getDict('syndrome_category_code'))
+const categoryOptions = computed(() => dictStore.getDict('materials_category_code'))
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -215,10 +215,10 @@ const total = ref(0)
 const formVisible = ref(false)
 const formRef = ref<FormInstance>()
 const isEdit = ref(false)
-const formTitle = computed(() => (isEdit.value ? '修改证型' : '新增证型'))
+const formTitle = computed(() => (isEdit.value ? '修改药材' : '新增药材'))
 const form = reactive<CorpusForm>({
   corpusId: undefined,
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.HERB,
   categoryCode: '',
   cnContent: '',
   loContent: '',
@@ -231,7 +231,7 @@ const detailData = ref<Partial<CorpusVO>>({})
 const importVisible = ref(false)
 
 const queryParams = reactive<CorpusQuery>({
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.HERB,
   keyword: '',
   categoryCode: '',
   pageNum: 1,
@@ -240,7 +240,7 @@ const queryParams = reactive<CorpusQuery>({
 
 const formRules: FormRules = {
   categoryCode: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  cnContent: [{ required: true, message: '请输入中文证型', trigger: 'blur' }],
+  cnContent: [{ required: true, message: '请输入中文名称', trigger: 'blur' }],
   loContent: [{ required: true, message: '请输入老挝语译文', trigger: 'blur' }]
 }
 
@@ -363,11 +363,11 @@ const handleImportSuccess = () => {
 
 const handleExport = async () => {
   const exportParams = {
-    corpusType: CORPUS_TYPE.SYNDROME,
+    corpusType: CORPUS_TYPE.HERB,
     keyword: queryParams.keyword || undefined,
     categoryCode: queryParams.categoryCode || undefined
   }
-  const [err] = await to(exportCorpus(exportParams, '证型语料.xlsx'))
+  const [err] = await to(exportCorpus(exportParams, '药材语料.xlsx'))
   if (!err) {
     ElMessage.success('导出成功')
   }
@@ -482,11 +482,6 @@ onMounted(() => {
 .tag--primary {
   background: #ecf5ff;
   color: #409eff;
-}
-
-.tag--info {
-  background: #f4f4f5;
-  color: #909399;
 }
 
 .time-text {

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { RouteRecordRaw } from 'vue-router'
 import { getRouters } from '@/api/menu'
 import Layout from '@/layout/index.vue'
+import ParentView from '@/layout/components/ParentView.vue'
 
 // 匹配 views 下的所有 .vue 文件
 const modules = import.meta.glob('../views/**/*.vue')
@@ -28,11 +29,14 @@ export const usePermissionStore = defineStore('permission', () => {
     const res = await getRouters()
     const rawRoutes = res.data
 
+    // 深拷贝原始数据，一份用于生成路由（filterAsyncRouter会修改对象），一份用于构建侧边栏
+    const rawRoutesCopy = JSON.parse(JSON.stringify(rawRoutes))
+
     // 转换后端数据为 Vue Router 格式（保留原结构用于 router.addRoute）
     const dynamicRoutes = filterAsyncRouter(rawRoutes)
 
-    // 拍平后的副本仅用于侧边栏展示（去掉外层分组壳）
-    sidebarRoutes.value = flattenSingleChildRoutes(JSON.parse(JSON.stringify(dynamicRoutes)))
+    // 拍平后的副本仅用于侧边栏展示（只去掉最外层 Layout 壳，保留二级菜单结构）
+    sidebarRoutes.value = buildSidebarRoutes(rawRoutesCopy)
 
     return dynamicRoutes
   }
@@ -52,15 +56,16 @@ export const usePermissionStore = defineStore('permission', () => {
 function filterAsyncRouter(asyncRouterMap: any[]) {
   return asyncRouterMap.filter(route => {
     if (route.component) {
-      // Layout 组件特殊处理
       if (route.component === 'Layout') {
         route.component = Layout
       } else if (route.component === 'ParentView') {
-        // 如果有 ParentView 也可以在此处理，此处暂略
-        // route.component = ParentView
+        route.component = ParentView
       } else {
         route.component = loadView(route.component)
       }
+    }
+    if (route.redirect === 'noRedirect' || route.redirect === '') {
+      delete route.redirect
     }
     if (route.children != null && route.children && route.children.length) {
       route.children = filterAsyncRouter(route.children)
@@ -70,60 +75,100 @@ function filterAsyncRouter(asyncRouterMap: any[]) {
 }
 
 /**
- * 拍平路由中的"外层分组壳"
- * 典型场景：后端返回 [医院管理 → [工作台, 医生管理, ...]]，希望直接展示成 [工作台, 医生管理, ...]
- * 规则：只要父级有可见子项就拍平（去掉父级壳），子项提升到同级。
- * 忽略 alwaysShow：因为本系统菜单只有一个外层分组，统一不要这层壳。
- * @param routes
+ * 构建侧边栏菜单路由
+ * 规则：
+ * 1. 去掉最外层的 Layout 壳（path 为 '/' 的顶层容器）
+ * 2. 再去掉一层容器路由（如"医院管理"这种 ParentView 分组壳），将其子菜单提升到顶层
+ * 3. 更深层级保持原有嵌套结构，不再扁平化（尊重 alwaysShow 配置）
+ * 4. 正确拼接绝对路径
  */
-function flattenSingleChildRoutes(routes: any[]): any[] {
+function buildSidebarRoutes(routes: any[]): any[] {
   const result: any[] = []
+
   for (const route of routes) {
     if (route.hidden) continue
 
-    // 递归先处理子路由
-    if (route.children && route.children.length) {
-      route.children = flattenSingleChildRoutes(route.children)
-    }
+    const isRootShell = route.path === '/' && route.children && route.children.length
 
-    const visibleChildren = (route.children || []).filter((c: any) => !c.hidden)
-
-    // 有可见子项：去掉父级壳，子项提升到同级
-    if (visibleChildren.length === 1) {
-      result.push(mergeParentToChild(route, visibleChildren[0]))
-      continue
-    }
-    if (visibleChildren.length > 1) {
-      for (const child of visibleChildren) {
-        result.push(mergeParentToChild(route, child))
+    if (isRootShell) {
+      for (const child of route.children) {
+        if (child.hidden) continue
+        addMenuToResult(result, child, '/')
       }
-      continue
+    } else {
+      addMenuToResult(result, route, '')
     }
-
-    // 没有子项：保持原样
-    result.push(route)
   }
   return result
 }
 
 /**
- * 将父级信息合并到子级，修正 path（拼接父路径）
+ * 将一个路由节点添加到结果中：如果它是容器路由（ParentView/无组件/有children但redirect=noRedirect），
+ * 则将其子节点直接加入结果（多跳一层）；否则直接构建菜单节点加入。
+ * 只处理一层，不递归扁平化更深层级。
  */
-function mergeParentToChild(parent: any, child: any) {
-  const merged: any = {
-    ...child,
-    meta: { ...(parent.meta || {}), ...(child.meta || {}) }
-  }
-  // 路径处理：子路径以 / 开头视为绝对路径，否则拼接父路径
-  const childPath = child.path || ''
-  if (childPath.startsWith('/')) {
-    merged.path = childPath
-  } else if (parent.path && parent.path !== '/') {
-    merged.path = (parent.path + '/' + childPath).replace(/\/+/g, '/')
+function addMenuToResult(result: any[], route: any, parentPath: string) {
+  const isContainer = isContainerRoute(route)
+
+  if (isContainer && route.children && route.children.length) {
+    const containerPath = resolveRoutePath(route.path, parentPath)
+    for (const grandChild of route.children) {
+      if (grandChild.hidden) continue
+      result.push(buildMenuNode(grandChild, containerPath))
+    }
   } else {
-    merged.path = '/' + childPath
+    result.push(buildMenuNode(route, parentPath))
   }
-  return merged
+}
+
+/**
+ * 判断一个路由是否是"容器壳"路由（自身不渲染实际页面，仅用于菜单分组）
+ * 条件：有children 且 满足以下任一：
+ *   - component 是 ParentView
+ *   - redirect 是 'noRedirect'（后端用来标记纯分组）
+ *   - 没有 component（纯路由分组）
+ */
+function isContainerRoute(route: any): boolean {
+  if (!route.children || !route.children.length) return false
+  const comp = route.component
+  const redirect = route.redirect
+  if (comp === 'ParentView') return true
+  if (redirect === 'noRedirect') return true
+  if (!comp) return true
+  return false
+}
+
+/**
+ * 解析路由路径为绝对路径
+ */
+function resolveRoutePath(routePath: string, parentPath: string): string {
+  if (!routePath) return parentPath || '/'
+  if (routePath.startsWith('/')) return routePath
+  if (parentPath === '/') return '/' + routePath
+  if (parentPath) return (parentPath + '/' + routePath).replace(/\/+/g, '/')
+  return '/' + routePath
+}
+
+/**
+ * 递归构建菜单节点
+ * @param route 当前路由原始数据
+ * @param parentPath 父级的已解析绝对路径（如 '/admin'），空字符串表示顶层且自身路径可能已是绝对的
+ */
+function buildMenuNode(route: any, parentPath: string): any {
+  const node: any = {
+    path: resolveRoutePath(route.path || '', parentPath),
+    hidden: route.hidden || false,
+    alwaysShow: route.alwaysShow || false,
+    meta: { ...(route.meta || {}) }
+  }
+
+  if (route.children && route.children.length) {
+    node.children = route.children
+      .filter((c: any) => !c.hidden)
+      .map((c: any) => buildMenuNode(c, node.path))
+  }
+
+  return node
 }
 
 /**

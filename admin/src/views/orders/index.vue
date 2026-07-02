@@ -6,7 +6,7 @@
           <span class="filter-label">关键词</span>
           <el-input
             v-model="queryParams.keyword"
-            placeholder="中文证型 / 老挝语 / 关键词"
+            placeholder="中文 / 老挝语 / 备注"
             clearable
             class="filter-input filter-input--wide"
             @keyup.enter="handleQuery"
@@ -28,6 +28,38 @@
             />
           </el-select>
         </div>
+        <div class="filter-item">
+          <span class="filter-label">适用标签</span>
+          <el-select
+            v-model="queryParams.bizLabelCode"
+            placeholder="全部标签"
+            clearable
+            class="filter-select filter-select--sm"
+          >
+            <el-option
+              v-for="dict in labelOptions"
+              :key="dict.dictValue"
+              :label="dict.dictLabel"
+              :value="dict.dictValue"
+            />
+          </el-select>
+        </div>
+        <div class="filter-item">
+          <span class="filter-label">医嘱类型</span>
+          <el-select
+            v-model="queryParams.bizTypeCode"
+            placeholder="全部类型"
+            clearable
+            class="filter-select filter-select--sm"
+          >
+            <el-option
+              v-for="dict in typeOptions"
+              :key="dict.dictValue"
+              :label="dict.dictLabel"
+              :value="dict.dictValue"
+            />
+          </el-select>
+        </div>
         <div class="filter-actions">
           <el-button type="primary" :icon="Search" @click="handleQuery">查询</el-button>
           <el-button :icon="Refresh" @click="resetQuery">重置</el-button>
@@ -35,27 +67,37 @@
         <div class="filter-right-actions">
           <el-button type="success" :icon="Upload" @click="handleImport">批量导入</el-button>
           <el-button :icon="Download" @click="handleExport">导出</el-button>
-          <el-button type="primary" :icon="Plus" @click="handleAdd">新增证型</el-button>
+          <el-button type="primary" :icon="Plus" @click="handleAdd">新增医嘱</el-button>
         </div>
       </div>
     </div>
 
     <div class="card table-card">
       <el-table v-loading="loading" :data="corpusList" class="corpus-table" style="width: 100%">
-        <el-table-column label="分证" min-width="140" align="center">
+        <el-table-column label="分类" min-width="130" align="center">
           <template #default="scope">
             <span class="tag tag--primary">{{ getDictLabel(categoryOptions, scope.row.categoryCode) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="中文证型" prop="cnContent" min-width="200" show-overflow-tooltip />
-        <el-table-column label="老挝语译文" prop="loContent" min-width="220" show-overflow-tooltip>
+        <el-table-column label="适用标签" min-width="120" align="center">
+          <template #default="scope">
+            <span class="tag tag--info">{{ getDictLabel(labelOptions, scope.row.bizLabelCode) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="医嘱类型" min-width="120" align="center">
+          <template #default="scope">
+            <span class="tag tag--warning">{{ getDictLabel(typeOptions, scope.row.bizTypeCode) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="中文医嘱" prop="cnContent" min-width="220" show-overflow-tooltip />
+        <el-table-column label="老挝语医嘱" prop="loContent" min-width="220" show-overflow-tooltip>
           <template #default="scope">
             <span class="lao-text">{{ scope.row.loContent }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" prop="createTime" min-width="160" align="center">
+        <el-table-column label="更新时间" prop="updateTime" min-width="145" align="center">
           <template #default="scope">
-            <span class="time-text">{{ formatTime(scope.row.createTime) }}</span>
+            <span class="time-text">{{ formatTime(scope.row.updateTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right" class-name="action-col">
@@ -86,36 +128,64 @@
     <el-dialog
       v-model="formVisible"
       :title="formTitle"
-      width="680px"
+      width="720px"
       append-to-body
       class="form-dialog"
       @close="closeForm"
     >
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px" class="corpus-form">
-        <el-form-item label="语料分类" prop="categoryCode">
-          <el-select v-model="form.categoryCode" placeholder="选择分类" style="width: 100%">
-            <el-option
-              v-for="dict in categoryOptions"
-              :key="dict.dictValue"
-              :label="dict.dictLabel"
-              :value="dict.dictValue"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="中文证型" prop="cnContent">
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="分类" prop="categoryCode">
+              <el-select v-model="form.categoryCode" placeholder="选择分类" style="width: 100%" filterable allow-create>
+                <el-option
+                  v-for="dict in categoryOptions"
+                  :key="dict.dictValue"
+                  :label="dict.dictLabel"
+                  :value="dict.dictValue"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="适用标签" prop="bizLabelCode">
+              <el-select v-model="form.bizLabelCode" placeholder="选择适用标签" style="width: 100%" filterable allow-create>
+                <el-option
+                  v-for="dict in labelOptions"
+                  :key="dict.dictValue"
+                  :label="dict.dictLabel"
+                  :value="dict.dictValue"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="医嘱类型" prop="bizTypeCode">
+              <el-select v-model="form.bizTypeCode" placeholder="选择医嘱类型" style="width: 100%" filterable allow-create>
+                <el-option
+                  v-for="dict in typeOptions"
+                  :key="dict.dictValue"
+                  :label="dict.dictLabel"
+                  :value="dict.dictValue"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="中文医嘱" prop="cnContent">
           <el-input
             v-model="form.cnContent"
             type="textarea"
-            :rows="2"
-            placeholder="请输入中文证型"
+            :rows="3"
+            placeholder="请输入中文医嘱"
           />
         </el-form-item>
-        <el-form-item label="老挝语译文" prop="loContent">
+        <el-form-item label="老挝语医嘱" prop="loContent">
           <el-input
             v-model="form.loContent"
             type="textarea"
-            :rows="2"
-            placeholder="请输入老挝语译文"
+            :rows="3"
+            placeholder="请输入老挝语医嘱"
             class="lao-text"
           />
         </el-form-item>
@@ -124,7 +194,7 @@
             v-model="form.remark"
             type="textarea"
             :rows="2"
-            placeholder="选填，补充说明"
+            placeholder="选填，补充适用条件或翻译说明"
           />
         </el-form-item>
       </el-form>
@@ -138,31 +208,56 @@
 
     <el-dialog
       v-model="detailVisible"
-      title="证型详情"
-      width="680px"
+      title="医嘱详情"
+      width="720px"
       append-to-body
       class="detail-dialog"
     >
       <div class="detail-section">
         <div class="section-title">基本信息</div>
-        <div class="detail-grid detail-grid--single">
+        <div class="detail-grid">
           <div class="detail-item">
             <span class="detail-label">分类</span>
             <span class="detail-value tag tag--primary">{{ getDictLabel(categoryOptions, detailData.categoryCode) }}</span>
           </div>
+          <div class="detail-item">
+            <span class="detail-label">适用标签</span>
+            <span class="detail-value tag tag--info">{{ getDictLabel(labelOptions, detailData.bizLabelCode) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">医嘱类型</span>
+            <span class="detail-value tag tag--warning">{{ getDictLabel(typeOptions, detailData.bizTypeCode) }}</span>
+          </div>
         </div>
       </div>
       <div class="detail-section">
-        <div class="section-title">中文证型</div>
+        <div class="section-title">中文医嘱</div>
         <div class="detail-content">{{ detailData.cnContent || '-' }}</div>
       </div>
       <div class="detail-section">
-        <div class="section-title">老挝语译文</div>
+        <div class="section-title">老挝语医嘱</div>
         <div class="detail-content lao-text">{{ detailData.loContent || '-' }}</div>
       </div>
       <div v-if="detailData.remark" class="detail-section">
         <div class="section-title">备注</div>
         <div class="detail-content detail-content--note">{{ detailData.remark }}</div>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">操作记录</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">创建人</span>
+            <span class="detail-value">{{ detailData.createBy || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">创建时间</span>
+            <span class="detail-value">{{ formatTime(detailData.createTime) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">最后更新</span>
+            <span class="detail-value">{{ formatTime(detailData.updateTime) }}</span>
+          </div>
+        </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
@@ -173,10 +268,10 @@
 
     <ImportDialog
       v-model="importVisible"
-      title="批量导入证型语料"
-      :corpus-type="CORPUS_TYPE.SYNDROME"
-      template-filename="证型语料模板.xlsx"
-      :template-path="TEMPLATE_PATHS.SYNDROME"
+      title="批量导入医嘱语料"
+      :corpus-type="CORPUS_TYPE.ADVICE"
+      template-filename="医嘱语料模板.xlsx"
+      :template-path="TEMPLATE_PATHS.ADVICE"
       @success="handleImportSuccess"
     />
   </div>
@@ -205,7 +300,9 @@ import ImportDialog from '../corpus/components/ImportDialog.vue'
 
 const dictStore = useDictStore()
 
-const categoryOptions = computed(() => dictStore.getDict('syndrome_category_code'))
+const categoryOptions = computed(() => dictStore.getDict('advice_category_code'))
+const labelOptions = computed(() => dictStore.getDict('advice_label_code'))
+const typeOptions = computed(() => dictStore.getDict('advice_type_code'))
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -215,11 +312,13 @@ const total = ref(0)
 const formVisible = ref(false)
 const formRef = ref<FormInstance>()
 const isEdit = ref(false)
-const formTitle = computed(() => (isEdit.value ? '修改证型' : '新增证型'))
+const formTitle = computed(() => (isEdit.value ? '修改医嘱' : '新增医嘱'))
 const form = reactive<CorpusForm>({
   corpusId: undefined,
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.ADVICE,
   categoryCode: '',
+  bizLabelCode: '',
+  bizTypeCode: '',
   cnContent: '',
   loContent: '',
   remark: '',
@@ -231,17 +330,21 @@ const detailData = ref<Partial<CorpusVO>>({})
 const importVisible = ref(false)
 
 const queryParams = reactive<CorpusQuery>({
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.ADVICE,
   keyword: '',
   categoryCode: '',
+  bizLabelCode: '',
+  bizTypeCode: '',
   pageNum: 1,
   pageSize: 20
 })
 
 const formRules: FormRules = {
   categoryCode: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  cnContent: [{ required: true, message: '请输入中文证型', trigger: 'blur' }],
-  loContent: [{ required: true, message: '请输入老挝语译文', trigger: 'blur' }]
+  bizLabelCode: [{ required: true, message: '请选择适用标签', trigger: 'change' }],
+  bizTypeCode: [{ required: true, message: '请选择医嘱类型', trigger: 'change' }],
+  cnContent: [{ required: true, message: '请输入中文医嘱', trigger: 'blur' }],
+  loContent: [{ required: true, message: '请输入老挝语医嘱', trigger: 'blur' }]
 }
 
 const getDictLabel = (options: any[], value?: string | number) => {
@@ -274,6 +377,8 @@ const handleQuery = () => {
 const resetQuery = () => {
   queryParams.keyword = ''
   queryParams.categoryCode = ''
+  queryParams.bizLabelCode = ''
+  queryParams.bizTypeCode = ''
   queryParams.pageNum = 1
   queryParams.pageSize = 20
   getList()
@@ -282,6 +387,8 @@ const resetQuery = () => {
 const resetForm = () => {
   form.corpusId = undefined
   form.categoryCode = ''
+  form.bizLabelCode = ''
+  form.bizTypeCode = ''
   form.cnContent = ''
   form.loContent = ''
   form.remark = ''
@@ -303,6 +410,8 @@ const handleEdit = async (row: CorpusVO) => {
     const d = res.data
     form.corpusId = d.corpusId
     form.categoryCode = d.categoryCode
+    form.bizLabelCode = d.bizLabelCode || ''
+    form.bizTypeCode = d.bizTypeCode || ''
     form.cnContent = d.cnContent
     form.loContent = d.loContent
     form.remark = d.remark || ''
@@ -363,11 +472,13 @@ const handleImportSuccess = () => {
 
 const handleExport = async () => {
   const exportParams = {
-    corpusType: CORPUS_TYPE.SYNDROME,
+    corpusType: CORPUS_TYPE.ADVICE,
     keyword: queryParams.keyword || undefined,
-    categoryCode: queryParams.categoryCode || undefined
+    categoryCode: queryParams.categoryCode || undefined,
+    bizLabelCode: queryParams.bizLabelCode || undefined,
+    bizTypeCode: queryParams.bizTypeCode || undefined
   }
-  const [err] = await to(exportCorpus(exportParams, '证型语料.xlsx'))
+  const [err] = await to(exportCorpus(exportParams, '医嘱语料.xlsx'))
   if (!err) {
     ElMessage.success('导出成功')
   }
@@ -435,10 +546,14 @@ onMounted(() => {
   &--wide {
     width: 240px;
   }
+
+  &--sm {
+    width: 140px;
+  }
 }
 
 .filter-select {
-  width: 180px;
+  width: 150px;
 }
 
 .filter-actions {
@@ -487,6 +602,11 @@ onMounted(() => {
 .tag--info {
   background: #f4f4f5;
   color: #909399;
+}
+
+.tag--warning {
+  background: #fdf6ec;
+  color: #e6a23c;
 }
 
 .time-text {
@@ -539,10 +659,6 @@ onMounted(() => {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   font-size: 13px;
-
-  &--single {
-    grid-template-columns: 1fr;
-  }
 }
 
 .detail-item {

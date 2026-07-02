@@ -45,7 +45,27 @@ router.beforeEach(async (to, from) => {
           
           // 获取并缓存系统必要的字典数据
           // 此处提前加载科室字典：sys_dept 和 职称字典：sys_user_title
-          await dictStore.loadDicts(['sys_dept', 'sys_user_title', 'sys_normal_disable', 'sys_user_sex'])
+          await dictStore.loadDicts([
+            'sys_dept', 'sys_user_title', 'sys_normal_disable', 'sys_user_sex',
+            'sys_oper_type',
+            // 问诊语料库
+            'inquiry_doctor_category_type',
+            'inquiry_patient_category_type',
+            // 证型语料库
+            'syndrome_category_code',
+            // 西药语料库
+            'west_category_type',
+            // 药材语料库
+            'materials_category_code',
+            // 医嘱语料库
+            'advice_category_code',
+            'advice_label_code',
+            'advice_type_code',
+            // 针灸语料库
+            'acupuncture_category_code',
+            'acupuncture_label_code',
+            'acupuncture_type_code'
+          ])
           
           // 2. 根据获取的用户信息动态生成可访问路由
           const accessRoutes = await permissionStore.generateRoutes()

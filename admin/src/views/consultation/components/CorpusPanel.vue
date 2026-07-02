@@ -6,7 +6,7 @@
           <span class="filter-label">关键词</span>
           <el-input
             v-model="queryParams.keyword"
-            placeholder="中文证型 / 老挝语 / 关键词"
+            placeholder="中文 / 老挝语"
             clearable
             class="filter-input filter-input--wide"
             @keyup.enter="handleQuery"
@@ -35,27 +35,27 @@
         <div class="filter-right-actions">
           <el-button type="success" :icon="Upload" @click="handleImport">批量导入</el-button>
           <el-button :icon="Download" @click="handleExport">导出</el-button>
-          <el-button type="primary" :icon="Plus" @click="handleAdd">新增证型</el-button>
+          <el-button type="primary" :icon="Plus" @click="handleAdd">{{ addText }}</el-button>
         </div>
       </div>
     </div>
 
     <div class="card table-card">
       <el-table v-loading="loading" :data="corpusList" class="corpus-table" style="width: 100%">
-        <el-table-column label="分证" min-width="140" align="center">
+        <el-table-column label="分类" min-width="120" align="center">
           <template #default="scope">
             <span class="tag tag--primary">{{ getDictLabel(categoryOptions, scope.row.categoryCode) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="中文证型" prop="cnContent" min-width="200" show-overflow-tooltip />
-        <el-table-column label="老挝语译文" prop="loContent" min-width="220" show-overflow-tooltip>
+        <el-table-column :label="cnLabel" prop="cnContent" min-width="280" show-overflow-tooltip />
+        <el-table-column :label="loLabel" prop="loContent" min-width="280" show-overflow-tooltip>
           <template #default="scope">
             <span class="lao-text">{{ scope.row.loContent }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" prop="createTime" min-width="160" align="center">
+        <el-table-column label="更新时间" prop="updateTime" min-width="160" align="center">
           <template #default="scope">
-            <span class="time-text">{{ formatTime(scope.row.createTime) }}</span>
+            <span class="time-text">{{ formatTime(scope.row.updateTime) }}</span>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right" class-name="action-col">
@@ -102,20 +102,20 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="中文证型" prop="cnContent">
+        <el-form-item :label="cnLabel" prop="cnContent">
           <el-input
             v-model="form.cnContent"
             type="textarea"
-            :rows="2"
-            placeholder="请输入中文证型"
+            :rows="3"
+            :placeholder="'请输入' + cnLabel"
           />
         </el-form-item>
-        <el-form-item label="老挝语译文" prop="loContent">
+        <el-form-item :label="loLabel" prop="loContent">
           <el-input
             v-model="form.loContent"
             type="textarea"
-            :rows="2"
-            placeholder="请输入老挝语译文"
+            :rows="3"
+            :placeholder="'请输入' + loLabel"
             class="lao-text"
           />
         </el-form-item>
@@ -124,7 +124,7 @@
             v-model="form.remark"
             type="textarea"
             :rows="2"
-            placeholder="选填，补充说明"
+            placeholder="选填，补充适用场景、表达边界或翻译说明"
           />
         </el-form-item>
       </el-form>
@@ -138,7 +138,7 @@
 
     <el-dialog
       v-model="detailVisible"
-      title="证型详情"
+      :title="detailTitle"
       width="680px"
       append-to-body
       class="detail-dialog"
@@ -153,16 +153,33 @@
         </div>
       </div>
       <div class="detail-section">
-        <div class="section-title">中文证型</div>
+        <div class="section-title">{{ cnLabel }}</div>
         <div class="detail-content">{{ detailData.cnContent || '-' }}</div>
       </div>
       <div class="detail-section">
-        <div class="section-title">老挝语译文</div>
+        <div class="section-title">{{ loLabel }}</div>
         <div class="detail-content lao-text">{{ detailData.loContent || '-' }}</div>
       </div>
       <div v-if="detailData.remark" class="detail-section">
         <div class="section-title">备注</div>
         <div class="detail-content detail-content--note">{{ detailData.remark }}</div>
+      </div>
+      <div class="detail-section">
+        <div class="section-title">操作记录</div>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">创建人</span>
+            <span class="detail-value">{{ detailData.createBy || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">创建时间</span>
+            <span class="detail-value">{{ formatTime(detailData.createTime) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">最后更新</span>
+            <span class="detail-value">{{ formatTime(detailData.updateTime) }}</span>
+          </div>
+        </div>
       </div>
       <template #footer>
         <div class="dialog-footer">
@@ -173,10 +190,11 @@
 
     <ImportDialog
       v-model="importVisible"
-      title="批量导入证型语料"
-      :corpus-type="CORPUS_TYPE.SYNDROME"
-      template-filename="证型语料模板.xlsx"
-      :template-path="TEMPLATE_PATHS.SYNDROME"
+      :title="props.subjectType === 'DOCTOR' ? '批量导入医生问题' : '批量导入患者回答'"
+      :corpus-type="CORPUS_TYPE.CONSULTATION"
+      :subject-type="props.subjectType"
+      :template-filename="props.subjectType === 'DOCTOR' ? '医生问题语料模板.xlsx' : '患者回答语料模板.xlsx'"
+      :template-path="templatePath"
       @success="handleImportSuccess"
     />
   </div>
@@ -201,11 +219,20 @@ import {
   type CorpusQuery
 } from '@/api/corpus'
 import { useDictStore } from '@/stores/dict'
-import ImportDialog from '../corpus/components/ImportDialog.vue'
+import type { DictDataVO } from '@/api/types'
+import ImportDialog from '../../corpus/components/ImportDialog.vue'
+
+const props = defineProps<{
+  subjectType: 'DOCTOR' | 'PATIENT'
+  categoryDictType: string
+  cnLabel: string
+  loLabel: string
+  addText: string
+}>()
 
 const dictStore = useDictStore()
 
-const categoryOptions = computed(() => dictStore.getDict('syndrome_category_code'))
+const categoryOptions = computed(() => dictStore.getDict(props.categoryDictType))
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -215,10 +242,12 @@ const total = ref(0)
 const formVisible = ref(false)
 const formRef = ref<FormInstance>()
 const isEdit = ref(false)
-const formTitle = computed(() => (isEdit.value ? '修改证型' : '新增证型'))
+const formTitle = computed(() => (isEdit.value ? '修改语料' : '新增语料'))
+const detailTitle = computed(() => (props.subjectType === 'DOCTOR' ? '医生问题详情' : '患者回答详情'))
 const form = reactive<CorpusForm>({
   corpusId: undefined,
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.CONSULTATION,
+  subjectType: props.subjectType,
   categoryCode: '',
   cnContent: '',
   loContent: '',
@@ -230,8 +259,11 @@ const detailVisible = ref(false)
 const detailData = ref<Partial<CorpusVO>>({})
 const importVisible = ref(false)
 
+const templatePath = computed(() => props.subjectType === 'DOCTOR' ? TEMPLATE_PATHS.CONSULTATION_DOCTOR : TEMPLATE_PATHS.CONSULTATION_PATIENT)
+
 const queryParams = reactive<CorpusQuery>({
-  corpusType: CORPUS_TYPE.SYNDROME,
+  corpusType: CORPUS_TYPE.CONSULTATION,
+  subjectType: props.subjectType,
   keyword: '',
   categoryCode: '',
   pageNum: 1,
@@ -240,11 +272,11 @@ const queryParams = reactive<CorpusQuery>({
 
 const formRules: FormRules = {
   categoryCode: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  cnContent: [{ required: true, message: '请输入中文证型', trigger: 'blur' }],
-  loContent: [{ required: true, message: '请输入老挝语译文', trigger: 'blur' }]
+  cnContent: [{ required: true, message: `请输入${props.cnLabel}`, trigger: 'blur' }],
+  loContent: [{ required: true, message: `请输入${props.loLabel}`, trigger: 'blur' }]
 }
 
-const getDictLabel = (options: any[], value?: string | number) => {
+const getDictLabel = (options: DictDataVO[], value?: string | number) => {
   if (value === undefined || value === null || value === '') return '-'
   const strValue = String(value)
   const item = options.find(d => String(d.dictValue) === strValue)
@@ -281,6 +313,7 @@ const resetQuery = () => {
 
 const resetForm = () => {
   form.corpusId = undefined
+  form.subjectType = props.subjectType
   form.categoryCode = ''
   form.cnContent = ''
   form.loContent = ''
@@ -363,11 +396,13 @@ const handleImportSuccess = () => {
 
 const handleExport = async () => {
   const exportParams = {
-    corpusType: CORPUS_TYPE.SYNDROME,
+    corpusType: CORPUS_TYPE.CONSULTATION,
+    subjectType: props.subjectType,
     keyword: queryParams.keyword || undefined,
     categoryCode: queryParams.categoryCode || undefined
   }
-  const [err] = await to(exportCorpus(exportParams, '证型语料.xlsx'))
+  const filename = props.subjectType === 'DOCTOR' ? '医生问题语料.xlsx' : '患者回答语料.xlsx'
+  const [err] = await to(exportCorpus(exportParams, filename))
   if (!err) {
     ElMessage.success('导出成功')
   }
@@ -438,7 +473,7 @@ onMounted(() => {
 }
 
 .filter-select {
-  width: 180px;
+  width: 160px;
 }
 
 .filter-actions {
@@ -482,11 +517,6 @@ onMounted(() => {
 .tag--primary {
   background: #ecf5ff;
   color: #409eff;
-}
-
-.tag--info {
-  background: #f4f4f5;
-  color: #909399;
 }
 
 .time-text {

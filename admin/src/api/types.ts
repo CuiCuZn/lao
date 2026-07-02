@@ -108,6 +108,7 @@ export interface DictDataVO {
   isDefault: string;
   status: string;
   remark?: string;
+  createTime?: string;
 }
 
 /**

@@ -11,42 +11,12 @@
       active-text-color="#409EFF"
       router
     >
-      <!-- 动态路由展示 -->
-      <template v-for="(menu, index) in permissionStore.sidebarRoutes" :key="index">
-        <!-- 核心逻辑：判断是否是单级菜单 (RuoYi 风格：Layout 包裹单个子路由且父路径为 /) -->
-        <template v-if="getShowingChildConfig(menu).isSingle">
-          <el-menu-item 
-            v-if="!menu.hidden" 
-            :index="resolvePath(menu.path, getShowingChildConfig(menu).child.path)"
-          >
-            <el-icon v-if="getIcon(getShowingChildConfig(menu).child, menu)">
-               <component :is="getIcon(getShowingChildConfig(menu).child, menu)" />
-            </el-icon>
-            <span>{{ getShowingChildConfig(menu).child.meta?.title }}</span>
-          </el-menu-item>
-        </template>
-
-        <!-- 带有子菜单的情况 (多于一个子路由或是文件夹) -->
-        <el-sub-menu v-else-if="!menu.hidden" :index="menu.path">
-          <template #title>
-            <el-icon v-if="getIcon(menu)">
-               <component :is="getIcon(menu)" />
-            </el-icon>
-            <span>{{ menu.meta?.title }}</span>
-          </template>
-          
-          <el-menu-item 
-            v-for="child in menu.children" 
-            :key="child.path" 
-            :index="resolvePath(menu.path, child.path)"
-          >
-             <el-icon v-if="getIcon(child, menu)">
-               <component :is="getIcon(child, menu)" />
-             </el-icon>
-             <span>{{ child.meta?.title }}</span>
-          </el-menu-item>
-        </el-sub-menu>
-      </template>
+      <SidebarMenuItem
+        v-for="(menu, index) in permissionStore.sidebarRoutes"
+        :key="index"
+        :item="menu"
+        :base-path="'/'">
+      </SidebarMenuItem>
     </el-menu>
   </div>
 </template>
@@ -56,107 +26,15 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { usePermissionStore } from '@/stores/permission'
+import SidebarMenuItem from './SidebarMenuItem.vue'
 
 const { t } = useI18n()
 const route = useRoute()
 const permissionStore = usePermissionStore()
 
-/**
- * 侧边栏高亮路径计算
- */
 const activeMenu = computed(() => {
   return route.path
 })
-
-/**
- * 路径解析，简单拼接
- */
-const resolvePath = (parentPath: string, childPath: string) => {
-  if (!childPath) return parentPath
-  if (childPath.startsWith('/')) return childPath
-  if (parentPath === '/') return '/' + childPath
-  return (parentPath + '/' + childPath).replace(/\/+/g, '/')
-}
-
-/**
- * 图标映射
- */
-const getIcon = (route: any, parentRoute?: any) => {
-  const iconName = route?.meta?.icon || parentRoute?.meta?.icon
-  const routeText = [
-    route?.path,
-    route?.name,
-    route?.meta?.title,
-    parentRoute?.path,
-    parentRoute?.name,
-    parentRoute?.meta?.title
-  ].filter(Boolean).join(' ').toLowerCase()
-
-  const map: Record<string, string> = {
-    system: 'Setting',
-    peoples: 'UserFilled',
-    list: 'List',
-    nested: 'Operation',
-    dashboard: 'DataBoard',
-    user: 'User',
-    bug: 'Warning',
-    doctor: 'FirstAidKit',
-    dept: 'OfficeBuilding',
-    department: 'OfficeBuilding',
-    record: 'DocumentChecked',
-    prescription: 'Tickets',
-    recipe: 'Tickets',
-    medicine: 'FirstAidKit',
-    patient: 'UserFilled',
-    role: 'Avatar',
-    log: 'Notebook',
-    operlog: 'Notebook',
-    '操作日志': 'Notebook',
-    syndrome: 'Collection',
-    '证型': 'Collection'
-  }
-
-  if (iconName && map[iconName]) return map[iconName]
-  if (routeText.includes('prescription') || routeText.includes('处方')) return 'Tickets'
-  if (routeText.includes('doctor') || routeText.includes('医师')) return 'FirstAidKit'
-  if (routeText.includes('dept') || routeText.includes('department') || routeText.includes('科室')) return 'OfficeBuilding'
-  if (routeText.includes('record') || routeText.includes('诊疗记录')) return 'DocumentChecked'
-  if (routeText.includes('dashboard') || routeText.includes('工作台')) return 'DataBoard'
-  if (routeText.includes('patient') || routeText.includes('患者')) return 'UserFilled'
-  if (routeText.includes('role') || routeText.includes('角色')) return 'Avatar'
-  if (routeText.includes('log') || routeText.includes('操作日志')) return 'Notebook'
-  if (routeText.includes('user') || routeText.includes('用户')) return 'User'
-  if (routeText.includes('syndrome') || routeText.includes('证型')) return 'Collection'
-
-  return iconName || ''
-}
-
-/**
- * 获取展示子节点的配置信息 (无副作用函数，防止 Vue 递归更新报错)
- * @param parent 
- */
-function getShowingChildConfig(parent: any) {
-  // 1. 如果没有子节点，视为单级
-  if (!parent.children || parent.children.length === 0) {
-    return { isSingle: true, child: { ...parent, path: '' } }
-  }
-
-  // 2. 筛选非隐藏的子节点
-  const showingChildren = parent.children.filter((item: any) => !item.hidden)
-
-  // 3. 符合 RuoYi 单级菜单条件的：顶级路径为 /，且只有一个子节点，且非 alwaysShow
-  if (showingChildren.length === 1 && !parent.alwaysShow && parent.path === '/') {
-    return { isSingle: true, child: showingChildren[0] }
-  }
-
-  // 4. 如果没有可显示的子节点，展示父节点本身
-  if (showingChildren.length === 0) {
-    return { isSingle: true, child: { ...parent, path: '' } }
-  }
-
-  // 5. 其它情况（多级或文件夹）
-  return { isSingle: false, child: null }
-}
 </script>
 
 <style scoped>

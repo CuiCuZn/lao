@@ -23,7 +23,7 @@ export default defineConfig(({mode})=>{
       open: false,
       proxy: {
         '/lao-api': {
-          target: 'http://192.168.2.101:8085/',
+          target: 'http://192.168.2.101:8087/',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/lao-api/, '')
         }
