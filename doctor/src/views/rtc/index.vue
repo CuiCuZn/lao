@@ -81,36 +81,52 @@
           </div>
         </div>
 
-        <footer class="session-summary">
-          <div class="doctor-panel">
-            <img class="doctor-avatar" :src="doctorAvatarImage" alt="" />
+        <footer class="consultation-actions">
+          <button
+            type="button"
+            class="record-entry record-entry--blue"
+            :class="{ 'is-active': recordDrawerVisible }"
+            @click="openRecordDrawer"
+          >
+            <span class="record-entry-dot" />
+            <el-icon><document /></el-icon>
+            <span>{{ t('doctorVideo.consultation.recordActions.writeRecord') }}</span>
+          </button>
 
-            <div class="doctor-copy">
-              <div class="doctor-heading">
-                <strong>{{ doctorName }}</strong>
-                <span v-if="session.joined.value" class="doctor-status">
-                  {{ t('doctorVideo.consultation.connected') }}
-                </span>
-              </div>
+          <button
+            type="button"
+            class="record-entry record-entry--green"
+            :class="{ 'is-active': inspectionReportVisible }"
+            @click="openReportDialog"
+          >
+            <el-icon><download /></el-icon>
+            <span>{{ t('doctorVideo.consultation.recordActions.reports') }}</span>
+          </button>
 
-              <p v-if="doctorGoodAt" class="doctor-good-at">
-                <span>{{ t('doctorVideo.consultation.goodAt') }}:</span>
-                {{ doctorGoodAt }}
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            class="record-entry record-entry--orange"
+            :class="{ 'is-active': historyDialogVisible }"
+            @click="openHistoryDialog"
+          >
+            <el-icon><clock /></el-icon>
+            <span>{{ t('doctorVideo.consultation.recordActions.history') }}</span>
+          </button>
         </footer>
       </section>
+    </div>
 
-      <aside class="record-column">
+    <div v-if="recordDrawerVisible" class="record-panel-mask" @click.self="closeRecordDrawer">
+      <aside class="record-column" role="dialog" aria-modal="true">
         <div class="record-shell">
-          <el-tabs v-model="activeTab" class="record-tabs" stretch>
-            <el-tab-pane :label="t('doctorVideo.consultation.tabs.outpatient')" name="outpatient" />
-            <el-tab-pane :label="t('doctorVideo.consultation.tabs.fourDiagnoses')" name="fourDiagnoses" />
-            <el-tab-pane :label="t('doctorVideo.consultation.tabs.history')" name="history" />
-          </el-tabs>
+          <header class="record-header">
+            <h3>{{ t('doctorVideo.consultation.recordActions.writeRecord') }}</h3>
+            <button type="button" :title="t('common.cancel')" @click="closeRecordDrawer">
+              <el-icon><close /></el-icon>
+            </button>
+          </header>
 
-          <div v-if="activeTab === 'outpatient'" class="record-content">
+          <div class="record-content">
             <button
               type="button"
               class="ai-button"
@@ -326,71 +342,68 @@
               </el-form>
             </section>
           </div>
-
-          <div v-else-if="activeTab === 'history'" class="record-content">
-            <div v-if="historyCaseLoading" class="empty-record-state">
-              <h3>{{ t('doctorVideo.consultation.historyCaseLoadingTitle') }}</h3>
-              <p>{{ t('doctorVideo.consultation.historyCaseLoadingDescription') }}</p>
-            </div>
-
-            <div v-else-if="historyCaseError" class="empty-record-state">
-              <h3>{{ t('doctorVideo.consultation.historyCaseErrorTitle') }}</h3>
-              <p>{{ historyCaseError }}</p>
-            </div>
-
-            <div v-else-if="historyCaseList.length" class="history-case-list">
-              <article v-for="item in historyCaseList" :key="`${item.caseId}-${item.date}`" class="history-case-card">
-                <div class="history-case-head">
-                  <strong>{{ item.departmentName || t('workbench.notAvailable') }}</strong>
-                  <span>{{ formatHistoryCaseDate(item.date) }}</span>
-                </div>
-
-                <p class="history-case-diagnosis">
-                  {{ t('workbench.diagnosisLabel') }}{{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}
-                </p>
-                <p class="history-case-therapy">
-                  {{ t('doctorVideo.consultation.therapy') }}：{{ item.therapy || t('doctorVideo.consultation.notFilled') }}
-                </p>
-              </article>
-            </div>
-
-            <div v-else class="empty-record-state">
-              <h3>{{ t('doctorVideo.consultation.historyCaseEmptyTitle') }}</h3>
-              <p>{{ t('doctorVideo.consultation.historyCaseEmptyDescription') }}</p>
-            </div>
-          </div>
-
-          <div v-else-if="activeTab === 'fourDiagnoses'" class="record-content four-diagnosis-content">
-            <div class="four-diagnosis-report-card">
-              <div class="four-report-main">
-                <el-icon><document /></el-icon>
-                <strong>{{ t('doctorVideo.consultation.fourDiagnosisReportTitle') }}</strong>
-              </div>
-              <button
-                type="button"
-                :disabled="fourDiagnosisLoading"
-                @click="handleFourDiagnosisReportView"
-              >
-                {{ fourDiagnosisLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.fourDiagnosisViewReport') }}
-              </button>
-            </div>
-
-            <div class="four-diagnosis-report-card inspection-report-card">
-              <div class="four-report-main">
-                <el-icon><document /></el-icon>
-                <strong>{{ t('doctorVideo.consultation.inspectionReportTitle') }}</strong>
-              </div>
-              <button
-                type="button"
-                :disabled="inspectionReportLoading"
-                @click="handleInspectionReportView"
-              >
-                {{ inspectionReportLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.fourDiagnosisViewReport') }}
-              </button>
-            </div>
-          </div>
         </div>
       </aside>
+    </div>
+
+    <div v-if="historyDialogVisible" class="record-dialog-mask" @click.self="closeHistoryDialog">
+      <section class="record-dialog history-dialog" role="dialog" aria-modal="true">
+        <header class="record-dialog-header">
+          <h3>{{ t('doctorVideo.consultation.recordActions.history') }}</h3>
+          <button type="button" :title="t('common.cancel')" @click="closeHistoryDialog">
+            <el-icon><close /></el-icon>
+          </button>
+        </header>
+
+        <div class="record-dialog-body history-dialog-body">
+          <div v-if="historyCaseLoading" class="empty-record-state">
+            <h3>{{ t('doctorVideo.consultation.historyCaseLoadingTitle') }}</h3>
+            <p>{{ t('doctorVideo.consultation.historyCaseLoadingDescription') }}</p>
+          </div>
+
+          <div v-else-if="historyCaseError" class="empty-record-state">
+            <h3>{{ t('doctorVideo.consultation.historyCaseErrorTitle') }}</h3>
+            <p>{{ historyCaseError }}</p>
+          </div>
+
+          <div v-else-if="historyCaseList.length" class="history-dialog-list">
+            <article
+              v-for="(item, index) in historyCaseList"
+              :key="resolveHistoryCaseKey(item, index)"
+              class="history-dialog-card"
+              :class="{ 'is-expanded': isHistoryCaseExpanded(item, index) }"
+            >
+              <button
+                type="button"
+                class="history-dialog-card-trigger"
+                :aria-expanded="isHistoryCaseExpanded(item, index)"
+                @click="toggleHistoryCase(item, index)"
+              >
+                <span class="history-dialog-card-main">
+                  <span class="history-dialog-card-head">
+                    <strong>{{ item.departmentName || t('workbench.notAvailable') }}</strong>
+                    <span>{{ formatHistoryCaseDate(item.date) }}</span>
+                  </span>
+                  <span class="history-dialog-summary-line">
+                    <span>{{ t('workbench.diagnosisLabel') }}{{ item.diagnosis || t('doctorVideo.consultation.notFilled') }}</span>
+                    <span>{{ t('doctorVideo.consultation.therapy') }}：{{ item.therapy || t('doctorVideo.consultation.notFilled') }}</span>
+                  </span>
+                </span>
+                <span class="history-dialog-arrow" aria-hidden="true" />
+              </button>
+
+              <div v-if="isHistoryCaseExpanded(item, index)" class="history-dialog-detail">
+                <CaseDetail :case-id="item.caseId" />
+              </div>
+            </article>
+          </div>
+
+          <div v-else class="empty-record-state">
+            <h3>{{ t('doctorVideo.consultation.historyCaseEmptyTitle') }}</h3>
+            <p>{{ t('doctorVideo.consultation.historyCaseEmptyDescription') }}</p>
+          </div>
+        </div>
+      </section>
     </div>
 
     <div v-if="fourDiagnosisPdfVisible" class="four-pdf-preview-mask" @click.self="fourDiagnosisPdfVisible = false">
@@ -423,48 +436,98 @@
     <div v-if="inspectionReportVisible" class="four-pdf-preview-mask" @click.self="closeInspectionReportDialog">
       <div class="four-pdf-preview-dialog inspection-report-dialog">
         <div class="four-pdf-preview-header">
-          <h3>{{ t('doctorVideo.consultation.inspectionReportDialogTitle') }}</h3>
-          <button type="button" :title="t('common.cancel')" @click="closeInspectionReportDialog">
-            <el-icon><close /></el-icon>
-          </button>
+          <h3>{{ t('doctorVideo.consultation.recordActions.reports') }}</h3>
+          <div class="four-pdf-preview-actions">
+            <button
+              type="button"
+              class="report-dialog-action"
+              :disabled="fourDiagnosisLoading"
+              @click="handleFourDiagnosisReportView"
+            >
+              {{ fourDiagnosisLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.fourDiagnosisReportTitle') }}
+            </button>
+            <button
+              type="button"
+              class="report-dialog-action"
+              :disabled="inspectionReportLoading"
+              @click="handleInspectionReportView"
+            >
+              {{ inspectionReportLoading ? t('doctorVideo.consultation.inspectionReportLoading') : t('doctorVideo.consultation.inspectionReportTitle') }}
+            </button>
+            <button type="button" :title="t('common.cancel')" @click="closeInspectionReportDialog">
+              <el-icon><close /></el-icon>
+            </button>
+          </div>
         </div>
 
-        <div class="inspection-report-body">
+        <div v-loading="inspectionReportLoading" class="inspection-report-body">
           <div v-if="inspectionReportList.length && activeInspectionReport" class="inspection-report-workspace">
-            <aside class="inspection-report-visual">
-              <div class="inspection-report-main-image">
-                <el-image
-                  v-if="activeInspectionReport.fileUrl"
-                  :src="activeInspectionReport.fileUrl"
-                  :preview-src-list="[activeInspectionReport.fileUrl]"
-                  :z-index="3200"
-                  fit="contain"
-                  preview-teleported
-                />
-                <el-empty
-                  v-else
-                  :image-size="72"
-                  :description="t('doctorVideo.consultation.inspectionReportImageUnavailable')"
-                />
+            <section class="inspection-report-card">
+              <div class="inspection-report-card-title">
+                {{ activeInspectionReportTitle }}
               </div>
 
-              <div class="inspection-report-thumbnails" role="tablist">
-                <button
-                  v-for="(item, index) in inspectionReportList"
-                  :key="resolveInspectionReportKey(item, index)"
-                  type="button"
-                  class="inspection-report-thumbnail"
-                  :class="{ 'is-active': index === selectedInspectionReportIndex }"
-                  :title="t('doctorVideo.consultation.inspectionReportImageIndex', { index: index + 1 })"
-                  @click="selectInspectionReport(index)"
-                >
-                  <el-image v-if="item.fileUrl" :src="item.fileUrl" fit="cover" />
-                  <span v-else>{{ index + 1 }}</span>
-                </button>
-              </div>
-            </aside>
+              <div class="inspection-report-card-main">
+                <aside class="inspection-report-visual">
+                  <div class="inspection-report-main-image">
+                    <el-image
+                      v-if="activeInspectionReport.fileUrl"
+                      :src="activeInspectionReport.fileUrl"
+                      :preview-src-list="[activeInspectionReport.fileUrl]"
+                      :z-index="3200"
+                      fit="contain"
+                      preview-teleported
+                    />
+                    <el-empty
+                      v-else
+                      :image-size="72"
+                      :description="t('doctorVideo.consultation.inspectionReportImageUnavailable')"
+                    />
+                  </div>
 
-            <main class="inspection-report-content">
+                  <div class="inspection-report-thumbnails" role="tablist">
+                    <button
+                      v-for="(item, index) in inspectionReportList"
+                      :key="resolveInspectionReportKey(item, index)"
+                      type="button"
+                      class="inspection-report-thumbnail"
+                      :class="{ 'is-active': index === selectedInspectionReportIndex }"
+                      :title="t('doctorVideo.consultation.inspectionReportImageIndex', { index: index + 1 })"
+                      @click="selectInspectionReport(index)"
+                    >
+                      <el-image v-if="item.fileUrl" :src="item.fileUrl" fit="cover" />
+                      <span v-else>{{ index + 1 }}</span>
+                    </button>
+                  </div>
+                </aside>
+
+                <main class="inspection-report-content">
+                  <section class="inspection-items-panel">
+                    <header class="inspection-panel-header">
+                      <h4>{{ t('doctorVideo.consultation.inspectionReportItems') }}</h4>
+                    </header>
+
+                    <el-table
+                      v-if="activeInspectionItems.length"
+                      :data="activeInspectionItems"
+                      :row-class-name="getInspectionItemRowClassName"
+                      size="small"
+                      border
+                      class="inspection-report-table"
+                    >
+                      <el-table-column prop="item_name" :label="t('doctorVideo.consultation.inspectionReportItemName')" min-width="150" />
+                      <el-table-column prop="result_value" :label="t('doctorVideo.consultation.inspectionReportResultValue')" min-width="120" />
+                      <el-table-column prop="abnormal_flag" :label="t('doctorVideo.consultation.inspectionReportAbnormalFlag')" min-width="90" />
+                      <el-table-column prop="reference_range" :label="t('doctorVideo.consultation.inspectionReportReferenceRange')" min-width="140" />
+                      <el-table-column prop="unit" :label="t('doctorVideo.consultation.inspectionReportUnit')" min-width="100" />
+                    </el-table>
+                    <p v-else class="inspection-report-empty-line">
+                      {{ t('doctorVideo.consultation.inspectionReportNoItems') }}
+                    </p>
+                  </section>
+                </main>
+              </div>
+
               <section class="inspection-analysis-panel">
                 <header class="inspection-panel-header">
                   <h4>{{ t('doctorVideo.consultation.inspectionReportAnalysis') }}</h4>
@@ -498,31 +561,7 @@
                   }}
                 </p>
               </section>
-
-              <section class="inspection-items-panel">
-                <header class="inspection-panel-header">
-                  <h4>{{ t('doctorVideo.consultation.inspectionReportItems') }}</h4>
-                </header>
-
-                <el-table
-                  v-if="activeInspectionItems.length"
-                  :data="activeInspectionItems"
-                  :row-class-name="getInspectionItemRowClassName"
-                  size="small"
-                  border
-                  class="inspection-report-table"
-                >
-                  <el-table-column prop="item_name" :label="t('doctorVideo.consultation.inspectionReportItemName')" min-width="150" />
-                  <el-table-column prop="result_value" :label="t('doctorVideo.consultation.inspectionReportResultValue')" min-width="120" />
-                  <el-table-column prop="abnormal_flag" :label="t('doctorVideo.consultation.inspectionReportAbnormalFlag')" min-width="90" />
-                  <el-table-column prop="reference_range" :label="t('doctorVideo.consultation.inspectionReportReferenceRange')" min-width="140" />
-                  <el-table-column prop="unit" :label="t('doctorVideo.consultation.inspectionReportUnit')" min-width="100" />
-                </el-table>
-                <p v-else class="inspection-report-empty-line">
-                  {{ t('doctorVideo.consultation.inspectionReportNoItems') }}
-                </p>
-              </section>
-            </main>
+            </section>
           </div>
 
           <div v-else class="empty-record-state">
@@ -546,7 +585,7 @@
 </template>
 
 <script setup lang="ts">
-import { Close, Delete, Document, Plus, Refresh, WarningFilled } from '@element-plus/icons-vue'
+import { Clock, Close, Delete, Document, Download, Plus, Refresh, WarningFilled } from '@element-plus/icons-vue'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -567,13 +606,13 @@ import type {
   VideoSaveSubtitleParams
 } from '@/api/types'
 import { generateMedicalRecord, getBasicInfo, getCaseList, getVideoConversation, getVideoId, getVideoTime, getVideoToken, optimizeTranslation, saveSubtitle, submitDiagnosis } from '@/api/video'
-import doctorAvatarImage from '@/assets/doctor_avatar.png'
 import { useUserStore } from '@/stores/user'
 import { showConfirmDialog } from '@/utils/confirm-dialog'
 import ConsultCameraSelectDialog from './components/ConsultCameraSelectDialog.vue'
 import ConsultParticipantCard from './components/ConsultParticipantCard.vue'
 import ConsultRoomControls from './components/ConsultRoomControls.vue'
 import ConsultSubtitleTimeline from './components/ConsultSubtitleTimeline.vue'
+import CaseDetail from '../workbench/components/CaseDetail.vue'
 import { createDoctorConsultationChatService } from './services/consultation-chat'
 import { useDoctorConsultationSession } from './composables/useDoctorConsultationSession'
 import { useDoctorSubtitleTimeline } from './composables/useDoctorSubtitleTimeline'
@@ -626,7 +665,8 @@ const router = useRouter()
 const userStore = useUserStore()
 const { locale, t } = useI18n()
 const session = useDoctorConsultationSession()
-const activeTab = ref('outpatient')
+const recordDrawerVisible = ref(false)
+const historyDialogVisible = ref(false)
 const pageError = ref('')
 const consultationDuration = ref('00:00:00')
 const consultationContext = ref<DoctorRtcContext>({})
@@ -634,6 +674,7 @@ const savedSubtitleKeys = new Set<string>()
 const chatDraft = ref('')
 const chatSending = ref(false)
 const historyCaseList = ref<HistoryCaseRecord[]>([])
+const expandedHistoryCaseKey = ref('')
 const historyCaseLoading = ref(false)
 const historyCaseError = ref('')
 const generatingMedicalRecord = ref(false)
@@ -704,18 +745,26 @@ const doctorName = computed(() => {
   return userStore.profile?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
 
-const doctorGoodAt = computed(() => {
-  const profile = userStore.profile
-  const value =
-    profile?.goodAt ||
-    profile?.specialty ||
-    profile?.speciality ||
-    profile?.expertise ||
-    profile?.description ||
-    ''
+const openRecordDrawer = () => {
+  recordDrawerVisible.value = true
+}
 
-  return value !== null && value !== undefined ? String(value).trim() : ''
-})
+const closeRecordDrawer = () => {
+  recordDrawerVisible.value = false
+}
+
+const openReportDialog = () => {
+  void handleInspectionReportView()
+}
+
+const openHistoryDialog = () => {
+  historyDialogVisible.value = true
+  void fetchHistoryCaseList()
+}
+
+const closeHistoryDialog = () => {
+  historyDialogVisible.value = false
+}
 
 const roomId = computed(() => {
   const storedRoomId = consultationContext.value.roomId
@@ -908,6 +957,21 @@ const formatHistoryCaseDate = (value: string) => {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date)
+}
+
+const resolveHistoryCaseKey = (item: HistoryCaseRecord, index: number) => {
+  if (item.caseId) return `case-${item.caseId}`
+  if (item.date) return `date-${item.date}-${index}`
+  return `history-${index}`
+}
+
+const isHistoryCaseExpanded = (item: HistoryCaseRecord, index: number) => {
+  return expandedHistoryCaseKey.value === resolveHistoryCaseKey(item, index)
+}
+
+const toggleHistoryCase = (item: HistoryCaseRecord, index: number) => {
+  const key = resolveHistoryCaseKey(item, index)
+  expandedHistoryCaseKey.value = expandedHistoryCaseKey.value === key ? '' : key
 }
 
 const basicInfoFields = computed(() => [
@@ -1398,6 +1462,7 @@ const handleGenerateMedicalRecord = async () => {
 const fetchHistoryCaseList = async () => {
   if (!patientId.value || !caseId.value) {
     historyCaseList.value = []
+    expandedHistoryCaseKey.value = ''
     historyCaseError.value = ''
     historyCaseLoading.value = false
     return
@@ -1405,12 +1470,15 @@ const fetchHistoryCaseList = async () => {
 
   historyCaseLoading.value = true
   historyCaseError.value = ''
+  expandedHistoryCaseKey.value = ''
 
   try {
     const response = await getCaseList(patientId.value, caseId.value)
-    historyCaseList.value = normalizeHistoryCaseList(response?.data)
+    const records = normalizeHistoryCaseList(response?.data)
+    historyCaseList.value = records
   } catch (error) {
     historyCaseList.value = []
+    expandedHistoryCaseKey.value = ''
     historyCaseError.value = t('doctorVideo.consultation.historyCaseLoadFailed')
     console.warn('Failed to load history case list.', error)
   } finally {
@@ -1430,6 +1498,10 @@ const resolveInspectionReportKey = (item: InspectionReportItem, index: number) =
 
 const activeInspectionReport = computed(() => {
   return inspectionReportList.value[selectedInspectionReportIndex.value] || null
+})
+
+const activeInspectionReportTitle = computed(() => {
+  return `${t('doctorVideo.consultation.inspectionReportTitle')} ${selectedInspectionReportIndex.value + 1}`
 })
 
 const activeInspectionItems = computed<InspectionRecognizedItem[]>(() => {
@@ -1706,6 +1778,7 @@ const handleInspectionReportView = async () => {
   }
 
   const requestId = ++inspectionReportRequestId
+  inspectionReportVisible.value = true
   inspectionReportLoading.value = true
   stopInspectionAnalysisPolling()
   inspectionAnalysisProgress.value = 0
@@ -1718,7 +1791,6 @@ const handleInspectionReportView = async () => {
     const reports = Array.isArray(response?.data) ? response.data : []
     inspectionReportList.value = reports
     selectedInspectionReportIndex.value = 0
-    inspectionReportVisible.value = true
 
     const analysisState = resolveInspectionAnalysisState(reports)
     if (analysisState.state === 'success') {
@@ -2765,12 +2837,13 @@ onMounted(async () => {
   loadConsultationContext()
   syncOutpatientRecordForm()
   void loadPrescriptionUnitDict()
-  void fetchHistoryCaseList()
   await bootstrapConsultation()
 })
 
 watch([patientId, caseId], () => {
-  void fetchHistoryCaseList()
+  if (historyDialogVisible.value) {
+    void fetchHistoryCaseList()
+  }
 })
 
 onBeforeUnmount(async () => {
@@ -2790,24 +2863,24 @@ onBeforeUnmount(async () => {
 .doctor-consultation-page {
   height: 100%;
   min-height: 0;
-  padding: 12px;
+  padding: 8px;
   box-sizing: border-box;
   overflow: hidden;
-  background:
-    radial-gradient(circle at top left, rgba(109, 180, 255, 0.16), transparent 24%),
-    linear-gradient(180deg, rgba(241, 246, 252, 0.95) 0%, rgba(248, 251, 255, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(240, 245, 251, 0.9) 0%, rgba(250, 252, 255, 0.98) 100%);
 }
 
 .consultation-layout {
   display: grid;
-  grid-template-columns: 370px minmax(0, 1fr) 360px;
-  gap: 10px;
+  grid-template-columns: 500px minmax(0, 1fr);
+  gap: 8px;
   height: 100%;
   min-height: 0;
 }
 
 .subtitle-column {
+  height: 100%;
   min-height: 0;
+  max-height: 100%;
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
@@ -2816,19 +2889,21 @@ onBeforeUnmount(async () => {
 .video-column {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  height: 100%;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .featured-stage {
   position: relative;
   flex: 1;
   min-height: 0;
-  padding: 14px 14px 110px;
-  border: 1.5px solid rgba(53, 118, 242, 0.92);
+  padding: 8px 8px 104px;
+  border: 1px solid #d7e4f7;
   border-radius: 10px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
   box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
   overflow: hidden;
 }
@@ -2875,12 +2950,12 @@ onBeforeUnmount(async () => {
 
 .preview-row {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 12px;
+  right: 12px;
   z-index: 5;
   display: grid;
   grid-template-columns: minmax(226px, 270px);
-  gap: 8px;
+  gap: 6px;
   width: min(270px, calc(100% - 314px));
 }
 
@@ -2910,80 +2985,87 @@ onBeforeUnmount(async () => {
 .stage-controls {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: 12px;
   z-index: 5;
   transform: translateX(-50%);
 }
 
-.session-summary {
-  border: 1px solid #d7e4f7;
-  border-radius: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(180deg, #edf4ff 0%, #eef6ff 100%);
-}
-
-.doctor-panel {
+.consultation-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid #d7e4f7;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 20px rgba(80, 104, 150, 0.08);
 }
 
-.doctor-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: block;
-  object-fit: cover;
-}
-
-.doctor-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 0;
-}
-
-.doctor-heading {
-  display: flex;
+.record-entry {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.doctor-heading strong {
-  color: #22365d;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.doctor-status {
-  color: #24a35c;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.doctor-copy p {
-  margin: 0;
-  color: #5f7395;
-  font-size: 13px;
-}
-
-.doctor-good-at {
-  max-width: min(520px, 46vw);
-  line-height: 1.5;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  border-radius: 8px;
+  padding: 0 18px;
+  border: 1px solid currentColor;
+  background: #f5faff;
+  font-size: 14px;
   font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(76, 108, 158, 0.08);
 }
 
-.doctor-good-at span {
-  color: #22365d;
-  font-weight: 800;
+.record-entry .el-icon {
+  font-size: 14px;
+}
+
+.record-entry--blue {
+  color: #0f67f5;
+  background: #eef6ff;
+}
+
+.record-entry--green {
+  color: #12a86b;
+  background: #edfff7;
+}
+
+.record-entry--orange {
+  color: #f18a00;
+  background: #fff8e7;
+}
+
+.record-entry.is-active,
+.record-entry:hover {
+  background: #ffffff;
+}
+
+.record-entry-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff6674;
+}
+
+.record-panel-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0;
+  background: rgba(18, 31, 55, 0.16);
 }
 
 .record-column {
+  width: min(560px, 100vw);
+  height: 100vh;
   min-height: 0;
 }
 
@@ -2992,15 +3074,51 @@ onBeforeUnmount(async () => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #d7e4f7;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 6px 20px rgba(77, 103, 154, 0.08);
   overflow: hidden;
 }
 
-.record-tabs {
-  padding: 0 12px;
+.record-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 8px 0 14px;
   border-bottom: 1px solid #e6eef8;
+}
+
+.record-header h3 {
+  margin: 0;
+  color: #203351;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.record-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #71849a;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.record-header button:hover {
+  background: #eef4fb;
+  color: #2f66ee;
 }
 
 .record-content {
@@ -3219,50 +3337,255 @@ onBeforeUnmount(async () => {
   margin-top: 12px;
 }
 
-.history-case-list {
+.record-dialog-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(18, 31, 55, 0.22);
+}
+
+.record-dialog {
+  width: min(760px, calc(100vw - 36px));
+  max-height: min(720px, calc(100vh - 36px));
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  border: 1px solid #d7e4f7;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(36, 54, 89, 0.18);
+  overflow: hidden;
 }
 
-.history-case-card {
-  border: 1px solid #e2edff;
-  border-radius: 8px;
-  background: #f8fbff;
-  padding: 10px;
-  box-shadow: 0 4px 10px rgba(78, 114, 168, 0.06);
+.history-dialog {
+  width: min(1120px, calc(100vw - 32px));
+  height: min(760px, calc(100vh - 32px));
+  max-height: none;
 }
 
-.history-case-head {
+.record-dialog-header {
+  flex: none;
+  min-height: 48px;
+  padding: 0 10px 0 14px;
+  border-bottom: 1px solid #e6eef8;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.history-case-head strong {
+.record-dialog-header h3 {
+  margin: 0;
   color: #203351;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 800;
 }
 
-.history-case-head span {
+.record-dialog-header button {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #71849a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.record-dialog-header button:hover {
+  background: #eef4fb;
+  color: #2f66ee;
+}
+
+.record-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.history-dialog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-dialog-card {
+  border: 1px solid #d8e8ff;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f8fbff;
+}
+
+.history-dialog-card.is-expanded {
+  background: #ffffff;
+}
+
+.history-dialog-card-trigger {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.history-dialog-card-trigger:hover {
+  background: #f4f8ff;
+}
+
+.history-dialog-card-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-dialog-card-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.history-dialog-card-head strong {
+  min-width: 0;
+  color: #203351;
+  font-size: 15px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-dialog-card-head span {
+  flex: none;
   color: #6c7e97;
   font-size: 12px;
+}
+
+.history-dialog-summary-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: #203351;
+  font-size: 14px;
   line-height: 1.6;
 }
 
-.history-case-diagnosis,
-.history-case-therapy {
-  margin: 8px 0 0;
-  color: #203351;
+.history-dialog-arrow {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #8da1bd;
+  border-bottom: 2px solid #8da1bd;
+  transform: rotate(45deg);
+  transition: transform 0.16s ease;
+}
+
+.history-dialog-card.is-expanded .history-dialog-arrow {
+  transform: rotate(225deg);
+}
+
+.history-dialog-detail {
+  border-top: 1px solid #e4eefb;
+  padding: 0;
+  background: #ffffff;
+}
+
+.history-dialog-detail :deep(.case-result-page) {
+  min-height: 0;
+  --case-result-content-width: 100%;
+}
+
+.history-dialog-detail :deep(.case-result-layout) {
+  min-height: 0;
+  padding: 10px 12px 12px;
+  gap: 10px;
+}
+
+.history-dialog-detail :deep(.page-content) {
+  gap: 10px;
+}
+
+.history-dialog-detail :deep(.info-card) {
+  border-radius: 8px;
+  padding: 12px;
+  border: 1px solid #e2edff;
+  box-shadow: none;
+}
+
+.history-dialog-detail :deep(.section-title) {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+
+.history-dialog-detail :deep(.section-title .el-icon) {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   font-size: 14px;
+}
+
+.history-dialog-detail :deep(.detail-grid) {
+  gap: 10px 12px;
+}
+
+.history-dialog-detail :deep(.detail-label) {
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.history-dialog-detail :deep(.detail-value),
+.history-dialog-detail :deep(.plan-value) {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.history-dialog-detail :deep(.narrative-list),
+.history-dialog-detail :deep(.plan-grid),
+.history-dialog-detail :deep(.prescription-text-list) {
+  gap: 10px;
+}
+
+.history-dialog-detail :deep(.narrative-item h3) {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.history-dialog-detail :deep(.narrative-item p) {
+  font-size: 13px;
   line-height: 1.7;
 }
 
-.history-case-therapy {
-  margin-top: 2px;
+.history-dialog-detail :deep(.four-diagnosis-result) {
+  min-height: 260px;
+  border-radius: 8px;
+}
+
+.history-dialog-detail :deep(.four-diagnosis-pdf) {
+  height: 360px;
+  min-height: 260px;
+}
+
+.history-dialog-detail :deep(.result-table th),
+.history-dialog-detail :deep(.result-table td) {
+  padding: 8px 10px;
+  font-size: 12px;
 }
 
 .four-diagnosis-content {
@@ -3474,6 +3797,22 @@ onBeforeUnmount(async () => {
   gap: 6px;
 }
 
+.report-dialog-action {
+  width: auto !important;
+  min-width: 88px;
+  padding: 0 12px;
+  border: 1px solid #d7e4f7 !important;
+  border-radius: 8px !important;
+  background: #f5f9ff !important;
+  color: #2f66ee !important;
+  font-size: 13px !important;
+  font-weight: 700;
+}
+
+.report-dialog-action:hover {
+  background: #eaf3ff !important;
+}
+
 .four-pdf-preview-actions .is-spinning {
   animation: four-pdf-preview-spin 1s linear infinite;
 }
@@ -3496,17 +3835,17 @@ onBeforeUnmount(async () => {
 }
 
 .inspection-report-dialog {
-  width: min(1250px, calc(100vw - 32px));
-  height: min(700px, calc(100vh - 32px));
+  width: min(1120px, calc(100vw - 32px));
+  height: min(760px, calc(100vh - 32px));
   border-radius: 10px;
 }
 
 .inspection-report-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
-  padding: 16px;
-  background: #ffffff;
+  overflow: auto;
+  padding: 12px;
+  background: #f8fbff;
 }
 
 .inspection-report-body .empty-record-state {
@@ -3514,19 +3853,40 @@ onBeforeUnmount(async () => {
 }
 
 .inspection-report-workspace {
-  display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
-  gap: 18px;
-  height: 100%;
   min-height: 0;
+}
+
+.inspection-report-card {
+  border: 1px solid #dfe8f5;
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.inspection-report-card-title {
+  padding: 11px 14px;
+  border-bottom: 1px solid #e4edf7;
+  background: #f8fbff;
+  color: #203351;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.inspection-report-card-main {
+  display: grid;
+  grid-template-columns: minmax(270px, 340px) minmax(0, 1fr);
+  min-height: 360px;
 }
 
 .inspection-report-visual {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 12px;
+  gap: 8px;
   min-width: 0;
   min-height: 0;
+  padding: 12px;
+  border-right: 1px solid #eef2f7;
+  background: #f8fbff;
 }
 
 .inspection-report-main-image {
@@ -3534,6 +3894,7 @@ onBeforeUnmount(async () => {
   min-height: 0;
   overflow: hidden;
   border: 1px solid #dfe6f0;
+  border-radius: 8px;
   background: #f7f9fc;
 }
 
@@ -3548,8 +3909,8 @@ onBeforeUnmount(async () => {
 
 .inspection-report-thumbnails {
   display: flex;
-  gap: 8px;
-  min-height: 78px;
+  gap: 6px;
+  min-height: 58px;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 2px;
@@ -3557,9 +3918,9 @@ onBeforeUnmount(async () => {
 
 .inspection-report-thumbnail {
   position: relative;
-  flex: 0 0 76px;
-  width: 76px;
-  height: 76px;
+  flex: 0 0 56px;
+  width: 56px;
+  height: 56px;
   overflow: hidden;
   padding: 0;
   border: 2px solid transparent;
@@ -3579,11 +3940,11 @@ onBeforeUnmount(async () => {
 }
 
 .inspection-report-content {
-  display: grid;
-  grid-template-rows: minmax(170px, 0.42fr) minmax(0, 1fr);
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
+  padding: 12px;
 }
 
 .inspection-analysis-panel,
@@ -3596,14 +3957,18 @@ onBeforeUnmount(async () => {
 
 .inspection-analysis-panel {
   overflow: auto;
-  padding: 14px 16px;
+  padding: 12px 14px;
+  border-top: 1px solid #e4edf7;
+  background: linear-gradient(90deg, #f1f7ff 0%, #fbf7ff 100%);
 }
 
 .inspection-items-panel {
   display: flex;
   flex-direction: column;
   overflow: auto;
-  padding: 0 0 12px;
+  flex: 1;
+  padding: 0 0 10px;
+  border-radius: 8px;
 }
 
 .inspection-panel-header {
@@ -3616,7 +3981,7 @@ onBeforeUnmount(async () => {
 }
 
 .inspection-analysis-panel .inspection-panel-header {
-  padding: 0 0 12px;
+  padding: 0 0 10px;
 }
 
 .inspection-panel-header h4 {
@@ -3707,49 +4072,41 @@ onBeforeUnmount(async () => {
 
 @media (max-width: 1600px) {
   .consultation-layout {
-    grid-template-columns: 340px minmax(0, 1fr) 320px;
+    grid-template-columns: 440px minmax(0, 1fr);
   }
 }
 
-@media (max-width: 1320px) {
-  .consultation-layout {
-    grid-template-columns: minmax(320px, 1fr) minmax(0, 1.3fr);
+@media (max-width: 1180px) {
+  .doctor-consultation-page {
+    overflow: auto;
   }
 
-  .record-column {
-    grid-column: 1 / -1;
-    min-height: 420px;
-  }
-
-  .record-shell {
-    height: auto;
-  }
-
-  .history-case-head {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 1080px) {
   .consultation-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(320px, 38%) minmax(520px, 1fr);
+    height: auto;
+    min-height: 100%;
   }
 
-  .subtitle-column,
-  .record-column {
+  .subtitle-column {
     min-height: 320px;
+  }
+
+  .video-column {
+    min-height: 520px;
   }
 
   .preview-row {
     position: static;
     width: 100%;
-    margin-top: 36px;
-    margin-bottom: 10px;
+    margin-top: 40px;
+    margin-bottom: 8px;
     grid-template-columns: minmax(0, 1fr);
   }
 
   .featured-stage {
-    padding-top: 14px;
+    min-height: 420px;
+    padding-top: 10px;
   }
 
   .featured-caption {
@@ -3759,11 +4116,6 @@ onBeforeUnmount(async () => {
 
   .stage-controls {
     width: calc(100% - 24px);
-  }
-
-  .diagnosis-grid,
-  .record-grid {
-    grid-template-columns: 1fr;
   }
 
   .four-diagnosis-empty-state {
@@ -3783,17 +4135,48 @@ onBeforeUnmount(async () => {
     overflow: auto;
   }
 
-  .inspection-report-workspace {
+  .inspection-report-card-main {
     grid-template-columns: 1fr;
-    height: auto;
+    min-height: 0;
+  }
+
+  .inspection-report-visual {
+    min-height: 360px;
+    border-right: 0;
+    border-bottom: 1px solid #eef2f7;
   }
 
   .inspection-report-main-image {
-    height: 360px;
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 720px) {
+  .doctor-consultation-page {
+    padding: 6px;
   }
 
-  .inspection-report-content {
-    grid-template-rows: auto minmax(320px, auto);
+  .consultation-layout {
+    gap: 6px;
+  }
+
+  .consultation-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .record-entry {
+    flex: 1 1 calc(50% - 8px);
+    padding: 0 10px;
+  }
+
+  .record-column {
+    width: 100vw;
+  }
+
+  .record-dialog {
+    width: calc(100vw - 24px);
   }
 }
 </style>

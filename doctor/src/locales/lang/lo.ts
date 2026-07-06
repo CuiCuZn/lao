@@ -286,6 +286,11 @@ export default {
         fourDiagnoses: 'ລາຍງານຂໍ້ມູນ',
         history: 'ປະຫວັດເກົ່າ'
       },
+      recordActions: {
+        writeRecord: 'ຂຽນປະຫວັດ',
+        reports: 'ລາຍງານ',
+        history: 'ປະຫວັດເກົ່າ'
+      },
       aiGenerate: 'AI ຊ່ວຍສ້າງປະຫວັດ',
       basicInfo: 'ຂໍ້ມູນພື້ນຖານຄົນໄຂ້',
       name: 'ຊື່',

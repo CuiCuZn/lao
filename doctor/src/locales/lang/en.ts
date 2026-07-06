@@ -284,6 +284,11 @@ export default {
         fourDiagnoses: 'Data Reports',
         history: 'History'
       },
+      recordActions: {
+        writeRecord: 'Write Record',
+        reports: 'Reports',
+        history: 'History'
+      },
       aiGenerate: 'Generate with AI',
       basicInfo: 'Patient Info',
       name: 'Name',

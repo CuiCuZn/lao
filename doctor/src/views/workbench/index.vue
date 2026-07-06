@@ -38,60 +38,7 @@
         </article>
       </section>
 
-      <section class="workspace-grid" :class="{ 'has-pending-requests': pendingPatients.length > 0 }">
-        <article v-if="pendingPatients.length > 0" class="panel queue-panel">
-          <div class="panel-header">
-            <div class="panel-heading">
-              <span class="panel-kicker">{{ t('workbench.pendingTitle') }}</span>
-              <!-- <p class="panel-description">{{ t('workbench.pendingPanelHint', { count: pendingCount }) }}</p> -->
-            </div>
-            <div class="panel-live">
-              <span class="panel-live-dot"></span>
-              <span>{{ t('workbench.realtimeLabel') }}</span>
-            </div>
-          </div>
-
-          <div v-if="pendingPatients.length > 0" class="queue-list">
-            <article v-for="item in pendingPatients" :key="item.id" class="queue-card">
-              <div class="patient-avatar">
-                <el-icon>
-                  <UserFilled />
-                </el-icon>
-              </div>
-
-              <div class="queue-content">
-                <div class="queue-header">
-                  <div class="queue-info-wrap">
-                    <h4>
-                      {{ item.patientName }}
-                      <span v-if="item.sexText || item.age" class="patient-tag">
-                        {{ item.sexText }} {{ formatAgeLabel(item.age) }}
-                      </span>
-                    </h4>
-                  </div>
-
-                  <!-- <div class="queue-no">{{ item.queueNo }}</div> -->
-                </div>
-
-                <div class="queue-meta">
-                  <span>{{ formatPendingDisplayTime(item) }}</span>
-                </div>
-              </div>
-
-              <el-button class="queue-action" size="small" type="primary" round @click="openAcceptDialog(item)">
-                {{ t('workbench.acceptAction') }}
-              </el-button>
-            </article>
-          </div>
-
-          <div v-else class="empty-state">
-            <el-icon class="empty-icon">
-              <Box />
-            </el-icon>
-            <h4>{{ pendingEmptyDescription }}</h4>
-          </div>
-        </article>
-
+      <section class="workspace-grid">
         <article class="panel unfinished-panel">
           <div class="panel-header">
             <div class="panel-heading">
@@ -241,7 +188,6 @@ import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
-  Box,
   Clock,
   DataAnalysis,
   Document,
@@ -777,18 +723,6 @@ const overviewDescription = computed(() => {
     return t('workbench.heroOfflineDescription')
   }
   return t('workbench.heroQueueDescription', { count: pendingCount.value })
-})
-const pendingEmptyTitle = computed(() => {
-  if (!isOnlineRequested.value) return t('workbench.pendingEmptyOfflineTitle')
-  if (sseStatus.value === 'error') return t('workbench.pendingEmptyErrorTitle')
-  if (sseStatus.value === 'connecting' || sseStatus.value === 'reconnecting') return t('workbench.pendingEmptyLoadingTitle')
-  return t('workbench.pendingEmptyTitle')
-})
-const pendingEmptyDescription = computed(() => {
-  if (!isOnlineRequested.value) return t('workbench.pendingEmptyOffline')
-  if (sseStatus.value === 'error') return t('workbench.pendingEmptyError')
-  if (sseStatus.value === 'connecting' || sseStatus.value === 'reconnecting') return t('workbench.pendingEmptyLoading')
-  return t('workbench.pendingEmpty')
 })
 const metricCards = computed<MetricCard[]>(() => [
   {
@@ -1382,38 +1316,6 @@ function mergePendingItems(current: PendingConsultation[], incoming: PendingCons
   return next
 }
 
-function formatWaitMinutes(minutes: number): string {
-  if (minutes <= 0) return t('workbench.justNow')
-  return t('workbench.waitMinutes', { count: minutes })
-}
-
-function formatPendingDisplayTime(item: PendingConsultation): string {
-  const parsedDate = parseDateValue(item.updatedAt)
-  if (parsedDate) {
-    return formatShortTime(parsedDate.getTime())
-  }
-
-  return item.updatedAt || t('workbench.justNow')
-}
-
-function parseDateValue(value?: string): Date | null {
-  if (!value) {
-    return null
-  }
-
-  const normalizedValue = value.trim()
-  if (!normalizedValue) {
-    return null
-  }
-
-  const parsed = new Date(normalizedValue)
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed
-  }
-
-  return null
-}
-
 function formatShortTime(timestamp: number): string {
   return new Intl.DateTimeFormat(resolveLocale(), {
     hour: '2-digit',
@@ -1687,10 +1589,6 @@ function resolveLocale(): string {
   min-height: 0;
 }
 
-.workspace-grid.has-pending-requests {
-  grid-template-columns: minmax(0, 0.46fr) minmax(0, 0.54fr);
-}
-
 .panel {
   height: 100%;
   box-sizing: border-box;
@@ -1744,14 +1642,6 @@ function resolveLocale(): string {
   background: #10b981;
 }
 
-.panel-description {
-  margin: 6px 0 0;
-  color: var(--text-sub);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.queue-list,
 .unfinished-list,
 .doctor-details {
   margin-top: 0;
@@ -1762,7 +1652,6 @@ function resolveLocale(): string {
   min-height: 0;
 }
 
-.queue-list,
 .unfinished-list {
   overflow-y: auto;
 }
@@ -1867,14 +1756,13 @@ function resolveLocale(): string {
   background: transparent;
 }
 
-.queue-card,
 .unfinished-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
   min-height: 76px;
-  padding: 16px 20px;
+  padding: 10px 20px;
   border-radius: 0;
   background: #ffffff;
   border: none;
@@ -1885,7 +1773,6 @@ function resolveLocale(): string {
     border-color 0.24s ease;
 }
 
-.queue-card:hover,
 .unfinished-card:hover {
   transform: none;
   background: #f8fbff;
@@ -1911,7 +1798,6 @@ function resolveLocale(): string {
   display: block;
 }
 
-.queue-content,
 .unfinished-content {
   flex: 1;
   min-width: 0;
@@ -1924,7 +1810,6 @@ function resolveLocale(): string {
   column-gap: 18px;
 }
 
-.queue-header h4,
 .unfinished-top h4,
 .doctor-name {
   margin: 0;
@@ -1933,7 +1818,6 @@ function resolveLocale(): string {
   font-weight: 700;
 }
 
-.queue-header p,
 .doctor-tagline {
   margin: 6px 0 0;
   color: var(--text-main);
@@ -1964,29 +1848,11 @@ function resolveLocale(): string {
   line-height: 1.45;
 }
 
-.queue-header p.info-row span {
-  color: var(--text-sub);
-}
-
 .patient-tag {
   font-size: 14px;
   color: #94a3b8;
   margin-left: 6px;
   font-weight: normal;
-}
-
-.queue-no {
-  min-width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 16px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  font-size: 18px;
-  font-weight: 700;
 }
 
 .queue-meta {
@@ -2334,7 +2200,6 @@ function resolveLocale(): string {
 }
 
 @media (max-width: 1080px) {
-  .workspace-grid.has-pending-requests,
   .workspace-grid {
     grid-template-columns: 1fr;
   }
@@ -2378,13 +2243,11 @@ function resolveLocale(): string {
 
   .control-actions,
   .panel-header,
-  .queue-header,
   .unfinished-top {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .queue-card,
   .unfinished-card {
     grid-template-columns: 1fr;
   }

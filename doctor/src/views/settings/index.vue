@@ -22,13 +22,17 @@
             <div class="avatar-preview">
               <img :src="avatarPreview" alt="头像" />
             </div>
-            <label class="upload-button" :class="{ 'is-uploading': avatarUploading }">
+            <label
+              class="upload-button"
+              :class="{ 'is-uploading': avatarUploading, 'is-disabled': !profileEditing }"
+              :aria-disabled="!profileEditing || avatarUploading"
+            >
               <el-icon><UploadFilled /></el-icon>
               <span>{{ avatarUploading ? '上传中...' : '更换头像' }}</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/gif"
-                :disabled="avatarUploading"
+                :disabled="!profileEditing || avatarUploading"
                 @change="handleAvatarChange"
               />
             </label>
@@ -37,13 +41,13 @@
           <el-form label-position="top" class="profile-form">
             <div class="form-grid">
               <el-form-item label="姓名">
-                <el-input v-model="profileForm.name" placeholder="请输入姓名" />
+                <el-input v-model="profileForm.name" placeholder="请输入姓名" :disabled="!profileEditing" />
               </el-form-item>
               <el-form-item label="手机号">
-                <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+                <el-input v-model="profileForm.phone" placeholder="请输入手机号" :disabled="!profileEditing" />
               </el-form-item>
               <el-form-item label="职称">
-                <el-input v-model="profileForm.title" placeholder="请输入职称" />
+                <el-input v-model="profileForm.title" placeholder="请输入职称" :disabled="!profileEditing" />
               </el-form-item>
               <el-form-item class="form-item-wide" label="擅长">
                 <el-input
@@ -52,6 +56,7 @@
                   :rows="2"
                   resize="none"
                   placeholder="请输入擅长方向"
+                  :disabled="!profileEditing"
                 />
               </el-form-item>
               <el-form-item class="form-item-wide" label="个人简介">
@@ -61,13 +66,14 @@
                   :rows="3"
                   resize="none"
                   placeholder="请输入个人简介"
+                  :disabled="!profileEditing"
                 />
               </el-form-item>
             </div>
           </el-form>
 
-          <el-button type="primary" class="primary-action" :loading="profileSaving" @click="handleProfileSave">
-            保存修改
+          <el-button type="primary" class="primary-action" :loading="profileSaving" @click="handleProfileAction">
+            {{ profileEditing ? '保存修改' : '修改信息' }}
           </el-button>
         </div>
       </section>
@@ -147,6 +153,7 @@ const avatarPreview = ref(defaultAvatar)
 const avatarUrl = ref('')
 const avatarUploading = ref(false)
 const profileSaving = ref(false)
+const profileEditing = ref(false)
 const passwordSaving = ref(false)
 const passwordError = ref('')
 const profileDirty = ref(false)
@@ -232,6 +239,10 @@ function takeProfileText(keys: string[]) {
 }
 
 async function handleAvatarChange(event: Event) {
+  if (!profileEditing.value) {
+    return
+  }
+
   if (avatarUploading.value) {
     return
   }
@@ -278,6 +289,15 @@ async function handleAvatarChange(event: Event) {
   }
 }
 
+async function handleProfileAction() {
+  if (!profileEditing.value) {
+    profileEditing.value = true
+    return
+  }
+
+  await handleProfileSave()
+}
+
 async function handleProfileSave() {
   if (profileSaving.value) {
     return
@@ -313,6 +333,7 @@ async function handleProfileSave() {
     await updateUserProfile(payload)
     userStore.updateProfile(payload)
     profileDirty.value = false
+    profileEditing.value = false
     ElMessage.success('个人信息保存成功')
   } catch (error) {
     console.error('Failed to update profile:', error)
@@ -538,9 +559,16 @@ function readImageAsDataUrl(file: File): Promise<string> {
   background: #eaf2ff;
 }
 
-.upload-button.is-uploading {
+.upload-button.is-uploading,
+.upload-button.is-disabled {
   opacity: 0.68;
   cursor: not-allowed;
+}
+
+.upload-button.is-disabled,
+.upload-button.is-disabled:hover {
+  color: #94a3b8;
+  background: #f8fafc;
 }
 
 .upload-button input {

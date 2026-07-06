@@ -297,6 +297,11 @@ export default {
         fourDiagnoses: '数据报告',
         history: '历史病历'
       },
+      recordActions: {
+        writeRecord: '填写病历',
+        reports: '报告单',
+        history: '历史病历'
+      },
       aiGenerate: 'AI 辅助生成病历',
       basicInfo: '患者基本信息',
       name: '姓名',
