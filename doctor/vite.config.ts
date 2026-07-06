@@ -3,7 +3,7 @@
  * @Author: Cuidezhen
  * @Date: 2026-04-03 10:51:25
  * @LastEditors: Cuidezhen
- * @LastEditTime: 2026-06-16 16:22:28
+ * @LastEditTime: 2026-07-02 17:46:17
  * @company: 医视界
  * @FilePath: \lao\doctor\vite.config.ts
  * @Descripttion: 
@@ -40,7 +40,7 @@ export default defineConfig(({mode})=>{
       open: false,
       proxy: {
         '/lao-api': {
-          target: 'http://192.168.2.101:8087/',
+          target: 'http://192.168.2.101:8085/',
           // target: 'https://lwyczl.mvwchina.com/lao-api/',
           changeOrigin: true,
           rewrite: (requestPath) => requestPath.replace(/^\/lao-api/, '')

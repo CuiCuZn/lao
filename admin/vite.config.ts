@@ -1,3 +1,14 @@
+/*
+ * @version:
+ * @Author: Cuidezhen
+ * @Date: 2026-07-02 17:42:46
+ * @LastEditors: Cuidezhen
+ * @LastEditTime: 2026-07-02 17:45:39
+ * @company: 医视界
+ * @FilePath: \lao\admin\vite.config.ts
+ * @Descripttion:
+ * @Edit Record:
+ */
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
@@ -23,7 +34,7 @@ export default defineConfig(({mode})=>{
       open: false,
       proxy: {
         '/lao-api': {
-          target: 'http://192.168.2.101:8087/',
+          target: 'http://192.168.2.101:8085/',
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/lao-api/, '')
         }
