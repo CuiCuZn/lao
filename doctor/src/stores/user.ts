@@ -68,6 +68,20 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const updateProfile = (payload: Partial<UserProfile>): void => {
+    if (!profile.value) {
+      return
+    }
+
+    profile.value = {
+      ...profile.value,
+      ...payload
+    }
+    name.value = profile.value.userName
+    nickname.value = profile.value.nickName
+    avatar.value = profile.value.avatar || ''
+  }
+
   return {
     token,
     profile,
@@ -80,6 +94,7 @@ export const useUserStore = defineStore('user', () => {
     getInfo,
     logout,
     setOnlineStatus,
+    updateProfile,
     resetState
   }
 })

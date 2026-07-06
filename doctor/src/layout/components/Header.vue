@@ -7,6 +7,18 @@
       <div class="brand-title">{{ t('menu.doctorSystem') }}</div>
     </div>
 
+    <nav class="top-nav" aria-label="doctor navigation">
+      <router-link
+        v-for="item in doctorStaticMenuItems"
+        :key="item.path"
+        :to="item.path"
+        class="nav-link"
+        :class="{ 'is-active': isActiveMenu(item.path) }"
+      >
+        {{ t(item.title) }}
+      </router-link>
+    </nav>
+
     <div class="right-menu">
       <el-dropdown trigger="click" @command="handleCommand">
         <button type="button" class="user-card">
@@ -30,12 +42,13 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { switchWorkbenchOnlineStatus } from '@/api/workbench'
+import { doctorStaticMenuItems } from '@/router/doctor-static'
 import brandLogo from '@/assets/logo.png'
 
 const ONLINE_STATUS_STORAGE_KEY = 'doctor_workbench_online'
@@ -43,6 +56,7 @@ const RELOAD_RESTORE_ONLINE_KEY = 'doctor_reload_restore_online'
 
 const { t } = useI18n()
 const userStore = useUserStore()
+const route = useRoute()
 const router = useRouter()
 
 const userMetaLine = computed(() => {
@@ -69,6 +83,10 @@ function isDoctorOnline() {
 
   const cachedOnlineStatus = localStorage.getItem(ONLINE_STATUS_STORAGE_KEY)
   return cachedOnlineStatus === 'true'
+}
+
+function isActiveMenu(path: string) {
+  return route.path === path || route.path.startsWith(`${path}/`)
 }
 
 async function logout() {
@@ -138,6 +156,40 @@ const handleCommand = (command: string) => {
   line-height: 1.2;
 }
 
+.top-nav {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  color: #526171;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-link:hover {
+  color: #1766d1;
+  background: #edf5ff;
+}
+
+.nav-link.is-active {
+  color: #ffffff;
+  background: #1766d1;
+  box-shadow: 0 8px 18px rgba(23, 102, 209, 0.18);
+}
+
 .right-menu {
   display: flex;
   align-items: center;
@@ -199,6 +251,13 @@ const handleCommand = (command: string) => {
 
   .brand-block {
     width: 100%;
+  }
+
+  .top-nav {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
   .right-menu {

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import Layout from '@/layout/index.vue'
 import i18n from '@/locales'
+import { doctorStaticPageRoutes } from './doctor-static'
 
 /**
  * 静态路由（不需要权限即可访问）
@@ -31,6 +32,8 @@ export const constantRoutes: Array<RouteRecordRaw> = [
   {
     path: '/',
     component: Layout,
+    redirect: '/workbench',
+    children: doctorStaticPageRoutes
   },
   {
     path: '/doctor-rtc',

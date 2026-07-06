@@ -133,6 +133,7 @@ export default {
     eveningGreeting: 'Good evening',
     doctorTitle: 'Doctor Info',
     pendingTitle: 'Patient Queue',
+    realtimeLabel: 'Live',
     pendingPanelHint: '{count} patients are currently queueing. The system will keep this list updated via the live stream.',
     pendingCardHint: 'Requires timely follow-up',
     unfinishedTitle: 'Pending Encounters',
@@ -147,6 +148,9 @@ export default {
     specialtyLabel: 'Specialty',
     acceptAction: 'Accept',
     continueAction: 'Continue',
+    submitDiagnosisAction: 'Submit Diagnosis',
+    endConsultationAction: 'End Visit',
+    actionPendingTip: '{action} will be added later',
     viewDetail: 'View Details',
     doctorVisitsLabel: 'Total Visits',
     doctorSatisfactionLabel: 'Satisfaction',
@@ -397,6 +401,10 @@ export default {
   route: {
     login: 'Physician Sign In',
     notFound: 'Page Not Found',
-    doctorRtc: 'Telehealth Consult'
+    doctorRtc: 'Telehealth Consult',
+    workbench: 'Workbench',
+    history: 'History',
+    prescriptions: 'Prescriptions',
+    settings: 'Settings'
   }
 }

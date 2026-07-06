@@ -156,6 +156,10 @@ class Request {
   public post(url: string, data?: any, config?: AxiosRequestConfig): Promise<any> {
     return this.instance.post(url, data, config)
   }
+
+  public put(url: string, data?: any, config?: AxiosRequestConfig): Promise<any> {
+    return this.instance.put(url, data, config)
+  }
 }
 
 export default new Request({

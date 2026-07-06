@@ -52,6 +52,44 @@ export interface UserInfoResult {
   permissions: string[];
 }
 
+export interface UserProfileUpdateParams {
+  nickName: string;
+  phonenumber: string;
+  title: string;
+  goodAt: string;
+  remark: string;
+  avatar?: string;
+}
+
+export interface UserPasswordUpdateParams {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface OssStsData {
+  accessKeyId: string;
+  accessKeySecret: string;
+  token: string;
+  bucket: string;
+  region: string;
+  time?: number;
+  folder?: string;
+  [key: string]: unknown;
+}
+
+export interface OssStsResponse {
+  code?: number;
+  msg?: string;
+  data?: OssStsData | null;
+  [key: string]: unknown;
+}
+
+export interface OssUploadResult {
+  objectName: string;
+  url?: string;
+  name: string;
+}
+
 export interface DictDataVO {
   dictCode?: number | string;
   dictLabel: string;

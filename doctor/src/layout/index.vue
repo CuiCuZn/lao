@@ -1,6 +1,6 @@
 <template>
   <div class="app-wrapper" :class="{ 'is-rtc-mode': isRtcPage }">
-    <app-header class="header-container" />
+    <app-header v-if="!isRtcPage" class="header-container" />
 
     <div class="app-body">
       <!-- <sidebar v-if="!isRtcPage" class="sidebar-container" /> -->
@@ -33,7 +33,7 @@ const RELOAD_RESTORE_ONLINE_KEY = 'doctor_reload_restore_online'
 const route = useRoute()
 const userStore = useUserStore()
 const { t } = useI18n()
-const isRtcPage = computed(() => route.path === '/doctor-rtc')
+const isRtcPage = computed(() => route.path === '/doctor-rtc' || route.path.startsWith('/doctor-rtc/'))
 let isUnloadOfflineRequestSent = false
 
 function isDoctorOnline() {

@@ -144,6 +144,7 @@ export default {
     eveningGreeting: '晚上好',
     doctorTitle: '医生信息',
     pendingTitle: '待接诊',
+    realtimeLabel: '实时',
     pendingPanelHint: '当前共有 {count} 位患者在队列中等待接诊，系统会根据实时流持续刷新。',
     pendingCardHint: '需要及时处理',
     unfinishedTitle: '诊疗待办',
@@ -158,6 +159,9 @@ export default {
     specialtyLabel: '擅长',
     acceptAction: '接诊',
     continueAction: '继续',
+    submitDiagnosisAction: '提交诊断结果',
+    endConsultationAction: '结束诊疗',
+    actionPendingTip: '{action}功能后续添加',
     viewDetail: '查看详情',
     doctorVisitsLabel: '总接诊量',
     doctorSatisfactionLabel: '满意度',
@@ -168,7 +172,7 @@ export default {
     rejectAction: '拒绝',
     acceptRequestAction: '接受',
     enableOnlineAction: '开始接诊',
-    disableOnlineAction: '结束接诊',
+    disableOnlineAction: '停止接诊',
     waitLabel: '等待',
     sseOffline: '未连接',
     sseConnecting: '连接中',
@@ -410,6 +414,10 @@ export default {
   route: {
     login: '医生登录',
     notFound: '页面不存在',
-    doctorRtc: '视频接诊'
+    doctorRtc: '视频接诊',
+    workbench: '工作台',
+    history: '历史记录',
+    prescriptions: '处方库',
+    settings: '个人设置'
   }
 }

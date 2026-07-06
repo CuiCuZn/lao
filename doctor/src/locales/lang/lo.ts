@@ -133,6 +133,7 @@ export default {
     eveningGreeting: 'ສະບາຍດີຕອນແລງ',
     doctorTitle: 'ຂໍ້ມູນທ່ານໝໍ',
     pendingTitle: 'ລາຍການລໍຖ້າກວດ',
+    realtimeLabel: 'ຮຽວທາມ',
     pendingPanelHint: 'ຂະນະນີ້ມີຄົນໄຂ້ {count} ຄົນຢູ່ໃນຄິວ ແລະ ລະບົບຈະອັບເດດລາຍການນີ້ຜ່ານຂໍ້ມູນຮຽວທາມ.',
     pendingCardHint: 'ຕ້ອງຈັດການໃຫ້ທັນເວລາ',
     unfinishedTitle: 'ການກວດທີ່ຍັງບໍ່ສໍາເລັດ',
@@ -147,6 +148,9 @@ export default {
     specialtyLabel: 'ຄວາມຊ່ຽວຊານ',
     acceptAction: 'ຮັບກວດ',
     continueAction: 'ສືບຕໍ່',
+    submitDiagnosisAction: 'ສົ່ງຜົນວິນິດໄສ',
+    endConsultationAction: 'ສິ້ນສຸດການກວດ',
+    actionPendingTip: 'ຟັງຊັນ {action} ຈະເພີ່ມພາຍຫຼັງ',
     viewDetail: 'ເບິ່ງລາຍລະອຽດ',
     doctorVisitsLabel: 'ການກວດທັງໝົດ',
     doctorSatisfactionLabel: 'ຄວາມພໍໃຈ',
@@ -399,6 +403,10 @@ export default {
   route: {
     login: 'ເຂົ້າລະບົບທ່ານໝໍ',
     notFound: 'ບໍ່ພົບໜ້າ',
-    doctorRtc: 'ວິດີໂອຮັບກວດ'
+    doctorRtc: 'ວິດີໂອຮັບກວດ',
+    workbench: 'ໜ້າວຽກ',
+    history: 'ປະຫວັດ',
+    prescriptions: 'ຄັງໃບສັ່ງຢາ',
+    settings: 'ຕັ້ງຄ່າສ່ວນຕົວ'
   }
 }

@@ -1,27 +1,27 @@
 <template>
   <div class="workbench-shell">
+    <section class="overview-banner">
+      <div class="overview-copy">
+        <h1 class="overview-title">{{ greetingText }}，{{ doctorDisplayName }}</h1>
+        <p class="overview-description">{{ overviewDescription }}</p>
+      </div>
+
+      <div class="control-actions">
+        <span class="panel-status control-status"
+          :class="[`is-${sseStatus}`, { 'is-highlighted': sseStatus !== 'offline' }]">
+          <span class="status-dot"></span>
+          {{ connectionStatusText }}
+        </span>
+
+        <el-button class="online-action-btn" :class="{ 'is-online': isOnlineRequested }"
+          :type="isOnlineRequested ? 'danger' : 'primary'" :loading="isSwitchingOnlineStatus" round
+          @click="toggleOnlineStatus">
+          {{ onlineActionButtonText }}
+        </el-button>
+      </div>
+    </section>
+
     <main class="workbench-main">
-      <section class="overview-banner">
-        <div class="overview-copy">
-          <h1 class="overview-title">{{ greetingText }}，{{ doctorDisplayName }}</h1>
-          <p class="overview-description">{{ overviewDescription }}</p>
-        </div>
-
-        <div class="control-actions">
-          <span class="panel-status control-status"
-            :class="[`is-${sseStatus}`, { 'is-highlighted': sseStatus !== 'offline' }]">
-            <span class="status-dot"></span>
-            {{ connectionStatusText }}
-          </span>
-
-          <el-button class="online-action-btn" :class="{ 'is-online': isOnlineRequested }"
-            :type="isOnlineRequested ? 'danger' : 'primary'" :loading="isSwitchingOnlineStatus" round
-            @click="toggleOnlineStatus">
-            {{ onlineActionButtonText }}
-          </el-button>
-        </div>
-      </section>
-
       <section class="metrics-row">
         <article v-for="card in metricCards" :key="card.key" class="metric-card" :class="`is-${card.tone}`">
           <div class="metric-copy">
@@ -38,19 +38,25 @@
         </article>
       </section>
 
-      <section class="workspace-grid">
-        <article class="panel queue-panel">
+      <section class="workspace-grid" :class="{ 'has-pending-requests': pendingPatients.length > 0 }">
+        <article v-if="pendingPatients.length > 0" class="panel queue-panel">
           <div class="panel-header">
             <div class="panel-heading">
               <span class="panel-kicker">{{ t('workbench.pendingTitle') }}</span>
               <!-- <p class="panel-description">{{ t('workbench.pendingPanelHint', { count: pendingCount }) }}</p> -->
             </div>
+            <div class="panel-live">
+              <span class="panel-live-dot"></span>
+              <span>{{ t('workbench.realtimeLabel') }}</span>
+            </div>
           </div>
 
           <div v-if="pendingPatients.length > 0" class="queue-list">
             <article v-for="item in pendingPatients" :key="item.id" class="queue-card">
-              <div class="patient-avatar" :style="{ background: getAvatarGradient(item.patientName) }">
-                {{ item.patientName.slice(0, 1) }}
+              <div class="patient-avatar">
+                <el-icon>
+                  <UserFilled />
+                </el-icon>
               </div>
 
               <div class="queue-content">
@@ -89,19 +95,30 @@
         <article class="panel unfinished-panel">
           <div class="panel-header">
             <div class="panel-heading">
-              <span class="panel-kicker">{{ t('workbench.recordPanelTitle') }}</span>
+              <span class="panel-kicker">{{ t('workbench.pendingTitle') }}</span>
+            </div>
+            <div class="panel-live">
+              <span class="panel-live-dot"></span>
+              <span>{{ t('workbench.realtimeLabel') }}</span>
             </div>
           </div>
 
           <div class="unfinished-list">
             <article v-for="item in unfinishedConsultations" :key="item.id" class="unfinished-card">
-              <div class="patient-avatar" :style="{ background: getAvatarGradient(item.patientName) }">
-                {{ item.patientName.slice(0, 1) }}
+              <div class="patient-avatar">
+                <el-icon>
+                  <UserFilled />
+                </el-icon>
               </div>
 
               <div class="unfinished-content">
                 <div class="unfinished-top">
-                  <h4>{{ item.displayName || item.patientName }}</h4>
+                  <h4>
+                    {{ item.patientName }}
+                    <span v-if="formatPatientSex(item.patientSex) || item.patientAge" class="patient-tag">
+                      {{ formatPatientSex(item.patientSex) }} {{ formatAgeLabel(item.patientAge) }}
+                    </span>
+                  </h4>
                   <span :class="['unfinished-progress', getDiagnosisStatusClass(item.progressText)]">
                     {{ item.progressText }}
                   </span>
@@ -118,11 +135,20 @@
                 </div>
               </div>
 
-              <el-button v-if="item.progressText !== t('workbench.completedStatus')" type="primary"
-                class="queue-action continue-action" size="small" round :loading="continuingConsultationId === item.id"
-                @click="handleContinueConsultation(item)">
-                {{ t('workbench.continueAction') }}
-              </el-button>
+              <div v-if="item.progressText !== t('workbench.completedStatus')" class="unfinished-actions">
+                <el-button type="primary" class="queue-action continue-action" size="small"
+                  :loading="continuingConsultationId === item.id" @click="handleContinueConsultation(item)">
+                  {{ t('workbench.continueAction') }}
+                </el-button>
+                <el-button type="success" plain class="queue-action submit-diagnosis-action" size="small"
+                  @click="showPendingWorkbenchAction(t('workbench.submitDiagnosisAction'))">
+                  {{ t('workbench.submitDiagnosisAction') }}
+                </el-button>
+                <el-button type="danger" plain class="queue-action end-consultation-action" size="small"
+                  @click="showPendingWorkbenchAction(t('workbench.endConsultationAction'))">
+                  {{ t('workbench.endConsultationAction') }}
+                </el-button>
+              </div>
               <el-button v-else type="info" plain class="queue-action detail-action" size="small" round
                 @click="openCaseDetail(item)">
                 {{ t('workbench.viewDetail') }}
@@ -135,42 +161,47 @@
 
     <aside class="workbench-side">
       <article class="doctor-card">
-        <span class="panel-kicker">{{ t('workbench.doctorTitle') }}</span>
-
         <div class="doctor-top">
           <div class="doctor-avatar-wrap">
-            <img class="doctor-avatar" :src="doctorAvatarImage" alt="" />
+            <img class="doctor-avatar" :src="doctorAvatarUrl" alt="" />
           </div>
 
-          <h3 class="doctor-name">{{ doctorDisplayName }}</h3>
-          <p class="doctor-tagline">{{ doctorTagline }}</p>
-          <!-- <span class="doctor-role-pill">{{ doctorInstitution }}</span> -->
+          <div class="doctor-identity">
+            <h3 class="doctor-name">{{ doctorDisplayName }}</h3>
+            <p class="doctor-tagline">{{ doctorTagline }}</p>
+          </div>
         </div>
 
         <div class="doctor-details">
-          <div class="detail-item">
-            <span class="detail-icon">
+          <section class="detail-section">
+            <div class="detail-title">
+              <el-icon>
+                <UserFilled />
+              </el-icon>
+              <span>个人简介</span>
+            </div>
+            <p>{{ doctorBio }}</p>
+          </section>
+
+          <section class="detail-section">
+            <div class="detail-title">
               <el-icon>
                 <PhoneFilled />
               </el-icon>
-            </span>
-            <div>
-              <label>{{ t('workbench.phoneLabel') }}</label>
-              <strong>{{ doctorPhone }}</strong>
+              <span>{{ t('workbench.phoneLabel') }}</span>
             </div>
-          </div>
+            <strong>{{ doctorPhone }}</strong>
+          </section>
 
-          <div class="detail-item">
-            <span class="detail-icon">
+          <section class="detail-section">
+            <div class="detail-title">
               <el-icon>
                 <Document />
               </el-icon>
-            </span>
-            <div>
-              <label>{{ t('workbench.specialtyLabel') }}</label>
-              <strong>{{ doctorSpecialty }}</strong>
+              <span>{{ t('workbench.specialtyLabel') }}</span>
             </div>
-          </div>
+            <p>{{ doctorSpecialty }}</p>
+          </section>
         </div>
       </article>
     </aside>
@@ -646,6 +677,10 @@ const handleContinueConsultation = async (item: IncompleteConsultation) => {
   }
 }
 
+const showPendingWorkbenchAction = (action: string) => {
+  ElMessage.info(t('workbench.actionPendingTip', { action }))
+}
+
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 let sseWatchdogTimer: ReturnType<typeof setInterval> | undefined
 let sseConnection: ReturnType<typeof connectSse> | undefined
@@ -656,6 +691,9 @@ let isOnlineSwitchRequestRunning = false
 let lastSseActivityAt = 0
 
 const doctorProfile = computed(() => userStore.profile)
+const doctorAvatarUrl = computed(() => {
+  return doctorProfile.value?.avatar?.trim() || userStore.avatar?.trim() || doctorAvatarImage
+})
 const doctorDisplayName = computed(() => {
   return doctorProfile.value?.nickName || userStore.nickname || userStore.name || t('workbench.unknownDoctor')
 })
@@ -688,13 +726,21 @@ const doctorTitle = computed(() => {
 const doctorPhone = computed(() => {
   return doctorProfile.value?.phonenumber || doctorProfile.value?.phoneNumber || t('workbench.notAvailable')
 })
+const doctorBio = computed(() => {
+  return (
+    doctorProfile.value?.description ||
+    doctorProfile.value?.intro ||
+    doctorProfile.value?.briefIntroduction ||
+    doctorProfile.value?.remark ||
+    t('workbench.notAvailable')
+  ) as string
+})
 const doctorSpecialty = computed(() => {
   return (
     doctorProfile.value?.goodAt ||
     doctorProfile.value?.specialty ||
     doctorProfile.value?.speciality ||
     doctorProfile.value?.expertise ||
-    doctorProfile.value?.description ||
     t('workbench.notAvailable')
   ) as string
 })
@@ -1382,50 +1428,57 @@ function resolveLocale(): string {
   return 'zh-CN'
 }
 
-function getAvatarGradient(name: string): string {
-  const gradients = [
-    'linear-gradient(135deg, #4f8cff 0%, #67c8ff 100%)',
-    'linear-gradient(135deg, #ff7ab6 0%, #ffb36b 100%)',
-    'linear-gradient(135deg, #26c2a3 0%, #8be6c3 100%)',
-    'linear-gradient(135deg, #7d88ff 0%, #b19cff 100%)'
-  ]
-  const index = name.charCodeAt(0) % gradients.length
-  return gradients[index]
-}
 </script>
 
 <style lang="scss" scoped>
 .workbench-shell {
   --surface: #ffffff;
   --surface-soft: #f8fbff;
-  --surface-muted: #f3f7fb;
-  --border: #e5edf6;
-  --border-strong: #d9e4ef;
-  --text-main: #1d2f42;
-  --text-sub: #6c7d91;
-  --text-soft: #8b9caf;
-  --primary: #1f78ff;
-  --primary-soft: #edf5ff;
+  --surface-muted: #f5f8fc;
+  --border: #e6edf5;
+  --border-strong: #dce5ef;
+  --text-main: #111827;
+  --text-sub: #475569;
+  --text-soft: #8fa1b8;
+  --primary: #2563eb;
+  --primary-soft: #edf4ff;
   --success: #10b981;
   --warning: #f59e0b;
-  --violet: #8b5cf6;
+  --slate: #475569;
+  --module-gap: 10px;
 
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 5px;
-  padding: 5px 8px 5px 5px;
+  grid-template-columns: minmax(0, 1fr) 282px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--module-gap);
+  height: 100%;
+  box-sizing: border-box;
+  padding: 10px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .workbench-main,
 .workbench-side {
-  height: calc(100vh - 60px);
+  height: 100%;
   overflow: hidden;
   min-height: 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--module-gap);
+}
+
+.workbench-main {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.workbench-side {
+  grid-column: 2;
+  grid-row: 2;
+  box-sizing: border-box;
+  gap: 0;
 }
 
 .overview-banner,
@@ -1434,76 +1487,100 @@ function getAvatarGradient(name: string): string {
 .doctor-card {
   border: 1px solid var(--border);
   background: var(--surface);
-  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 .overview-banner {
+  grid-column: 1 / -1;
+  grid-row: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 15px;
-  border-radius: 10px;
+  gap: var(--module-gap);
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   animation: rise-in 0.45s ease both;
 }
 
 .overview-copy {
   min-width: 0;
   display: flex;
-  align-items: flex-end;
-  gap: 10px;
+  align-items: center;
 }
 
 .panel-kicker,
 .doctor-role-pill {
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-size: 11px;
+  min-height: 24px;
+  color: var(--text-main);
+  font-size: 18px;
   font-weight: 700;
+  line-height: 1.2;
+}
+
+.panel-kicker::before {
+  content: '';
+  width: 8px;
+  height: 30px;
+  margin-right: 16px;
+  border-radius: 999px;
+  background: #2563eb;
 }
 
 .overview-title {
   margin: 0;
   color: var(--text-main);
-  font-size: clamp(28px, 4vw, 38px);
-  line-height: 1.12;
-  letter-spacing: -0.04em;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0;
 }
 
 .overview-description {
-  margin: 0;
-  max-width: 640px;
-  color: var(--text-sub);
-  font-size: 14px;
-  line-height: 1.75;
+  display: none;
 }
 
 .online-action-btn {
-  min-width: 118px;
-  min-height: 38px;
-  box-shadow: 0 8px 18px rgba(31, 120, 255, 0.12);
+  min-width: 121px;
+  min-height: 44px;
+  padding: 0 26px;
+  border-radius: 8px !important;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 8px 16px rgba(248, 113, 113, 0.16);
 }
 
 .online-action-btn.is-online {
-  box-shadow: 0 8px 18px rgba(16, 185, 129, 0.12);
+  --el-button-bg-color: #f87171;
+  --el-button-border-color: #f87171;
+  --el-button-hover-bg-color: #ef6868;
+  --el-button-hover-border-color: #ef6868;
+  --el-button-active-bg-color: #e55f5f;
+  --el-button-active-border-color: #e55f5f;
+  box-shadow: 0 10px 20px rgba(248, 113, 113, 0.2);
 }
 
 .control-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 6px;
+  flex-wrap: nowrap;
+  margin-left: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--module-gap);
 }
 
 .metric-card {
@@ -1511,8 +1588,9 @@ function getAvatarGradient(name: string): string {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 18px;
-  border-radius: 10px;
+  min-height: 110px;
+  padding: 10px 20px;
+  border-radius: 12px;
   animation: rise-in 0.5s ease both;
 }
 
@@ -1525,13 +1603,13 @@ function getAvatarGradient(name: string): string {
 }
 
 .metric-icon {
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 16px;
-  font-size: 20px;
+  border-radius: 10px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
@@ -1539,19 +1617,20 @@ function getAvatarGradient(name: string): string {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .metric-label {
-  color: var(--text-soft);
-  font-size: 12px;
+  color: #64748b;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .metric-value {
   color: var(--text-main);
-  font-size: 34px;
-  letter-spacing: -0.04em;
+  font-size: 36px;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .metric-hint {
@@ -1564,14 +1643,26 @@ function getAvatarGradient(name: string): string {
   color: var(--primary);
 }
 
+.metric-card.is-sky {
+  border-top: 4px solid #2563eb;
+}
+
 .metric-card.is-amber .metric-icon {
-  background: rgba(245, 158, 11, 0.14);
-  color: #d97706;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.metric-card.is-amber {
+  border-top: 4px solid #059669;
 }
 
 .metric-card.is-violet .metric-icon {
-  background: rgba(139, 92, 246, 0.14);
-  color: var(--violet);
+  background: rgba(71, 85, 105, 0.1);
+  color: var(--slate);
+}
+
+.metric-card.is-violet {
+  border-top: 4px solid #475569;
 }
 
 .metric-card.is-sky .metric-hint {
@@ -1588,12 +1679,16 @@ function getAvatarGradient(name: string): string {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 5px;
+  gap: var(--module-gap);
   align-items: stretch;
   flex: 1;
   min-height: 0;
+}
+
+.workspace-grid.has-pending-requests {
+  grid-template-columns: minmax(0, 0.46fr) minmax(0, 0.54fr);
 }
 
 .panel {
@@ -1602,8 +1697,9 @@ function getAvatarGradient(name: string): string {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 16px;
-  border-radius: 10px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
   animation: rise-in 0.55s ease both;
 }
 
@@ -1619,14 +1715,33 @@ function getAvatarGradient(name: string): string {
 
 .panel-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  min-height: 76px;
+  margin-bottom: 0;
+  padding: 0px 20px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .panel-heading {
   min-width: 0;
+}
+
+.panel-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.panel-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #10b981;
 }
 
 .panel-description {
@@ -1639,33 +1754,38 @@ function getAvatarGradient(name: string): string {
 .queue-list,
 .unfinished-list,
 .doctor-details {
-  margin-top: 10px;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 10px;
+  gap: 0;
   min-height: 0;
+}
+
+.queue-list,
+.unfinished-list {
+  overflow-y: auto;
 }
 
 .panel-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 12px;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
   border-radius: 999px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: none;
   color: var(--text-sub);
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 700;
 }
 
 .control-status {
   position: relative;
-  min-height: 36px;
-  padding: 0 14px;
-  box-shadow: 0 8px 20px rgba(31, 120, 255, 0.08);
+  min-height: 44px;
+  padding: 0 18px;
+  box-shadow: none;
 }
 
 .control-status.is-highlighted {
@@ -1684,8 +1804,7 @@ function getAvatarGradient(name: string): string {
 }
 
 .panel-status.is-connected {
-  border-color: rgba(16, 185, 129, 0.16);
-  color: #0f9f6e;
+  color: #059669;
 }
 
 .panel-status.is-connected .status-dot {
@@ -1731,7 +1850,7 @@ function getAvatarGradient(name: string): string {
   min-height: 0;
   max-height: 100%;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 0;
   scrollbar-gutter: stable;
 }
 
@@ -1752,11 +1871,14 @@ function getAvatarGradient(name: string): string {
 .unfinished-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-  border: 1px solid var(--border);
+  align-items: center;
+  gap: 16px;
+  min-height: 76px;
+  padding: 16px 20px;
+  border-radius: 0;
+  background: #ffffff;
+  border: none;
+  border-bottom: 1px solid #f1f5f9;
   transition:
     transform 0.24s ease,
     box-shadow 0.24s ease,
@@ -1765,22 +1887,28 @@ function getAvatarGradient(name: string): string {
 
 .queue-card:hover,
 .unfinished-card:hover {
-  transform: translateY(-2px);
-  border-color: #d3e4f7;
-  box-shadow: 0 16px 28px rgba(15, 23, 42, 0.06);
+  transform: none;
+  background: #f8fbff;
+  box-shadow: none;
 }
 
 .patient-avatar {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: #fff;
-  font-size: 18px;
-  font-weight: 700;
+  color: #7f95af;
+  font-size: 22px;
   flex-shrink: 0;
+  background: linear-gradient(180deg, #f7fbff 0%, #eef5fb 100%);
+  border: 1px solid #e4edf6;
+  box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.16);
+}
+
+.patient-avatar .el-icon {
+  display: block;
 }
 
 .queue-content,
@@ -1789,12 +1917,20 @@ function getAvatarGradient(name: string): string {
   min-width: 0;
 }
 
+.unfinished-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  column-gap: 18px;
+}
+
 .queue-header h4,
 .unfinished-top h4,
 .doctor-name {
   margin: 0;
   color: var(--text-main);
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .queue-header p,
@@ -1807,16 +1943,25 @@ function getAvatarGradient(name: string): string {
 
 .unfinished-top {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
+}
+
+.unfinished-top h4 {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .unfinished-result {
-  margin: 8px 0 0;
+  display: none;
+  margin: 4px 0 0;
   color: var(--text-main);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .queue-header p.info-row span {
@@ -1824,8 +1969,8 @@ function getAvatarGradient(name: string): string {
 }
 
 .patient-tag {
-  font-size: 12px;
-  color: var(--text-sub);
+  font-size: 14px;
+  color: #94a3b8;
   margin-left: 6px;
   font-weight: normal;
 }
@@ -1848,20 +1993,26 @@ function getAvatarGradient(name: string): string {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 0;
+  justify-content: flex-end;
 }
 
 .queue-meta span,
 .unfinished-progress {
+  display: none;
+}
+
+.queue-meta span {
   display: inline-flex;
   align-items: center;
-  min-height: 26px;
-  padding: 0 10px;
+  min-height: 24px;
+  padding: 0;
   border-radius: 999px;
-  background: var(--surface-muted);
-  border: 1px solid var(--border);
-  color: #62758a;
-  font-size: 11px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .unfinished-progress--incomplete {
@@ -1877,45 +2028,96 @@ function getAvatarGradient(name: string): string {
 }
 
 .unfinished-meta {
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .unfinished-time-chip {
   gap: 6px;
-  color: var(--primary) !important;
-  background: rgba(59, 130, 246, 0.08) !important;
-  border-color: rgba(59, 130, 246, 0.12) !important;
+  color: #cbd5e1 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.unfinished-time-chip .el-icon {
+  display: none;
 }
 
 .queue-action {
-  min-width: 84px;
+  min-width: 64px;
   min-height: 36px;
+  padding: 0 14px;
+  border-radius: 6px !important;
   justify-self: end;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.unfinished-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  justify-self: end;
+  flex-wrap: nowrap;
+}
+
+.unfinished-actions .el-button + .el-button {
+  margin-left: 0;
 }
 
 .continue-action {
-  --el-button-bg-color: #d85a2b;
-  --el-button-border-color: #d85a2b;
-  --el-button-hover-bg-color: #c94f23;
-  --el-button-hover-border-color: #c94f23;
-  --el-button-active-bg-color: #b9461f;
-  --el-button-active-border-color: #b9461f;
-  --el-button-disabled-bg-color: rgba(216, 90, 43, 0.55);
-  --el-button-disabled-border-color: rgba(216, 90, 43, 0.45);
+  --el-button-bg-color: #2563eb;
+  --el-button-border-color: #2563eb;
+  --el-button-hover-bg-color: #1d4ed8;
+  --el-button-hover-border-color: #1d4ed8;
+  --el-button-active-bg-color: #1e40af;
+  --el-button-active-border-color: #1e40af;
+  --el-button-disabled-bg-color: rgba(37, 99, 235, 0.55);
+  --el-button-disabled-border-color: rgba(37, 99, 235, 0.45);
   color: #fff;
+}
+
+.unfinished-actions .continue-action {
+  min-width: 52px;
 }
 
 .continue-action:hover,
 .continue-action:focus {
-  background: #c94f23;
-  border-color: #c94f23;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
   color: #fff;
 }
 
 .continue-action:active {
-  background: #b9461f;
-  border-color: #b9461f;
+  background: #1e40af;
+  border-color: #1e40af;
   color: #fff;
+}
+
+.submit-diagnosis-action {
+  min-width: 108px;
+  --el-button-bg-color: #ecfdf5;
+  --el-button-border-color: #8ee0bd;
+  --el-button-text-color: #059669;
+  --el-button-hover-bg-color: #dff8ed;
+  --el-button-hover-border-color: #65d5a2;
+  --el-button-hover-text-color: #047857;
+  --el-button-active-bg-color: #d2f4e5;
+  --el-button-active-border-color: #34c48a;
+  color: #059669;
+}
+
+.end-consultation-action {
+  min-width: 82px;
+  --el-button-bg-color: #ffffff;
+  --el-button-border-color: #fb7185;
+  --el-button-text-color: #f43f5e;
+  --el-button-hover-bg-color: #fff1f2;
+  --el-button-hover-border-color: #f43f5e;
+  --el-button-hover-text-color: #e11d48;
+  --el-button-active-bg-color: #ffe4e6;
+  --el-button-active-border-color: #e11d48;
+  color: #f43f5e;
 }
 
 .detail-action {
@@ -1951,7 +2153,7 @@ function getAvatarGradient(name: string): string {
 
 .empty-state {
   flex: 1;
-  min-height: 260px;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1959,7 +2161,7 @@ function getAvatarGradient(name: string): string {
   text-align: center;
   padding: 18px;
   border: 1px dashed var(--border-strong);
-  border-radius: 18px;
+  border-radius: 16px;
 }
 
 .empty-icon {
@@ -1985,84 +2187,91 @@ function getAvatarGradient(name: string): string {
   flex: 1;
   position: sticky;
   top: 0;
-  padding: 18px;
-  border-radius: 10px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
   animation: rise-in 0.6s ease both 0.08s;
 }
 
 .doctor-top {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 10px 0 16px;
-  border-bottom: 1px solid var(--border);
-  text-align: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #f8fafc;
+  text-align: left;
 }
 
 .doctor-avatar-wrap {
-  width: 112px;
-  height: 112px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(29, 116, 255, 0.08) 0%, rgba(103, 200, 255, 0.12) 100%);
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  overflow: hidden;
 }
 
 .doctor-avatar {
-  width: 100px;
-  height: 100px;
-  border-radius: 999px;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
   display: block;
   object-fit: cover;
 }
 
 .doctor-name {
-  font-size: 30px;
-  line-height: 1.06;
-}
-
-.detail-item label {
-  color: var(--text-soft);
+  font-size: 17px;
+  line-height: 1.25;
 }
 
 .doctor-details {
-  gap: 10px;
+  gap: 0;
+  padding: 12px 20px 20px;
+  overflow-y: auto;
 }
 
-.detail-item {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--surface-soft);
-  border: 1px solid var(--border);
+.doctor-identity {
+  min-width: 0;
 }
 
-.detail-icon {
-  width: 40px;
-  height: 40px;
+.detail-section {
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+}
+
+.detail-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  background: var(--primary-soft);
-  color: var(--primary);
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 700;
 }
 
-.detail-item div {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.detail-title .el-icon {
+  color: #9aabc0;
 }
 
-.detail-item strong {
-  color: #24364a;
-  font-size: 13px;
+.detail-section p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+
+.detail-section strong {
+  color: #111827;
+  font-size: 15px;
   line-height: 1.6;
   word-break: break-word;
 }
@@ -2107,9 +2316,16 @@ function getAvatarGradient(name: string): string {
   }
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1120px) {
   .workbench-shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .workbench-main,
+  .workbench-side {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .doctor-card {
@@ -2118,6 +2334,7 @@ function getAvatarGradient(name: string): string {
 }
 
 @media (max-width: 1080px) {
+  .workspace-grid.has-pending-requests,
   .workspace-grid {
     grid-template-columns: 1fr;
   }
@@ -2141,12 +2358,18 @@ function getAvatarGradient(name: string): string {
 }
 
 @media (max-width: 720px) {
+  .workbench-shell {
+    padding: 16px;
+    overflow: auto;
+  }
 
   .overview-banner,
-  .panel,
   .doctor-card {
-    padding: 14px;
     border-radius: 16px;
+  }
+
+  .panel {
+    border-radius: 24px;
   }
 
   .overview-title {
@@ -2164,6 +2387,17 @@ function getAvatarGradient(name: string): string {
   .queue-card,
   .unfinished-card {
     grid-template-columns: 1fr;
+  }
+
+  .unfinished-content {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .unfinished-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .queue-action {
